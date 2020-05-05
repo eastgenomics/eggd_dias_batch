@@ -171,17 +171,18 @@ def run_dias_batch_file(workflow_id,
                         workflow_out_dir):
     app_relative_paths = format_relative_paths(workflow_stage_info)
     command = 'dx run {workflow_id} --batch-tsv {batch_file} --destination={workflow_out_dir} {app_relative_paths}'\
-        .format(workflow_id=workflow_id, 
+        .format(workflow_id=workflow_id,
                 batch_file=batch_file,
                 workflow_out_dir=workflow_out_dir,
                 app_relative_paths=app_relative_paths)
     subprocess.call(command, shell=True)
 
+
 workflow_id         = "workflow-FpG6QjQ433Gf7Gq15ZF4Vk49"
 workflow_out_dir    = make_workflow_out_dir(workflow_id)
 workflow_stage_info = get_workflow_stage_info(workflow_id)
-app_out_dirs        = make_app_out_dirs(workflow_stage_info, 
-                                        workflow_id, 
+app_out_dirs        = make_app_out_dirs(workflow_stage_info,
+                                        workflow_id,
                                         workflow_out_dir)
 batch_file          = make_dias_batch_file()
 run_dias_batch_file(workflow_id,
