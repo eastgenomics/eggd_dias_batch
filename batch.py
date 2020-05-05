@@ -13,7 +13,7 @@ def dx_make_workflow_dir(dx_dir_path):
     command = "dx mkdir -p /output/; dx mkdir {dx_dir_path}".format(
         dx_dir_path=dx_dir_path)
     try:
-        subprocess.check_output(command, 
+        subprocess.check_output(command,
                                 stderr=subprocess.STDOUT,
                                 shell=True)
         return True
@@ -25,15 +25,15 @@ def describe_workflow(workflow_id):
     command = "dx describe {workflow_id}".format(
         workflow_id=workflow_id)
 
-    # This try except is used to handle permission errors generated 
+    # This try except is used to handle permission errors generated
     # when dx describe tries to get info about files we do not have permission
-    # to access. 
-    # In these cases the description is returned but the commands has non-0 
+    # to access.
+    # In these cases the description is returned but the commands has non-0
     # exit status so errors out
 
     try:
         workflow_description = subprocess\
-        .check_output(command, stderr=subprocess.STDOUT, shell=True)
+            .check_output(command, stderr=subprocess.STDOUT, shell=True)
     except subprocess.CalledProcessError as cmdexc:
         workflow_description = str(cmdexc.output)
     return workflow_description.split("\n")
@@ -55,7 +55,7 @@ def make_workflow_out_dir(workflow_id):
     workflow_output_dir_pattern = "/output/{workflow_name}-{date}-{index}/"
 
     i = 1
-    while i < 100: # < 100 runs = sanity check
+    while i < 100:  # < 100 runs = sanity check
         workflow_output_dir = workflow_output_dir_pattern\
             .format(workflow_name=workflow_name, date=get_date(), index=i)
         if dx_make_workflow_dir(workflow_output_dir):
@@ -74,7 +74,7 @@ def get_workflow_stage_info(workflow_id):
 
     previous_line_is_stage = False
     for index, line in enumerate(workflow_description):
-        
+
         if line.startswith("Stage "):
             previous_line_is_stage = True
             stage = line.split(" ")[1]
@@ -83,13 +83,13 @@ def get_workflow_stage_info(workflow_id):
         elif previous_line_is_stage:
             assert line.startswith("  Executable"),
             "Expected '  Executable' line after stage line {line_num}\n{line}"\
-            .format(line_num=index+1, line=line)
+                .format(line_num=index+1, line=line)
 
             app_id = line.split(" ")[-1]
             app_name = get_object_name_from_object_id(app_id)
 
-            stages[stage] = {"app_id":app_id,
-                             "app_name":app_name}
+            stages[stage] = {"app_id": app_id,
+                             "app_name": app_name}
             previous_line_is_stage = False
 
         else:
@@ -98,17 +98,17 @@ def get_workflow_stage_info(workflow_id):
     return stages
 
 
-def make_app_out_dirs(workflow_stage_info, 
+def make_app_out_dirs(workflow_stage_info,
                       workflow_id,
                       workflow_output_dir):
     for stage, stage_info in sorted(workflow_stage_info.items()):
         app_out_dir = "{workflow_output_dir}{app_name}"\
             .format(workflow_output_dir=workflow_output_dir,
                     app_name=stage_info["app_name"])
-        # mkdir with -p so no error if multiples of same app try to make 
+        # mkdir with -p so no error if multiples of same app try to make
         # multiple dirs e.g. fastqc
         command = "dx mkdir -p {app_out_dir}"\
-            .format(app_out_dir=app_out_dir)  
+            .format(app_out_dir=app_out_dir)
 
         subprocess.check_output(command, shell=True)
     return True
@@ -155,6 +155,7 @@ def make_dias_batch_file():
     assert os.path.exists(final_tsv), "Failed to generate batch file!"
     return final_tsv
 
+
 def format_relative_paths(app_out_dirs):
     result = ""
     for stage, stage_info in sorted(workflow_stage_info.items()):
@@ -164,7 +165,10 @@ def format_relative_paths(app_out_dirs):
     return result
 
 
-def run_dias_batch_file(workflow_id, batch_file, workflow_stage_info, workflow_out_dir):
+def run_dias_batch_file(workflow_id,
+                        batch_file,
+                        workflow_stage_info,
+                        workflow_out_dir):
     app_relative_paths = format_relative_paths(workflow_stage_info)
     command = 'dx run {workflow_id} --batch-tsv {batch_file} --destination={workflow_out_dir} {app_relative_paths}'\
         .format(workflow_id=workflow_id, 
