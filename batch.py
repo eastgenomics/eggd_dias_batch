@@ -13,7 +13,6 @@ def dx_make_workflow_dir(dx_dir_path):
         subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True, )
         return True
     except subprocess.CalledProcessError as cmdexc:
-        #print("Status : FAIL", cmdexc.returncode, cmdexc.output)
         return False
 
 def describe_workflow(workflow_id):
@@ -37,10 +36,6 @@ def get_object_name_from_object_id(workflow_id):
             workflow_name = line.split(" ")[-1]
             return workflow_name
     return None
-
-def get_app_name_from_app_id(app_id):
-    pass
-
 
 def make_workflow_out_dir(workflow_id):
     workflow_name = get_object_name_from_object_id(workflow_id)
