@@ -81,7 +81,7 @@ def get_workflow_stage_info(workflow_id):
 
         # If prev line was stage line then this line contains executable
         elif previous_line_is_stage:
-            assert line.startswith("  Executable"),
+            assert line.startswith("  Executable"),\
             "Expected '  Executable' line after stage line {line_num}\n{line}"\
                 .format(line_num=index+1, line=line)
 
@@ -170,7 +170,7 @@ def run_dias_batch_file(workflow_id,
                         workflow_stage_info,
                         workflow_out_dir):
     app_relative_paths = format_relative_paths(workflow_stage_info)
-    command = 'dx run {workflow_id} --batch-tsv {batch_file} --destination={workflow_out_dir} {app_relative_paths}'\
+    command = 'dx run --yes {workflow_id} --batch-tsv {batch_file} --destination={workflow_out_dir} {app_relative_paths}'\
         .format(workflow_id=workflow_id,
                 batch_file=batch_file,
                 workflow_out_dir=workflow_out_dir,
