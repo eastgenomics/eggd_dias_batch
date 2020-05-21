@@ -6,6 +6,8 @@ import sys
 import pprint
 import argparse
 
+
+# Common functions
 def get_date():
     date = datetime.datetime.now()
     return date.strftime("%y%m%d")
@@ -53,24 +55,6 @@ def get_object_attribute_from_object_id_or_path(object_id_or_path, attribute):
     return None
 
 
-def make_ss_workflow_out_dir(workflow_id):
-    workflow_name = get_object_attribute_from_object_id_or_path(workflow_id, "Name")
-    assert workflow_name, "Workflow name not found. Aborting"
-    workflow_output_dir_pattern = "/output/{workflow_name}-{date}-{index}/"
-    date=get_date()
-
-    i = 1
-    while i < 100:  # < 100 runs = sanity check
-        workflow_output_dir = workflow_output_dir_pattern\
-            .format(workflow_name=workflow_name, date=date, index=i)
-        if dx_make_workflow_dir(workflow_output_dir):
-            print("Using\t\t%s" % workflow_output_dir)
-            return workflow_output_dir
-        else:
-            print("Skipping\t%s" % workflow_output_dir)
-        i += 1
-    return None
-
 
 def get_workflow_stage_info(workflow_id):
     workflow_description = describe_object(workflow_id)
@@ -104,7 +88,6 @@ def get_workflow_stage_info(workflow_id):
 
 
 def make_app_out_dirs(workflow_stage_info,
-                      workflow_id,
                       workflow_output_dir):
     out_dirs = {}
     for stage, stage_info in sorted(workflow_stage_info.items()):
@@ -121,52 +104,6 @@ def make_app_out_dirs(workflow_stage_info,
     return out_dirs
 
 
-def make_ss_dias_batch_file(input_directory=None):
-    # uuids for temp files to prevent collisions during parallel runs
-    temp_uuid = str(uuid.uuid4())
-    initial_tsv = temp_uuid+"ini.tsv"
-    temp_tsv = temp_uuid+".tmp.tsv"
-    intermediate_tsv = temp_uuid+".int.tsv"
-    final_tsv = temp_uuid+".final.tsv"
-    
-    command = """
-    dx generate_batch_inputs \
-    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads_fastqgzs='(.*)_S(.*)_L(.*)\d*[13579]_R1(.*)' \
-    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads_fastqgzsB='(.*)_S(.*)_L(.*)\d*[02468]_R1(.*)' \
-    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads2_fastqgzs='(.*)_S(.*)_L(.*)\d*[13579]_R2(.*)' \
-    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads2_fastqgzsB='(.*)_S(.*)_L(.*)\d*[02468]_R2(.*)' \
-    -istage-FpGkFJj433GxvX376JyVxKpG.reads='(.*)_S(.*)_L(.*)\d*[13579]_R1(.*)' \
-    -istage-FpGkFK0433Gy74J9PYJKV42y.reads='(.*)_S(.*)_L(.*)\d*[02468]_R1(.*)' \
-    -istage-FpGkFK0433Gy74J9PYJKV42z.reads='(.*)_S(.*)_L(.*)\d*[13579]_R2(.*)' \
-    -istage-FpGkF3j433GZg9QQ6X82Gj9V.reads='(.*)_S(.*)_L(.*)\d*[02468]_R2(.*)'; \
-    \
-    head -n 1 dx_batch.0000.tsv \
-    > {temp_tsv} && \
-    tail -n +2 dx_batch.0000.tsv | \
-    awk '{{ $10 = \"[\"$10; print }}'  | awk '{{ $11 = $11\"]\"; print }}' |  \
-    awk '{{ $12 = \"[\"$12; print }}'  | awk '{{ $13 = $13\"]\"; print }}' \
-    >> {temp_tsv}; \
-    tr -d '\r' < {temp_tsv} > {intermediate_tsv}; \
-    rm {temp_tsv}
-    \
-    head -n 1 {intermediate_tsv} | \
-    awk -F "\t" '{{ print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10"\t"$12"\t"$14"\t"$15"\t"$16"\t"$17"\tstage-Fk9p4Kj4yBGfpvQf85fQXJq5.sample" }}' \
-    > {temp_tsv} && \
-    tail -n +2 {intermediate_tsv} | \
-    awk '{{ print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10","$11"\t"$12","$13"\t"$14"\t"$15"\t"$16"\t"$17"\t"$1 }}' \
-    >> {temp_tsv}; tr -d '\r' < {temp_tsv} > {final_tsv}; \
-    rm {temp_tsv}
-    """.format(temp_tsv=temp_tsv, intermediate_tsv=intermediate_tsv, final_tsv=final_tsv)
-
-    if input_directory:
-        command = "dx cd {input_directory}".format(input_directory)
-        subprocess.check_call(command, shell=True)
-    FNULL = open(os.devnull, 'w')
-    subprocess.call(command, stderr=subprocess.STDOUT, stdout=FNULL, shell=True)
-    assert os.path.exists(final_tsv), "Failed to generate batch file!"
-    return final_tsv
-
-
 def format_relative_paths(workflow_stage_info):
     result = ""
     for stage, stage_info in sorted(workflow_stage_info.items()):
@@ -175,37 +112,6 @@ def format_relative_paths(workflow_stage_info):
         result += command_option
     return result
 
-
-def run_dias_ss_batch_file(workflow_id,
-                        batch_file,
-                        workflow_stage_info,
-                        workflow_out_dir):
-    app_relative_paths = format_relative_paths(workflow_stage_info)
-    command = 'dx run --yes {workflow_id} --batch-tsv {batch_file} --destination={workflow_out_dir} {app_relative_paths}'\
-        .format(workflow_id=workflow_id,
-                batch_file=batch_file,
-                workflow_out_dir=workflow_out_dir,
-                app_relative_paths=app_relative_paths)
-    subprocess.call(command, shell=True)
-
-
-def make_ms_workflow_out_dir(ms_workflow_id, ss_workflow_out_dir):
-    ms_workflow_name = get_object_attribute_from_object_id_or_path(ms_workflow_id, "Name")
-    assert ms_workflow_name, "Workflow name not found. Aborting"
-    ms_workflow_output_dir_pattern = "{ss_workflow_out_dir}{ms_workflow_name}-{date}-{index}/"
-    date=get_date()
-
-    i = 1
-    while i < 100:  # < 100 runs = sanity check
-        ms_workflow_output_dir = ms_workflow_output_dir_pattern\
-            .format(ss_workflow_out_dir=ss_workflow_out_dir, ms_workflow_name=ms_workflow_name, date=date, index=i)
-        if dx_make_workflow_dir(ms_workflow_output_dir):
-            print("Using\t\t%s" % ms_workflow_output_dir)
-            return ms_workflow_output_dir
-        else:
-            print("Skipping\t%s" % ms_workflow_output_dir)
-        i += 1
-    return None
 
 def find_app_dir(workflow_output_dir, app_basename):
     if app_basename == None:
@@ -228,20 +134,144 @@ def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."):
     return file_ids
 
 
-def get_ms_stage_input_dict(ss_workflow_out_dir, ms_workflow_id):
+def get_dx_cwd_project_id():
+    command = 'dx env | grep -P "Current workspace\t" | awk -F "\t" \'{print $NF}\' | sed s/\'"\'//g'
+    project_id = subprocess.check_output(command, shell=True).strip()
+    return project_id
+
+
+
+# Single sample apps batch
+
+def make_ss_workflow_out_dir(workflow_id):
+    workflow_name = get_object_attribute_from_object_id_or_path(workflow_id, "Name")
+    assert workflow_name, "Workflow name not found. Aborting"
+    workflow_output_dir_pattern = "/output/{workflow_name}-{date}-{index}/"
+    date=get_date()
+
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        workflow_output_dir = workflow_output_dir_pattern\
+            .format(workflow_name=workflow_name, date=date, index=i)
+        if dx_make_workflow_dir(workflow_output_dir):
+            print("Using\t\t%s" % workflow_output_dir)
+            return workflow_output_dir
+        else:
+            print("Skipping\t%s" % workflow_output_dir)
+        i += 1
+    return None
+
+
+def make_ss_dias_batch_file(input_directory=None):
+    # uuids for temp files to prevent collisions during parallel runs
+    temp_uuid = str(uuid.uuid4())
+    initial_tsv = temp_uuid+"ini.tsv"
+    temp_tsv = temp_uuid+".tmp.tsv"
+    intermediate_tsv = temp_uuid+".int.tsv"
+    final_tsv = temp_uuid+".final.tsv"
+    
+    command = """
+    dx generate_batch_inputs \
+    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads_fastqgzs='(.*)_S(.*)_L(.*)\d*[13579]_R1(.*).fastq.gz' \
+    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads_fastqgzsB='(.*)_S(.*)_L(.*)\d*[02468]_R1(.*).fastq.gz' \
+    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads2_fastqgzs='(.*)_S(.*)_L(.*)\d*[13579]_R2(.*).fastq.gz' \
+    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads2_fastqgzsB='(.*)_S(.*)_L(.*)\d*[02468]_R2(.*).fastq.gz' \
+    -istage-FpGkFJj433GxvX376JyVxKpG.reads='(.*)_S(.*)_L(.*)\d*[13579]_R1(.*).fastq.gz' \
+    -istage-FpGkFK0433Gy74J9PYJKV42y.reads='(.*)_S(.*)_L(.*)\d*[02468]_R1(.*).fastq.gz' \
+    -istage-FpGkFK0433Gy74J9PYJKV42z.reads='(.*)_S(.*)_L(.*)\d*[13579]_R2(.*).fastq.gz' \
+    -istage-FpGkF3j433GZg9QQ6X82Gj9V.reads='(.*)_S(.*)_L(.*)\d*[02468]_R2(.*).fastq.gz'; \
+    \
+    head -n 1 dx_batch.0000.tsv \
+    > {temp_tsv} && \
+    tail -n +2 dx_batch.0000.tsv | \
+    awk '{{ $10 = \"[\"$10; print }}'  | awk '{{ $11 = $11\"]\"; print }}' |  \
+    awk '{{ $12 = \"[\"$12; print }}'  | awk '{{ $13 = $13\"]\"; print }}' \
+    >> {temp_tsv}; \
+    tr -d '\r' < {temp_tsv} > {intermediate_tsv}; \
+    rm {temp_tsv}
+    \
+    head -n 1 {intermediate_tsv} | \
+    awk -F "\t" '{{ print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10"\t"$12"\t"$14"\t"$15"\t"$16"\t"$17"\tstage-Fk9p4Kj4yBGfpvQf85fQXJq5.sample" }}' \
+    > {temp_tsv} && \
+    tail -n +2 {intermediate_tsv} | \
+    awk '{{ print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10","$11"\t"$12","$13"\t"$14"\t"$15"\t"$16"\t"$17"\t"$1 }}' \
+    >> {temp_tsv}; tr -d '\r' < {temp_tsv} > {final_tsv}; \
+    rm {temp_tsv}
+    """.format(temp_tsv=temp_tsv, intermediate_tsv=intermediate_tsv, final_tsv=final_tsv)
+
+    if input_directory:
+        command = "dx cd {input_directory}".format(input_directory=input_directory)
+        subprocess.check_call(command, shell=True)
+    FNULL = open(os.devnull, 'w')
+    subprocess.call(command, stderr=subprocess.STDOUT, stdout=FNULL, shell=True)
+    assert os.path.exists(final_tsv), "Failed to generate batch file!"
+    return final_tsv
+
+
+def run_dias_ss_batch_file(workflow_id,
+                        batch_file,
+                        workflow_stage_info,
+                        workflow_out_dir):
+    app_relative_paths = format_relative_paths(workflow_stage_info)
+    command = 'dx run --yes {workflow_id} --batch-tsv {batch_file} --destination={workflow_out_dir} {app_relative_paths}'\
+        .format(workflow_id=workflow_id,
+                batch_file=batch_file,
+                workflow_out_dir=workflow_out_dir,
+                app_relative_paths=app_relative_paths)
+    subprocess.call(command, shell=True)
+
+def run_ss_workflow(input_dir):
+    ss_workflow_id          = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-FpG6QjQ433Gf7Gq15ZF4Vk49"
+    ss_workflow_out_dir     = make_ss_workflow_out_dir(ss_workflow_id)
+    ss_workflow_stage_info  = get_workflow_stage_info(ss_workflow_id)
+    ss_app_out_dirs         = make_app_out_dirs(ss_workflow_stage_info,
+                                                ss_workflow_out_dir)
+    ss_batch_file          = make_ss_dias_batch_file(input_dir)
+    run_dias_ss_batch_file(ss_workflow_id,
+                           ss_batch_file,
+                           ss_workflow_stage_info,
+                           ss_workflow_out_dir)
+    return ss_workflow_out_dir
+
+
+# Multi sample apps
+
+def make_ms_workflow_out_dir(ms_workflow_id, ss_workflow_out_dir):
+    ms_workflow_name = get_object_attribute_from_object_id_or_path(ms_workflow_id, "Name")
+    assert ms_workflow_name, "Workflow name not found. Aborting"
+    ms_workflow_output_dir_pattern = "{ss_workflow_out_dir}{ms_workflow_name}-{date}-{index}/"
+    date=get_date()
+
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        ms_workflow_output_dir = ms_workflow_output_dir_pattern\
+            .format(ss_workflow_out_dir=ss_workflow_out_dir, ms_workflow_name=ms_workflow_name, date=date, index=i)
+        if dx_make_workflow_dir(ms_workflow_output_dir):
+            print("Using\t\t%s" % ms_workflow_output_dir)
+            return ms_workflow_output_dir
+        else:
+            print("Skipping\t%s" % ms_workflow_output_dir)
+        i += 1
+    return None
+
+
+def get_ms_stage_input_dict(ss_workflow_out_dir):
 
     stage_input_dict = {"stage-FpPQpk8433GZz7615xq3FyvF.flagstat":{"app":"flagstat",
                                                                    "subdir": "",
-                                                                   "pattern": "flagstat"},
+                                                                   "pattern": "flagstat$"},
                         "stage-FpPQpk8433GZz7615xq3FyvF.coverage":{"app":"region_coverage",
                                                                    "subdir": "",
                                                                    "pattern": "5bp.gz$",},
                         "stage-FpPQpk8433GZz7615xq3FyvF.coverage_index":{"app":"region_coverage",
-                                                                          "subdir": "",
-                                                                          "pattern": "5bp.gz.tbi$",},
+                                                                         "subdir": "",
+                                                                         "pattern": "5bp.gz.tbi$",},
                         "stage-Fpz3Jqj433Gpv7yQFfKz5f8g.SampleSheet":{"app":None,
                                                                       "subdir": "",
                                                                       "pattern": "SampleSheet.csv$",},
+                        "stage-Fq1BPKj433Gx3K4Y8J35j0fv.query_vcf":{"app":"sentieon-dnaseq",
+                                                                    "subdir": "",
+                                                                    "pattern": "NA12878_markdup_recalibrated_Haplotyper.vcf.gz$",},
                 }
 
     for stage_input, stage_input_info in stage_input_dict.items():
@@ -252,19 +282,48 @@ def get_ms_stage_input_dict(ss_workflow_out_dir, ms_workflow_id):
     return stage_input_dict
 
 
-def run_ss_workflow(input_dir):
-    ss_workflow_id          = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-FpG6QjQ433Gf7Gq15ZF4Vk49"
-    ss_workflow_out_dir     = make_ss_workflow_out_dir(ss_workflow_id)
-    ss_workflow_stage_info  = get_workflow_stage_info(ss_workflow_id)
-    ss_app_out_dirs         = make_app_out_dirs(ss_workflow_stage_info,
-                                                ss_workflow_id,
-                                                ss_workflow_out_dir)
-    ss_batch_file          = make_ss_dias_batch_file(input_dir)
-    run_dias_ss_batch_file(ss_workflow_id,
-                           ss_batch_file,
-                           ss_workflow_stage_info,
-                           ss_workflow_out_dir)
-    return ss_workflow_out_dir
+def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflow_out_dir):
+    batch_uuid = str(uuid.uuid4())
+    batch_filename = ".".join([batch_uuid, "tsv"])
+
+    headers = ["batch ID"]
+    values = ["multi"]
+
+    # Hap.py - static values
+    headers.append("stage-Fq1BPKj433Gx3K4Y8J35j0fv.prefix")
+    values.append("NA12878")
+
+    # For each stage add the column header and the values in that column
+    for stage_input in ms_stage_input_dict:
+    
+        headers.append(stage_input)  # col for file name
+        headers.append(" ".join([stage_input, "ID"]))  # col for file ID
+
+        # One file in file list - no need to merge into array
+        if len(ms_stage_input_dict[stage_input]["file_list"]) == 1:
+            file_ids = ms_stage_input_dict[stage_input]["file_list"][0]
+            values.append("")  # No need to provide file name in batch file
+            values.append(file_ids)
+        
+        # making a square bracketed comma separated list if multiple input files 
+        elif len(ms_stage_input_dict[stage_input]["file_list"]) > 1:
+            # Square bracketed csv list
+            file_ids = "[{file_ids}]".format(file_ids = ",".join([file_id for file_id in ms_stage_input_dict[stage_input]["file_list"]]))
+            values.append("")  # No need to provide file name in batch file
+            values.append(file_ids)
+        
+        # No files in file list
+        else:
+            file_ids = ""
+            values.append(file_ids)
+
+    # Write the file content
+    with open(batch_filename, "w") as b_fh:
+        for line in [headers, values]:
+            tsv_line = "\t".join(line) + "\n"
+            b_fh.write(tsv_line)
+
+    return batch_filename
 
 
 def run_ms_workflow(ss_workflow_out_dir):
@@ -272,47 +331,147 @@ def run_ms_workflow(ss_workflow_out_dir):
     ms_workflow_out_dir = make_ms_workflow_out_dir(ms_workflow_id, ss_workflow_out_dir)
     ms_workflow_stage_info  = get_workflow_stage_info(ms_workflow_id)
     ms_output_dirs = make_app_out_dirs(ms_workflow_stage_info,
-                                       ms_workflow_id,
                                        ms_workflow_out_dir)
 
+    ms_stage_input_dict = get_ms_stage_input_dict(ss_workflow_out_dir)
+    ms_batch_file = make_ms_dias_batch_file(ms_stage_input_dict,ss_workflow_out_dir, ms_workflow_out_dir)
 
-    ms_stage_input_dict = get_ms_stage_input_dict(ss_workflow_out_dir, ms_workflow_id)
+    run_wf_command = "dx run --yes {ms_workflow_id} --batch-tsv={ms_batch_file}".format(ms_workflow_id=ms_workflow_id,ms_batch_file=ms_batch_file)
     
-
-    run_wf_command = "dx run --yes {ms_workflow_id}".format(ms_workflow_id=ms_workflow_id)
-    
-    stage_input_str = ""
-    for stage_input, stage_input_info in ms_stage_input_dict.items():
-        file_links = ",".join(['{{"$dnanexus_link":"{file_id}"}}'.format(file_id=file_id) for file_id in stage_input_info["file_list"]])
-        print(file_links)
-        if len(stage_input_info["file_list"]) == 1:
-            stage_input_str = "".join([stage_input_str, " -i{stage}='{files}' ".format(stage=stage_input, files=file_links)])
-        else:
-            stage_input_str = "".join([stage_input_str, " -i{stage}='[{files}]' ".format(stage=stage_input, files=file_links)])
-
     app_relative_paths = format_relative_paths(ms_workflow_stage_info)
 
     destination = " --destination={ms_workflow_out_dir} ".format(ms_workflow_out_dir=ms_workflow_out_dir)
-    command = " ".join([run_wf_command, stage_input_str, app_relative_paths, destination])
-    print(command)
+    
+    command = " ".join([run_wf_command, app_relative_paths, destination])
+    subprocess.check_call(command, shell=True)
+    
+    return ms_workflow_out_dir
+
+
+# MultiQC
+
+def run_multiqc_app(ms_workflow_out_dir):
+    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fq20JQQ4g59q4bkF8XfBfQ8x"
+    mqc_config_file = "project-FpG6k2Q4g59bZJ0z15XzByFY:file-Fq2X0704g59X6F694VkP3QX1"
+    project_id = get_dx_cwd_project_id()
+    path_dirs = [x for x in ms_workflow_out_dir.split("/") if x]
+    assert path_dirs[-3] == "output"
+    assert "single" in path_dirs[-2]
+    assert "multi" in path_dirs[-1]
+    ss_for_multiqc = path_dirs[-2]
+    ms_for_multiqc = path_dirs[-1]
+
+    mqc_applet_name = get_object_attribute_from_object_id_or_path(mqc_applet_id, "Name")
+    mqc_applet_out_dir = "".join([ms_workflow_out_dir,mqc_applet_name])
+    dx_make_workflow_dir(mqc_applet_out_dir)
+
+    command = "dx run {applet_id} -ieggd_multiqc_config_file='{mqc_config_file}' -iproject_for_multiqc='{project_id}' -iss_for_multiqc='{ss_for_multiqc}' -ims_for_multiqc='{ms_for_multiqc} --destination={mqc_out_dir}'"
+    command = command.format(applet_id=mqc_applet_id, 
+                             mqc_config_file=mqc_config_file, 
+                             project_id=project_id, 
+                             ss_for_multiqc=ss_for_multiqc, 
+                             ms_for_multiqc=ms_for_multiqc,
+                             mqc_out_dir=mqc_applet_out_dir)
+
     subprocess.check_call(command, shell=True)
 
+    return mqc_applet_out_dir
 
-parser = argparse.ArgumentParser()
-subparsers = parser.add_subparsers()
+# vcf2xls
 
-parser_s = subparsers.add_parser('single', help='single help')
-parser_s.add_argument('input_dir', type=str, help='Input data directory', nargs='?', default=None)
-parser_s.set_defaults(which='single')
+def make_vcf2xls_batch_file(input_directory):
+    # uuids for temp files to prevent collisions during parallel runs
 
-parser_m = subparsers.add_parser('multi', help='multi help')
-parser_m.add_argument('input_dir', type=str, help='Input workflow directory path')
-parser_m.set_defaults(which='multi')
+    # Input dir is multi sample output dir. We want input files from the parent single sample dir
+    assert input_directory.startswith("/"), "Input directory must be full path (starting at /)"
+    command = "dx cd {input_directory}; dx cd ..".format(input_directory=input_directory)
+    subprocess.check_call(command, shell=True)
+    batch_uuid = str(uuid.uuid4())
+    batch_tsv = "{batch_uuid}.0000.tsv".format(batch_uuid=batch_uuid)
+    
+    command = """
+    dx generate_batch_inputs \
+    -iannotated_vcf='(.*)_markdup(.*)annotated.vcf$' \
+    -iraw_vcf='(.*)_markdup(.*)Haplotyper.vcf.gz$$' \
+    -isample_coverage_file='(.*)_markdup(.*)nirvana_20(.*)_5bp.gz$' \
+    -isample_coverage_index='(.*)_markdup(.*)nirvana_20(.*)_5bp.gz.tbi$' \
+    -iflagstat_file='(.*)_markdup.flagstat' \
+    -o {batch_uuid}""".format(batch_uuid=batch_uuid)
 
-args = parser.parse_args()
-workflow = args.which
+    FNULL = open(os.devnull, 'w')
+    subprocess.call(command, stderr=subprocess.STDOUT, stdout=FNULL, shell=True)
+    assert os.path.exists(batch_tsv), "Failed to generate batch file!"
+    return batch_tsv
 
-if workflow == "single":
-    ss_workflow_out_dir = run_ss_workflow(args.input_dir)
-elif workflow == "multi":
-    ms_workflow_out_dir = run_ms_workflow(args.input_dir)
+def run_vcf2xls_app(ms_workflow_out_dir):
+    # Static
+    vcf2xls_applet_id  =  "project-Fq1xjzj46JFv18xv1kXp29Gj:applet-Fq3588046JFg50B9668QF401"
+    genepanels_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18B88433Gz069K20J0734G"
+    bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18B8Q433GVZBQB28KpxJQk"
+    exons_nirvana = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18Yp0433GjB7172630p9Yv"
+    nirvana_genes2transcripts = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18BB8433GqFXG26Gjjv7by"
+
+    # Dynamic - run dependent
+    command = "dx find data --path 003_200519_dias_ss_test:/output/dias_single_v1.0.0-200519-2/dias_multi_v1.0.0-200520-1/expected_depth_v1.1.2/ --name *gz --brief"
+    runfolder_coverage_file = subprocess.check_output(command, shell=True).strip()
+
+    command = "dx find data --path 003_200519_dias_ss_test:/output/dias_single_v1.0.0-200519-2/dias_multi_v1.0.0-200520-1/expected_depth_v1.1.2/ --name *gz.tbi --brief"
+    runfolder_coverage_index = subprocess.check_output(command, shell=True).strip()
+
+    vcf2xls_applet_name = get_object_attribute_from_object_id_or_path(vcf2xls_applet_id, "Name")
+    vcf2xls_applet_out_dir = "".join([ms_workflow_out_dir,vcf2xls_applet_name])
+    batch_file = make_vcf2xls_batch_file(ms_workflow_out_dir)
+    dx_make_workflow_dir(vcf2xls_applet_out_dir)
+
+    command = "dx run {applet_id} --destination='{mqc_out_dir}' --batch-tsv='{batch_file}' -irunfolder_coverage_file='{runfolder_coverage_file}' -irunfolder_coverage_index='{runfolder_coverage_index}' -igenepanels_file='{genepanels_file}' -ibioinformatic_manifest='{bioinformatic_manifest}' -iexons_nirvana='{exons_nirvana}' -inirvana_genes2transcripts='{nirvana_genes2transcripts}' "
+
+    command = command.format(applet_id=vcf2xls_applet_id, 
+                             mqc_out_dir=vcf2xls_applet_out_dir,
+                             batch_file=batch_file,
+                             runfolder_coverage_file=runfolder_coverage_file,
+                             runfolder_coverage_index=runfolder_coverage_index,
+                             genepanels_file=genepanels_file,
+                             bioinformatic_manifest=bioinformatic_manifest,
+                             exons_nirvana=exons_nirvana,
+                             nirvana_genes2transcripts=nirvana_genes2transcripts
+                             )
+    print(command)
+    exit()
+    subprocess.check_call(command, shell=True)
+
+    return mqc_applet_out_dir
+
+def main():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+
+    parser_s = subparsers.add_parser('single', help='single help')
+    parser_s.add_argument('input_dir', type=str, help='Input data directory', nargs='?', default=None)
+    parser_s.set_defaults(which='single')
+
+    parser_m = subparsers.add_parser('multi', help='multi help')
+    parser_m.add_argument('input_dir', type=str, help='Input workflow directory path')
+    parser_m.set_defaults(which='multi')
+
+    parser_q = subparsers.add_parser('multiqc', help='multiqc help')
+    parser_q.add_argument('input_dir', type=str, help='Input workflow directory path')
+    parser_q.set_defaults(which='multiqc')
+
+    parser_r = subparsers.add_parser('reports', help='reports help')
+    parser_r.add_argument('input_dir', type=str, help='Input workflow directory path')
+    parser_r.set_defaults(which='reports')
+
+    args = parser.parse_args()
+    workflow = args.which
+
+    if workflow == "single":
+        ss_workflow_out_dir = run_ss_workflow(args.input_dir)
+    elif workflow == "multi":
+        ms_workflow_out_dir = run_ms_workflow(args.input_dir)
+    elif workflow == "multiqc":
+        mqc_applet_out_dir = run_multiqc_app(args.input_dir)
+    elif workflow == "reports":
+        reports_out_dir = run_vcf2xls_app(args.input_dir)
+
+if __name__ == "__main__":
+    main()
