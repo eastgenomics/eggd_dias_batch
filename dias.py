@@ -125,12 +125,16 @@ def find_app_dir(workflow_output_dir, app_basename):
 
 def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."):
     command = "dx ls {app_dir}{app_subdir} | grep {filename_pattern}".format(app_dir=app_dir, app_subdir=app_subdir, filename_pattern=filename_pattern)
-    search_result = subprocess.check_output(command, shell=True).strip().split("\n")
+    try:
+        search_result = subprocess.check_output(command, shell=True).strip().split("\n")
+    except subprocess.CalledProcessError:  # If no files found grep returns 1. This can be valid e.g. no NA12878
+        search_result = []
     file_ids = []
     for file in search_result:
         full_path = "".join([app_dir, app_subdir, file])
         file_id = get_object_attribute_from_object_id_or_path(full_path, "ID")
         file_ids.append(file_id)
+
     return file_ids
 
 
@@ -223,7 +227,7 @@ def run_dias_ss_batch_file(workflow_id,
 
 
 def run_ss_workflow(input_dir):
-    assert input_directory.startswith("/"), "Input directory must be full path (starting at /)"
+    assert input_dir.startswith("/"), "Input directory must be full path (starting at /)"
     ss_workflow_id          = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-FpG6QjQ433Gf7Gq15ZF4Vk49"
     ss_workflow_out_dir     = make_ss_workflow_out_dir(ss_workflow_id)
     ss_workflow_stage_info  = get_workflow_stage_info(ss_workflow_id)
@@ -297,7 +301,10 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
 
     # For each stage add the column header and the values in that column
     for stage_input in ms_stage_input_dict:
-    
+
+        if len(ms_stage_input_dict[stage_input]["file_list"]) == 0:
+            continue
+
         headers.append(stage_input)  # col for file name
         headers.append(" ".join([stage_input, "ID"]))  # col for file ID
 
@@ -314,11 +321,6 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
             values.append("")  # No need to provide file name in batch file
             values.append(file_ids)
 
-        # No files in file list
-        else:
-            file_ids = ""
-            values.append(file_ids)
-
     # Write the file content
     with open(batch_filename, "w") as b_fh:
         for line in [headers, values]:
@@ -329,7 +331,7 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
 
 
 def run_ms_workflow(ss_workflow_out_dir):
-    assert input_directory.startswith("/"), "Input directory must be full path (starting at /)"
+    assert ss_workflow_out_dir.startswith("/"), "Input directory must be full path (starting at /)"
     ms_workflow_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-FpKqKP8433Gj8JbxB0433F3y"
     ms_workflow_out_dir = make_ms_workflow_out_dir(ms_workflow_id, ss_workflow_out_dir)
     ms_workflow_stage_info  = get_workflow_stage_info(ms_workflow_id)
@@ -354,7 +356,7 @@ def run_ms_workflow(ss_workflow_out_dir):
 # MultiQC
 
 def run_multiqc_app(ms_workflow_out_dir):
-    assert input_directory.startswith("/"), "Input directory must be full path (starting at /)"
+    assert ms_workflow_out_dir.startswith("/"), "Input directory must be full path (starting at /)"
     mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fq20JQQ4g59q4bkF8XfBfQ8x"
     mqc_config_file = "project-FpG6k2Q4g59bZJ0z15XzByFY:file-Fq2X0704g59X6F694VkP3QX1"
     project_id = get_dx_cwd_project_id()
