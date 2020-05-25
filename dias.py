@@ -430,10 +430,10 @@ def run_vcf2xls_app(ms_workflow_out_dir):
     batch_file = make_vcf2xls_batch_file(ms_workflow_out_dir)
     dx_make_workflow_dir(vcf2xls_applet_out_dir)
 
-    command = "dx run {applet_id} --yes --destination='{mqc_out_dir}' --batch-tsv='{batch_file}' -irunfolder_coverage_file='{runfolder_coverage_file}' -irunfolder_coverage_index='{runfolder_coverage_index}' -igenepanels_file='{genepanels_file}' -ibioinformatic_manifest='{bioinformatic_manifest}' -iexons_nirvana='{exons_nirvana}' -inirvana_genes2transcripts='{nirvana_genes2transcripts}' "
+    command = "dx run {applet_id} --yes --destination='{vcf2xls_applet_out_dir}' --batch-tsv='{batch_file}' -irunfolder_coverage_file='{runfolder_coverage_file}' -irunfolder_coverage_index='{runfolder_coverage_index}' -igenepanels_file='{genepanels_file}' -ibioinformatic_manifest='{bioinformatic_manifest}' -iexons_nirvana='{exons_nirvana}' -inirvana_genes2transcripts='{nirvana_genes2transcripts}' "
 
     command = command.format(applet_id=vcf2xls_applet_id, 
-                             mqc_out_dir=vcf2xls_applet_out_dir,
+                             vcf2xls_applet_out_dir=vcf2xls_applet_out_dir,
                              batch_file=batch_file,
                              runfolder_coverage_file=runfolder_coverage_file,
                              runfolder_coverage_index=runfolder_coverage_index,
@@ -444,7 +444,7 @@ def run_vcf2xls_app(ms_workflow_out_dir):
                              )
     subprocess.check_call(command, shell=True)
 
-    return mqc_applet_out_dir
+    return vcf2xls_applet_out_dir
 
 def main():
     parser = argparse.ArgumentParser()
