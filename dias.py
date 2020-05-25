@@ -422,7 +422,7 @@ def run_vcf2xls_app(ms_workflow_out_dir):
     command = "dx find data --path {ms_workflow_out_dir}/expected_depth_v1.1.2/ --name *gz --brief". format(ms_workflow_out_dir=ms_workflow_out_dir)
     runfolder_coverage_file = subprocess.check_output(command, shell=True).strip()
 
-    command = "dx find data --path 003_200519_dias_ss_test:/output/dias_single_v1.0.0-200519-2/dias_multi_v1.0.0-200520-1/expected_depth_v1.1.2/ --name *gz.tbi --brief"
+    command = "dx find data --path {ms_workflow_out_dir}/expected_depth_v1.1.2/ --name *gz.tbi --brief"
     runfolder_coverage_index = subprocess.check_output(command, shell=True).strip()
 
     vcf2xls_applet_name = get_object_attribute_from_object_id_or_path(vcf2xls_applet_id, "Name")
