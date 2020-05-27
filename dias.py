@@ -413,7 +413,7 @@ def make_vcf2xls_batch_file(input_directory):
 
 def run_vcf2xls_app(ms_workflow_out_dir):
     # Static
-    vcf2xls_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fq6Ygy8433GjFk6V6k8Pjkzg"
+    vcf2xls_applet_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fq6Ygy8433GjFk6V6k8Pjkzg"
     genepanels_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yY48433GxY9VQ9ZZ9ZfqX"
     bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yXbQ433GYKXJy187g4qk1"
     exons_nirvana = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18Yp0433GjB7172630p9Yv"
