@@ -264,22 +264,27 @@ def make_ms_workflow_out_dir(ms_workflow_id, ss_workflow_out_dir):
 
 
 def get_ms_stage_input_dict(ss_workflow_out_dir):
-
     stage_input_dict = {"stage-FpPQpk8433GZz7615xq3FyvF.flagstat":{"app":"flagstat",
                                                                    "subdir": "",
-                                                                   "pattern": "flagstat$"},
+                                                                   "pattern": "flagstat$",
+                                                                   "type": "array"},
                         "stage-FpPQpk8433GZz7615xq3FyvF.coverage":{"app":"region_coverage",
                                                                    "subdir": "",
-                                                                   "pattern": "5bp.gz$",},
+                                                                   "pattern": "5bp.gz$",
+                                                                   "type": "array"},
                         "stage-FpPQpk8433GZz7615xq3FyvF.coverage_index":{"app":"region_coverage",
                                                                          "subdir": "",
-                                                                         "pattern": "5bp.gz.tbi$",},
+                                                                         "pattern": "5bp.gz.tbi$",
+                                                                         "type": "array"},
                         "stage-Fpz3Jqj433Gpv7yQFfKz5f8g.SampleSheet":{"app":None,
                                                                       "subdir": "",
-                                                                      "pattern": "SampleSheet.csv$",},
-                        "stage-Fq1BPKj433Gx3K4Y8J35j0fv.query_vcf":{"app":"sentieon-dnaseq",
+                                                                      "pattern": "SampleSheet.csv$",
+                                                                      "type": "file"},
+                        "stage-Fqk4kjj433Gk7p022z4KyJkp.query_vcfs":{"app":"sentieon-dnaseq",
                                                                     "subdir": "",
-                                                                    "pattern": "NA12878_markdup_recalibrated_Haplotyper.vcf.gz$",},                }
+                                                                    "pattern": "NA12878.*_markdup_recalibrated_Haplotyper.vcf.gz$",
+                                                                    "type": "array"},
+                        }
 
     for stage_input, stage_input_info in stage_input_dict.items():
         #ss_workflow_out_dir = "/output/dias_v1.0.0_DEV-200430-1/"  # DEBUG
@@ -296,10 +301,6 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
     headers = ["batch ID"]
     values = ["multi"]
 
-    # Hap.py - static values
-    headers.append("stage-Fq1BPKj433Gx3K4Y8J35j0fv.prefix")
-    values.append("NA12878")
-
     # For each stage add the column header and the values in that column
     for stage_input in ms_stage_input_dict:
 
@@ -310,13 +311,13 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
         headers.append(" ".join([stage_input, "ID"]))  # col for file ID
 
         # One file in file list - no need to merge into array
-        if len(ms_stage_input_dict[stage_input]["file_list"]) == 1:
+        if ms_stage_input_dict[stage_input]["type"] == "file":
             file_ids = ms_stage_input_dict[stage_input]["file_list"][0]
             values.append("")  # No need to provide file name in batch file
             values.append(file_ids)
 
         # making a square bracketed comma separated list if multiple input files 
-        elif len(ms_stage_input_dict[stage_input]["file_list"]) > 1:
+        elif ms_stage_input_dict[stage_input]["type"] == "array":
             # Square bracketed csv list
             file_ids = "[{file_ids}]".format(file_ids = ",".join([file_id for file_id in ms_stage_input_dict[stage_input]["file_list"]]))
             values.append("")  # No need to provide file name in batch file
@@ -333,7 +334,7 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
 
 def run_ms_workflow(ss_workflow_out_dir):
     assert ss_workflow_out_dir.startswith("/"), "Input directory must be full path (starting at /)"
-    ms_workflow_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-FpKqKP8433Gj8JbxB0433F3y"
+    ms_workflow_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-Fqk42q8433Gxp148F1xBVPKg"
     ms_workflow_out_dir = make_ms_workflow_out_dir(ms_workflow_id, ss_workflow_out_dir)
     ms_workflow_stage_info  = get_workflow_stage_info(ms_workflow_id)
     ms_output_dirs = make_app_out_dirs(ms_workflow_stage_info,
@@ -358,8 +359,8 @@ def run_ms_workflow(ss_workflow_out_dir):
 
 def run_multiqc_app(ms_workflow_out_dir):
     assert ms_workflow_out_dir.startswith("/"), "Input directory must be full path (starting at /)"
-    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fq20JQQ4g59q4bkF8XfBfQ8x"
-    mqc_config_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq7p470433Gvxjp64vJ94KgF"
+    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-FqjqxQ84g59zky9YJZKKkX0p"
+    mqc_config_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FqjvJ504g59kP3pQF0QJG9jX"
     project_id = get_dx_cwd_project_id()
     path_dirs = [x for x in ms_workflow_out_dir.split("/") if x]
     assert path_dirs[-3] == "output"
@@ -413,7 +414,7 @@ def make_vcf2xls_batch_file(input_directory):
 
 def run_vcf2xls_app(ms_workflow_out_dir):
     # Static
-    vcf2xls_applet_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fq6Ygy8433GjFk6V6k8Pjkzg"
+    vcf2xls_applet_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fqjz7G0433GpKP8Y8pBf6BvK"
     genepanels_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yY48433GxY9VQ9ZZ9ZfqX"
     bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yXbQ433GYKXJy187g4qk1"
     exons_nirvana = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18Yp0433GjB7172630p9Yv"
