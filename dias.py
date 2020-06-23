@@ -279,7 +279,7 @@ def get_ms_stage_input_dict(ss_workflow_out_dir):
                                                                       "pattern": "SampleSheet.csv$",},
                         "stage-Fq1BPKj433Gx3K4Y8J35j0fv.query_vcf":{"app":"sentieon-dnaseq",
                                                                     "subdir": "",
-                                                                    "pattern": "NA12878_markdup_recalibrated_Haplotyper.vcf.gz$",},                }
+                                                                    "pattern": "NA12878.*_markdup_recalibrated_Haplotyper.vcf.gz$",},                }
 
     for stage_input, stage_input_info in stage_input_dict.items():
         #ss_workflow_out_dir = "/output/dias_v1.0.0_DEV-200430-1/"  # DEBUG
