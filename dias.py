@@ -264,22 +264,27 @@ def make_ms_workflow_out_dir(ms_workflow_id, ss_workflow_out_dir):
 
 
 def get_ms_stage_input_dict(ss_workflow_out_dir):
-
     stage_input_dict = {"stage-FpPQpk8433GZz7615xq3FyvF.flagstat":{"app":"flagstat",
                                                                    "subdir": "",
-                                                                   "pattern": "flagstat$"},
+                                                                   "pattern": "flagstat$",
+                                                                   "type": "array"},
                         "stage-FpPQpk8433GZz7615xq3FyvF.coverage":{"app":"region_coverage",
                                                                    "subdir": "",
-                                                                   "pattern": "5bp.gz$",},
+                                                                   "pattern": "5bp.gz$",
+                                                                   "type": "array"},
                         "stage-FpPQpk8433GZz7615xq3FyvF.coverage_index":{"app":"region_coverage",
                                                                          "subdir": "",
-                                                                         "pattern": "5bp.gz.tbi$",},
+                                                                         "pattern": "5bp.gz.tbi$",
+                                                                         "type": "array"},
                         "stage-Fpz3Jqj433Gpv7yQFfKz5f8g.SampleSheet":{"app":None,
                                                                       "subdir": "",
-                                                                      "pattern": "SampleSheet.csv$",},
-                        "stage-Fq1BPKj433Gx3K4Y8J35j0fv.query_vcf":{"app":"sentieon-dnaseq",
+                                                                      "pattern": "SampleSheet.csv$",
+                                                                      "type": "file"},
+                        "stage-Fqk4kjj433Gk7p022z4KyJkp.query_vcfs":{"app":"sentieon-dnaseq",
                                                                     "subdir": "",
-                                                                    "pattern": "NA12878.*_markdup_recalibrated_Haplotyper.vcf.gz$",},                }
+                                                                    "pattern": "NA12878.*_markdup_recalibrated_Haplotyper.vcf.gz$",
+                                                                    "type": "array"},
+                        }
 
     for stage_input, stage_input_info in stage_input_dict.items():
         #ss_workflow_out_dir = "/output/dias_v1.0.0_DEV-200430-1/"  # DEBUG
@@ -296,10 +301,6 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
     headers = ["batch ID"]
     values = ["multi"]
 
-    # Hap.py - static values
-    headers.append("stage-Fq1BPKj433Gx3K4Y8J35j0fv.prefix")
-    values.append("NA12878")
-
     # For each stage add the column header and the values in that column
     for stage_input in ms_stage_input_dict:
 
@@ -310,13 +311,13 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
         headers.append(" ".join([stage_input, "ID"]))  # col for file ID
 
         # One file in file list - no need to merge into array
-        if len(ms_stage_input_dict[stage_input]["file_list"]) == 1:
+        if ms_stage_input_dict[stage_input]["type"] == "file":
             file_ids = ms_stage_input_dict[stage_input]["file_list"][0]
             values.append("")  # No need to provide file name in batch file
             values.append(file_ids)
 
         # making a square bracketed comma separated list if multiple input files 
-        elif len(ms_stage_input_dict[stage_input]["file_list"]) > 1:
+        elif ms_stage_input_dict[stage_input]["type"] == "array":
             # Square bracketed csv list
             file_ids = "[{file_ids}]".format(file_ids = ",".join([file_id for file_id in ms_stage_input_dict[stage_input]["file_list"]]))
             values.append("")  # No need to provide file name in batch file
