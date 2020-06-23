@@ -333,7 +333,7 @@ def make_ms_dias_batch_file(ms_stage_input_dict, ss_workflow_out_dir, ms_workflo
 
 def run_ms_workflow(ss_workflow_out_dir):
     assert ss_workflow_out_dir.startswith("/"), "Input directory must be full path (starting at /)"
-    ms_workflow_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-FpKqKP8433Gj8JbxB0433F3y"
+    ms_workflow_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-Fqk42q8433Gxp148F1xBVPKg"
     ms_workflow_out_dir = make_ms_workflow_out_dir(ms_workflow_id, ss_workflow_out_dir)
     ms_workflow_stage_info  = get_workflow_stage_info(ms_workflow_id)
     ms_output_dirs = make_app_out_dirs(ms_workflow_stage_info,
