@@ -417,7 +417,7 @@ def run_vcf2xls_app(ms_workflow_out_dir):
     genepanels_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yY48433GxY9VQ9ZZ9ZfqX"
     bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yXbQ433GYKXJy187g4qk1"
     exons_nirvana = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18Yp0433GjB7172630p9Yv"
-    nirvana_genes2transcripts = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18BB8433GqFXG26Gjjv7by"
+    nirvana_genes2transcripts = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FqxK4jj433Gk0j72BqkB1f2Z"
 
     # Dynamic - run dependent
     command = "dx find data --path {ms_workflow_out_dir}expected_depth_v1.1.2/ --name *gz --brief".format(ms_workflow_out_dir=ms_workflow_out_dir)
