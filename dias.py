@@ -400,7 +400,7 @@ def make_vcf2xls_batch_file(input_directory, sample=None):
     
     if not sample:
         sample="(.*)"
-
+    print("Making batch for {}".format(sample))
     command = """
     dx generate_batch_inputs \
     -iannotated_vcf='{sample}_markdup(.*)annotated.vcf$' \
@@ -409,16 +409,47 @@ def make_vcf2xls_batch_file(input_directory, sample=None):
     -isample_coverage_index='{sample}_markdup(.*)nirvana_20(.*)_5bp.gz.tbi$' \
     -iflagstat_file='{sample}_markdup.flagstat' \
     -o {batch_uuid}""".format(sample=sample, batch_uuid=batch_uuid)
-
+    print(command)
     FNULL = open(os.devnull, 'w')
     subprocess.call(command, stderr=subprocess.STDOUT, stdout=FNULL, shell=True)
     assert os.path.exists(batch_tsv), "Failed to generate batch file!"
     return batch_tsv
 
 
-def run_vcf2xls_app(ms_workflow_out_dir, sample=None, panels=None):
+def make_reanalysis_batch_file(batch_file, reanalysis_dict):
+
+    # We have an input batch file with all samples on the run and no panels specified
+    # Discard the samples we do not want, and add panels to those we do want
+    
+    output_lines = []
+    
+    with open(batch_file) as in_fh:
+        
+        # Add a new column for the panels
+        header = in_fh.readline().strip()
+        output_header = "\t".join([header, "list_panel_names_genes\n"])
+        output_lines.append(output_header)
+
+        # Find the samples we want and add their panels
+        for line in in_fh:
+            sample = line.split("\t")[0]
+            panels = reanalysis_dict.get(sample, None)
+
+            # If no panel(s) then not a reanalysis so dont include in output
+            if panels:
+                panels_str = ",".join(list(panels))
+                output_line = "\t".join([line.strip(), panels_str + "\n"])
+                output_lines.append(output_line)
+
+    with open(batch_file, "w") as out_fh:
+        out_fh.writelines(output_lines)
+
+    return batch_file
+
+
+def run_vcf2xls_app(ms_workflow_out_dir, reanalysis_dict=None):
     # Static
-    vcf2xls_applet_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fq6Ygy8433GjFk6V6k8Pjkzg"
+    vcf2xls_applet_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fqjz7G0433GpKP8Y8pBf6BvK"
     genepanels_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yY48433GxY9VQ9ZZ9ZfqX"
     bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yXbQ433GYKXJy187g4qk1"
     exons_nirvana = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18Yp0433GjB7172630p9Yv"
@@ -432,9 +463,13 @@ def run_vcf2xls_app(ms_workflow_out_dir, sample=None, panels=None):
     runfolder_coverage_index = subprocess.check_output(command, shell=True).strip()
 
     vcf2xls_applet_name = get_object_attribute_from_object_id_or_path(vcf2xls_applet_id, "Name")
+    print(ms_workflow_out_dir,vcf2xls_applet_name)
     vcf2xls_applet_out_dir = "".join([ms_workflow_out_dir,vcf2xls_applet_name])
+    print("Making batch")
     batch_file = make_vcf2xls_batch_file(ms_workflow_out_dir)
-    dx_make_workflow_dir(vcf2xls_applet_out_dir, sample=sample)
+    if reanalysis_dict:
+        batch_file = make_reanalysis_batch_file(batch_file, reanalysis_dict)
+    dx_make_workflow_dir(vcf2xls_applet_out_dir)
 
     command = "dx run {applet_id} --yes --destination='{vcf2xls_applet_out_dir}' --batch-tsv='{batch_file}' -irunfolder_coverage_file='{runfolder_coverage_file}' -irunfolder_coverage_index='{runfolder_coverage_index}' -igenepanels_file='{genepanels_file}' -ibioinformatic_manifest='{bioinformatic_manifest}' -iexons_nirvana='{exons_nirvana}' -inirvana_genes2transcripts='{nirvana_genes2transcripts}' "
 
@@ -449,9 +484,6 @@ def run_vcf2xls_app(ms_workflow_out_dir, sample=None, panels=None):
                              nirvana_genes2transcripts=nirvana_genes2transcripts
                              )
 
-    if panels:
-        command += " -p '{panels}'".format(panels=panels)
-
     subprocess.check_call(command, shell=True)
 
     return vcf2xls_applet_out_dir
@@ -465,11 +497,9 @@ def run_reanalysis(input_dir, reanalysis_list):
             fields = line.strip().split("\t")
             assert len(fields) == 2, "Unexpected number of fields in reanalysis_list. File must contain one tab separated sample/panel combination per line"
             sample, panel = fields
-            reanalysis_dict.set_default(sample, set()).add(panel)
+            reanalysis_dict.setdefault(sample, set()).add(panel)
 
-    for sample, panels in reanalysis_dict.items():
-        panels_str = ",".join(list(panels))
-        run_vcf2xls_app(input_dir, sample, panels_str)
+    run_vcf2xls_app(input_dir, reanalysis_dict)
 
 
 def main():
@@ -495,7 +525,7 @@ def main():
     parser_r = subparsers.add_parser('reanalysis', help='reanalysis help')
     parser_r.add_argument('input_dir', type=str, help='A multi sample workflow output directory path')
     parser_r.add_argument('reanalysis_list', type=str, help='Tab delimited file containg sample and panel for reanalysis. One sample/panel combination per line')
-    parser_r.set_defaults(which='reports')
+    parser_r.set_defaults(which='reanalysis')
 
 
     args = parser.parse_args()
