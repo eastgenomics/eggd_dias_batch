@@ -388,7 +388,7 @@ def run_multiqc_app(ms_workflow_out_dir):
 
 # vcf2xls
 
-def make_vcf2xls_batch_file(input_directory, sample=None):
+def make_vcf2xls_batch_file(input_directory):
     # uuids for temp files to prevent collisions during parallel runs
 
     # Input dir is multi sample output dir. We want input files from the parent single sample dir
