@@ -420,6 +420,9 @@ def make_reanalysis_batch_file(batch_file, reanalysis_dict):
 
     # We have an input batch file with all samples on the run and no panels specified
     # Discard the samples we do not want, and add panels to those we do want
+    # This is done in this way because a batch file cannot be generated 
+    # for a specific subset of sampleIDs, so instead we make a batch for all and
+    # remove those we don't need
     
     output_lines = []
     
