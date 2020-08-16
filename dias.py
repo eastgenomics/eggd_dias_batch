@@ -400,7 +400,7 @@ def make_vcf2xls_batch_file(input_directory, sample=None):
     
     if not sample:
         sample="(.*)"
-    print("Making batch for {}".format(sample))
+
     command = """
     dx generate_batch_inputs \
     -iannotated_vcf='{sample}_markdup(.*)annotated.vcf$' \
@@ -409,7 +409,7 @@ def make_vcf2xls_batch_file(input_directory, sample=None):
     -isample_coverage_index='{sample}_markdup(.*)nirvana_20(.*)_5bp.gz.tbi$' \
     -iflagstat_file='{sample}_markdup.flagstat' \
     -o {batch_uuid}""".format(sample=sample, batch_uuid=batch_uuid)
-    print(command)
+
     FNULL = open(os.devnull, 'w')
     subprocess.call(command, stderr=subprocess.STDOUT, stdout=FNULL, shell=True)
     assert os.path.exists(batch_tsv), "Failed to generate batch file!"
@@ -463,9 +463,8 @@ def run_vcf2xls_app(ms_workflow_out_dir, reanalysis_dict=None):
     runfolder_coverage_index = subprocess.check_output(command, shell=True).strip()
 
     vcf2xls_applet_name = get_object_attribute_from_object_id_or_path(vcf2xls_applet_id, "Name")
-    print(ms_workflow_out_dir,vcf2xls_applet_name)
     vcf2xls_applet_out_dir = "".join([ms_workflow_out_dir,vcf2xls_applet_name])
-    print("Making batch")
+
     batch_file = make_vcf2xls_batch_file(ms_workflow_out_dir)
     if reanalysis_dict:
         batch_file = make_reanalysis_batch_file(batch_file, reanalysis_dict)
