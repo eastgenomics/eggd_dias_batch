@@ -398,7 +398,7 @@ def make_vcf2xls_batch_file(input_directory):
     batch_uuid = str(uuid.uuid4())
     batch_tsv = "{batch_uuid}.0000.tsv".format(batch_uuid=batch_uuid)
 
-    sample="(.*)"
+    sample = "(.*)"
 
     command = """
     dx generate_batch_inputs \
