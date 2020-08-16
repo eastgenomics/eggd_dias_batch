@@ -397,8 +397,7 @@ def make_vcf2xls_batch_file(input_directory):
     subprocess.check_call(command, shell=True)
     batch_uuid = str(uuid.uuid4())
     batch_tsv = "{batch_uuid}.0000.tsv".format(batch_uuid=batch_uuid)
-    
-    
+
     sample="(.*)"
 
     command = """
@@ -418,16 +417,17 @@ def make_vcf2xls_batch_file(input_directory):
 
 def make_reanalysis_batch_file(batch_file, reanalysis_dict):
 
-    # We have an input batch file with all samples on the run and no panels specified
+    # We have an input batch file with all samples on the run and
+    # no panels specified
     # Discard the samples we do not want, and add panels to those we do want
-    # This is done in this way because a batch file cannot be generated 
-    # for a specific subset of sampleIDs, so instead we make a batch for all and
-    # remove those we don't need
-    
+    # This is done in this way because a batch file cannot be generated
+    # for a specific subset of sampleIDs, so instead we make a batch for all
+    # and remove those we don't need
+
     output_lines = []
-    
+
     with open(batch_file) as in_fh:
-        
+
         # Add a new column for the panels
         header = in_fh.readline().strip()
         output_header = "\t".join([header, "list_panel_names_genes\n"])
