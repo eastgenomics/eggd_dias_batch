@@ -358,8 +358,8 @@ def run_ms_workflow(ss_workflow_out_dir):
 
 def run_multiqc_app(ms_workflow_out_dir):
     assert ms_workflow_out_dir.startswith("/"), "Input directory must be full path (starting at /)"
-    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fq20JQQ4g59q4bkF8XfBfQ8x"
-    mqc_config_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq7p470433Gvxjp64vJ94KgF"
+    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-FvZZzX0433GbQvxjJ298Fv4Z"
+    mqc_config_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FvZb1J0433GVKg32481bXVXJ"
     project_id = get_dx_cwd_project_id()
     path_dirs = [x for x in ms_workflow_out_dir.split("/") if x]
     assert path_dirs[-3] == "output"
@@ -454,9 +454,9 @@ def run_vcf2xls_app(ms_workflow_out_dir, reanalysis_dict=None):
     # Static
     vcf2xls_applet_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fqjz7G0433GpKP8Y8pBf6BvK"
     genepanels_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yY48433GxY9VQ9ZZ9ZfqX"
-    bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yXbQ433GYKXJy187g4qk1"
+    bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FvyX44j433Gz74z60Vg0QgkG"
     exons_nirvana = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18Yp0433GjB7172630p9Yv"
-    nirvana_genes2transcripts = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18BB8433GqFXG26Gjjv7by"
+    nirvana_genes2transcripts = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FvfV6kQ433Gv5FF9F94X5jFJ"
 
     # Dynamic - run dependent
     command = "dx find data --path {ms_workflow_out_dir}expected_depth_v1.1.2/ --name *gz --brief".format(ms_workflow_out_dir=ms_workflow_out_dir)
