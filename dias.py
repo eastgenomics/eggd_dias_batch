@@ -165,7 +165,7 @@ def make_ss_workflow_out_dir(workflow_id):
         i += 1
     return None
 
-def make_ss_dias_batch_file(input_directory=None):
+def make_ss_dias_batch_file(input_directory):
     # uuids for temp files to prevent collisions during parallel runs
     fastq_dict = make_fq_dict(input_directory)
     batch_uuid = str(uuid.uuid4())
