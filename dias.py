@@ -165,6 +165,7 @@ def make_ss_workflow_out_dir(workflow_id):
         i += 1
     return None
 
+
 def make_ss_dias_batch_file(input_directory):
     # uuids for temp files to prevent collisions during parallel runs
     fastq_dict = make_fq_dict(input_directory)
@@ -206,6 +207,7 @@ def make_ss_dias_batch_file(input_directory):
     assert os.path.exists(batch_tsv), "Failed to generate batch file!"
     return batch_tsv
 
+
 def make_fq_dict(path):
 
     command = "dx find data --name *fastq.gz --brief"
@@ -231,10 +233,25 @@ def make_fq_dict(path):
         fastq_dict.setdefault(sample_id, {"R1":[],
                                           "R2":[]})
 
-        # Add file to appropriate place in dict
-        fastq_dict[sample_id].setdefault(read_num, []).append(fastq_file_id)
+        # Add fastq filename and file_id to appropriate place in dict. 
+        # We add both id and name because we need to sort by name later
+        fastq_dict[sample_id].setdefault(read_num, []).append((fastq_filename, fastq_file_id))
 
+    # Sort fastq lists so that the fastq at pos n in R1 list
+    # is paired with the fastq at pos n in R2 list
+    # Once the sort is complete we remove the filename from the dict
+    # since it was only there to enable the sort
+    for sample in fastq_dict:
+    	for read in ["R1", "R2"]:
+    		# sort tuple on first element i.e. filename
+    		# retain only file id i.e. second element
+    		sorted_fastq_list = \
+    			[x[1] for x in sorted(fastq_dict[sample][read], 
+    								  key=lambda x: x[0])]
+    		fastq_dict[sample][read] = sorted_fastq_list
+    
     return fastq_dict
+
 
 def run_dias_ss_batch_file(workflow_id,
                         batch_file,
