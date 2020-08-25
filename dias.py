@@ -165,54 +165,76 @@ def make_ss_workflow_out_dir(workflow_id):
         i += 1
     return None
 
-
-def make_ss_dias_batch_file(input_directory=None):
+def make_ss_dias_batch_file(input_directory):
     # uuids for temp files to prevent collisions during parallel runs
+    fastq_dict = make_fq_dict(input_directory)
     batch_uuid = str(uuid.uuid4())
-    initial_tsv = batch_uuid + ".0000.tsv"
-    temp_tsv = batch_uuid + ".tmp.tsv"
-    intermediate_tsv = batch_uuid + ".int.tsv"
-    final_tsv = batch_uuid + ".final.tsv"
+    batch_tsv = batch_uuid + ".dx_batch.tsv"
+
+    sentieon_R1_input_stage = "stage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads_fastqgzs"
+    sentieon_R2_input_stage = "stage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads2_fastqgzs"
+    sentieon_sample_input_stage = "stage-Fk9p4Kj4yBGfpvQf85fQXJq5.sample"
+    fastqc_fastqs_input_stage = "stage-Fx13V7j433GjFxbX2XxzYJVY.fastqs"
+    id_suffix = " ID"
+
+    headers = ["batch ID",
+               sentieon_R1_input_stage,
+               sentieon_R2_input_stage,
+               sentieon_sample_input_stage,
+               fastqc_fastqs_input_stage,
+               sentieon_R1_input_stage + id_suffix,
+               sentieon_R2_input_stage + id_suffix,
+               fastqc_fastqs_input_stage + id_suffix]
+
+    batch_file_lines = []
+    header_line = "\t".join(headers)
+    batch_file_lines.append(header_line)
+
+    for sample, reads in sorted(fastq_dict.items()):
+        assert(len(reads["R1"]) == len(reads["R2"])), "Mismatched number of R1/R2 fastqs for {}".format(sample)
+        r_1   = "[" + ",".join(reads["R1"]) + "]"
+        r_2   = "[" + ",".join(reads["R2"]) + "]"
+        r_all = "[" + ",".join([",".join(reads["R1"]), ",".join(reads["R2"])]) + "]"
+        data_fields = [sample, "-","-",sample,"-",r_1,r_2,r_all]
+        data_line = "\t".join(data_fields)
+        batch_file_lines.append(data_line)
+
+    with open(batch_tsv, "w") as batch_fh:
+        for line in batch_file_lines:
+            batch_fh.write("%s\n" % line)
     
-    batch_command = """
-    dx generate_batch_inputs \
-    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads_fastqgzs='(.*)_S(.*)_L(.*)\d*[13579]_R1(.*).fastq.gz' \
-    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads_fastqgzsB='(.*)_S(.*)_L(.*)\d*[02468]_R1(.*).fastq.gz' \
-    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads2_fastqgzs='(.*)_S(.*)_L(.*)\d*[13579]_R2(.*).fastq.gz' \
-    -istage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads2_fastqgzsB='(.*)_S(.*)_L(.*)\d*[02468]_R2(.*).fastq.gz' \
-    -istage-FpGkFJj433GxvX376JyVxKpG.reads='(.*)_S(.*)_L(.*)\d*[13579]_R1(.*).fastq.gz' \
-    -istage-FpGkFK0433Gy74J9PYJKV42y.reads='(.*)_S(.*)_L(.*)\d*[02468]_R1(.*).fastq.gz' \
-    -istage-FpGkFK0433Gy74J9PYJKV42z.reads='(.*)_S(.*)_L(.*)\d*[13579]_R2(.*).fastq.gz' \
-    -istage-FpGkF3j433GZg9QQ6X82Gj9V.reads='(.*)_S(.*)_L(.*)\d*[02468]_R2(.*).fastq.gz' \
-    -o {batch_uuid}
-    \
-    head -n 1 {batch_uuid}.0000.tsv \
-    > {temp_tsv} && \
-    tail -n +2 {batch_uuid}.0000.tsv | \
-    awk '{{ $10 = \"[\"$10; print }}'  | awk '{{ $11 = $11\"]\"; print }}' |  \
-    awk '{{ $12 = \"[\"$12; print }}'  | awk '{{ $13 = $13\"]\"; print }}' \
-    >> {temp_tsv}; \
-    tr -d '\r' < {temp_tsv} > {intermediate_tsv}; \
-    rm {temp_tsv}; \
-    head -n 1 {intermediate_tsv} | \
-    awk -F "\t" '{{ print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10"\t"$12"\t"$14"\t"$15"\t"$16"\t"$17"\tstage-Fk9p4Kj4yBGfpvQf85fQXJq5.sample" }}' \
-    > {temp_tsv} && \
-    tail -n +2 {intermediate_tsv} | \
-    awk '{{ print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10","$11"\t"$12","$13"\t"$14"\t"$15"\t"$16"\t"$17"\t"$1 }}' \
-    >> {temp_tsv}; tr -d '\r' < {temp_tsv} > {final_tsv}; \
-    rm {initial_tsv};\
-    rm {temp_tsv};\
-    rm {intermediate_tsv};\
-    """.format(batch_uuid=batch_uuid, temp_tsv=temp_tsv, intermediate_tsv=intermediate_tsv, final_tsv=final_tsv, initial_tsv=initial_tsv)
+    assert os.path.exists(batch_tsv), "Failed to generate batch file!"
+    return batch_tsv
 
-    if input_directory:
-        cd_command = "dx cd {input_directory}".format(input_directory=input_directory)
-        subprocess.check_call(cd_command, shell=True)
-    FNULL = open(os.devnull, 'w')
-    subprocess.call(batch_command, stderr=subprocess.STDOUT, stdout=FNULL, shell=True)
-    assert os.path.exists(final_tsv), "Failed to generate batch file!"
-    return final_tsv
+def make_fq_dict(path):
 
+    command = "dx find data --name *fastq.gz --brief"
+    fastq_id_list = subprocess.check_output(command, shell=True).strip().split("\n")
+    fastq_dict = {}
+    for fastq_id in fastq_id_list:
+        command = "dx describe --name {}".format(fastq_id)
+        fastq_file_id = fastq_id.split(":")[1]
+        fastq_filename = subprocess.check_output(command, shell=True).strip()
+        sample_id = fastq_filename.split("_")[0]
+        if sample_id == "Undetermined":
+            continue
+
+        read_num = None
+        if "_R1_" in fastq_filename:
+            read_num = "R1"
+        elif "_R2_" in fastq_filename:
+            read_num = "R2"
+        
+        assert read_num, "Unable to determine read number (R1 or R2) for fastq {}".format(fastq_filename)
+
+        # Make a new dict entry for sample if not present
+        fastq_dict.setdefault(sample_id, {"R1":[],
+                                          "R2":[]})
+
+        # Add file to appropriate place in dict
+        fastq_dict[sample_id].setdefault(read_num, []).append(fastq_file_id)
+
+    return fastq_dict
 
 def run_dias_ss_batch_file(workflow_id,
                         batch_file,
@@ -229,7 +251,7 @@ def run_dias_ss_batch_file(workflow_id,
 
 def run_ss_workflow(input_dir):
     assert input_dir.startswith("/"), "Input directory must be full path (starting at /)"
-    ss_workflow_id          = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-FpG6QjQ433Gf7Gq15ZF4Vk49"
+    ss_workflow_id          = "project-Fkb6Gkj433GVVvj73J7x8KbV:workflow-Fx13Gj8433GpvFf4Kg0535bK"
     ss_workflow_out_dir     = make_ss_workflow_out_dir(ss_workflow_id)
     ss_workflow_stage_info  = get_workflow_stage_info(ss_workflow_id)
     ss_app_out_dirs         = make_app_out_dirs(ss_workflow_stage_info,
@@ -358,8 +380,10 @@ def run_ms_workflow(ss_workflow_out_dir):
 
 def run_multiqc_app(ms_workflow_out_dir):
     assert ms_workflow_out_dir.startswith("/"), "Input directory must be full path (starting at /)"
-    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-FqjqxQ84g59zky9YJZKKkX0p"
-    mqc_config_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FqjvJ504g59kP3pQF0QJG9jX"
+    
+    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-FvZZzX0433GbQvxjJ298Fv4Z"
+    mqc_config_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FvZb1J0433GVKg32481bXVXJ"
+    
     project_id = get_dx_cwd_project_id()
     path_dirs = [x for x in ms_workflow_out_dir.split("/") if x]
     assert path_dirs[-3] == "output"
@@ -454,9 +478,9 @@ def run_vcf2xls_app(ms_workflow_out_dir, reanalysis_dict=None):
     # Static
     vcf2xls_applet_id = "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fqjz7G0433GpKP8Y8pBf6BvK"
     genepanels_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yY48433GxY9VQ9ZZ9ZfqX"
-    bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq3yXbQ433GYKXJy187g4qk1"
+    bioinformatic_manifest = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FvyX44j433Gz74z60Vg0QgkG"
     exons_nirvana = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fq18Yp0433GjB7172630p9Yv"
-    nirvana_genes2transcripts = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FqxQ6kj433GfQ4B03g0B4fY8"
+    nirvana_genes2transcripts = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-FvfV6kQ433Gv5FF9F94X5jFJ"
 
     # Dynamic - run dependent
     command = "dx find data --path {ms_workflow_out_dir}expected_depth_v1.1.2/ --name *gz --brief".format(ms_workflow_out_dir=ms_workflow_out_dir)
