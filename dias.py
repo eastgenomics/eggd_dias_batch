@@ -207,10 +207,9 @@ def make_ss_dias_batch_file(input_directory):
     return batch_tsv
 
 def make_fq_dict(path):
-    
+
     command = "dx find data --name *fastq.gz --brief"
-    fastq_id_list = subprocess.check_output(command, shell=True).strip().split("\n")    
-    
+    fastq_id_list = subprocess.check_output(command, shell=True).strip().split("\n")
     fastq_dict = {}
     for fastq_id in fastq_id_list:
         command = "dx describe --name {}".format(fastq_id)
@@ -220,12 +219,13 @@ def make_fq_dict(path):
         if sample_id == "Undetermined":
             continue
 
+        read_num = None
         if "_R1_" in fastq_filename:
             read_num = "R1"
         elif "_R2_" in fastq_filename:
             read_num = "R2"
-        else:
-            print("Unable to determine read number (R1 or R2) for fastq {}".format(fastq_filename))
+        
+        assert read_num, "Unable to determine read number (R1 or R2) for fastq {}".format(fastq_filename)
 
         # Make a new dict entry for sample if not present
         fastq_dict.setdefault(sample_id, {"R1":[],
