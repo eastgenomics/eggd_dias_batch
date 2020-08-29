@@ -210,7 +210,7 @@ def make_ss_dias_batch_file(input_directory):
 
 def make_fq_dict(path):
 
-    command = "dx find data --name *fastq.gz --brief"
+    command = "dx find data --path {path} --name *fastq.gz --brief".format(path=path)
     fastq_id_list = subprocess.check_output(command, shell=True).strip().split("\n")
     fastq_dict = {}
     for fastq_id in fastq_id_list:
