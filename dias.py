@@ -398,7 +398,7 @@ def run_ms_workflow(ss_workflow_out_dir):
 def run_multiqc_app(ms_workflow_out_dir):
     assert ms_workflow_out_dir.startswith("/"), "Input directory must be full path (starting at /)"
     
-    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fx3xj40433GfGz2v5XfYP1K1"
+    mqc_applet_id  =  "project-Fkb6Gkj433GVVvj73J7x8KbV:applet-Fx7vgBQ433GpF2Xy4xQ55j6P"
     mqc_config_file = "project-Fkb6Gkj433GVVvj73J7x8KbV:file-Fx32KXj433GkVgk83fv6Zjxx"
     
     project_id = get_dx_cwd_project_id()
