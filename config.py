@@ -1,4 +1,20 @@
+import sys
+
+sys.path.append("/mnt/storage/apps/software/dias_config")
+
+from dias_dynamic_files import (
+    nirvana_genes2transcripts,
+    bioinformatic_manifest,
+    genepanels_file,
+)
+
 ref_project_id = "project-Fkb6Gkj433GVVvj73J7x8KbV"
+
+# Dynamic files
+
+g2t = nirvana_genes2transcripts
+bio_manifest = bioinformatic_manifest
+genepanels = genepanels_file
 
 # Single workflow
 
@@ -12,7 +28,7 @@ fastqc_fastqs_input_stage = "stage-Fx13V7j433GjFxbX2XxzYJVY.fastqs"
 
 stage_input_dict = {
     "stage-FpPQpk8433GZz7615xq3FyvF.flagstat": {
-        "app": "flagstat", "pattern": "flagstat$"
+        "app": "flagstat", "subdir": "", "pattern": "flagstat$"
     },
     "stage-FpPQpk8433GZz7615xq3FyvF.coverage": {
         "app": "region_coverage", "subdir": "", "pattern": "5bp.gz$",
@@ -33,10 +49,10 @@ ms_workflow_id = "{}:workflow-FpKqKP8433Gj8JbxB0433F3y".format(ref_project_id)
 
 # MultiQC
 
-mqc_applet_id = "{}:applet-Fx7vgBQ433GpF2Xy4xQ55j6P".format(ref_project_id)
-mqc_config_file = "{}:file-Fx32KXj433GkVgk83fv6Zjxx".format(ref_project_id)
+mqc_applet_id = "{}:applet-Fxjpx8j433GZKqkG1vZp8vk6".format(ref_project_id)
+mqc_config_file = "{}:file-FxjpvF8433GvjKFVK6k77G4q".format(ref_project_id)
 
 # Vcf2xls
 
-vcf2xls_applet_id = "{}:applet-Fx2Xgbj433GkgZ977ZFv8vZP".format(ref_project_id)
+vcf2xls_applet_id = "{}:applet-Fxjp588433GQ0V6b2bGYQz05".format(ref_project_id)
 exons_nirvana = "{}:file-Fq18Yp0433GjB7172630p9Yv".format(ref_project_id)
