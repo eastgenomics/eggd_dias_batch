@@ -4,8 +4,8 @@ import os
 import subprocess
 import uuid
 
-from .config import vcf2xls_applet_id, exons_nirvana
-from .general_functions import (
+from config import vcf2xls_applet_id, exons_nirvana
+from general_functions import (
     get_object_attribute_from_object_id_or_path,
     dx_make_workflow_dir
 )

@@ -3,10 +3,10 @@
 import subprocess
 import uuid
 
-from .config import (
+from config import (
     stage_input_dict, ms_workflow_id
 )
-from .general_functions import (
+from general_functions import (
     get_object_attribute_from_object_id_or_path,
     get_date,
     dx_make_workflow_dir,

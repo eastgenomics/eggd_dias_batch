@@ -4,14 +4,14 @@ import os
 import subprocess
 import uuid
 
-from .config import (
+from config import (
     ss_workflow_id,
     sentieon_R1_input_stage,
     sentieon_R2_input_stage,
     sentieon_sample_input_stage,
     fastqc_fastqs_input_stage,
 )
-from .general_functions import (
+from general_functions import (
     get_object_attribute_from_object_id_or_path,
     get_date,
     dx_make_workflow_dir,

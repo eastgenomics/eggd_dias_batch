@@ -2,10 +2,10 @@
 
 import argparse
 
-from .single_workflow import run_ss_workflow
-from .multi_workflow import run_ms_workflow
-from .multiqc import run_multiqc_app
-from .vcf2xls import run_vcf2xls_app, run_reanalysis
+from single_workflow import run_ss_workflow
+from multi_workflow import run_ms_workflow
+from multiqc import run_multiqc_app
+from vcf2xls import run_vcf2xls_app, run_reanalysis
 
 
 def main():
