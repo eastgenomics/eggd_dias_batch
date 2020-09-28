@@ -4,7 +4,10 @@ import os
 import subprocess
 import uuid
 
-from config import vcf2xls_applet_id, exons_nirvana
+from config import (
+    vcf2xls_applet_id, exons_nirvana,
+    g2t, bio_manifest, genepanels,
+)
 from general_functions import (
     get_object_attribute_from_object_id_or_path,
     dx_make_workflow_dir
@@ -117,9 +120,9 @@ def run_vcf2xls_app(ms_workflow_out_dir, reanalysis_dict=None):
     ).format(
         vcf2xls_applet_id, vcf2xls_applet_out_dir,
         batch_file, runfolder_coverage_file,
-        runfolder_coverage_index, genepanels_file,
-        bioinformatic_manifest, exons_nirvana,
-        nirvana_genes2transcripts
+        runfolder_coverage_index, genepanels,
+        bio_manifest, exons_nirvana,
+        g2t
     )
 
     subprocess.check_call(command, shell=True)
