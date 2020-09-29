@@ -4,7 +4,7 @@ import subprocess
 import uuid
 
 from config import (
-    stage_input_dict, ms_workflow_id
+    stage_input_dict, ms_workflow_id, happy_stage_prefix
 )
 from general_functions import (
     get_object_attribute_from_object_id_or_path,
@@ -65,7 +65,7 @@ def make_ms_dias_batch_file(ms_stage_input_dict):
     values = ["multi"]
 
     # Hap.py - static values
-    headers.append("stage-Fq1BPKj433Gx3K4Y8J35j0fv.prefix")
+    headers.append(happy_stage_prefix)
     values.append("NA12878")
 
     # For each stage add the column header and the values in that column

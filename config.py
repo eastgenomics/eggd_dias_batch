@@ -26,6 +26,8 @@ fastqc_fastqs_input_stage = "stage-Fx13V7j433GjFxbX2XxzYJVY.fastqs"
 
 # Multi workflow
 
+happy_stage_prefix = "stage-Fq1BPKj433Gx3K4Y8J35j0fv.prefix"
+
 stage_input_dict = {
     "stage-FpPQpk8433GZz7615xq3FyvF.flagstat": {
         "app": "flagstat", "subdir": "", "pattern": "flagstat$"
