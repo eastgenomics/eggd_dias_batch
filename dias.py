@@ -47,7 +47,7 @@ def main():
     parser_r.add_argument(
         'reanalysis_list', type=str,
         help=(
-            'Tab delimited file containg sample and panel for reanalysis'
+            'Tab delimited file contaning sample and panel for reanalysis'
             '. One sample/panel combination per line'
         )
     )
