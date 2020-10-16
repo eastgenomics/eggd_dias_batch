@@ -170,3 +170,33 @@ def get_dx_cwd_project_id():
     )
     project_id = subprocess.check_output(command, shell=True).strip()
     return project_id
+
+
+def parse_sample_sheet(sample_sheet_path):
+    sample_ids = []
+    cmd = "dx cat {}".format(sample_sheet_path).split()
+    sample_sheet_content = subprocess.check_output(cmd).split("\n")
+
+    data = False
+    index = 0
+
+    for line in sample_sheet_content:
+        if data is True:
+            line = line.split(",")
+
+            if index == 0:
+                # get column of sample_id programmatically
+                sample_id_pos = "".join([
+                    i
+                    for i, header in enumerate(line)
+                    if header == "Sample_ID"
+                ])
+            else:
+                sample_ids.append(line[sample_id_pos])
+
+            index += 1
+
+        if line.startswith("[Data]"):
+            data = True
+
+    return sample_ids
