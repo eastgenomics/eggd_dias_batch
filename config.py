@@ -18,11 +18,11 @@ genepanels = genepanels_file
 
 # Single workflow
 
-ss_workflow_id = "{}:workflow-Fx13Gj8433GpvFf4Kg0535bK".format(ref_project_id)
-sentieon_R1_input_stage = "stage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads_fastqgzs"
-sentieon_R2_input_stage = "stage-Fk9p4Kj4yBGfpvQf85fQXJq5.reads2_fastqgzs"
-sentieon_sample_input_stage = "stage-Fk9p4Kj4yBGfpvQf85fQXJq5.sample"
-fastqc_fastqs_input_stage = "stage-Fx13V7j433GjFxbX2XxzYJVY.fastqs"
+ss_workflow_id = "{}:workflow-Fy6ffpQ40vZgbb3BG271fbgQ".format(ref_project_id)
+sentieon_R1_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.reads_fastqgzs"
+sentieon_R2_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.reads2_fastqgzs"
+sentieon_sample_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.sample"
+fastqc_fastqs_input_stage = "stage-Fy6fpV840vZZ0v6J8qBQYqZF.fastqs"
 
 # Multi workflow
 
