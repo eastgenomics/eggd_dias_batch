@@ -155,8 +155,9 @@ def run_dias_ss_batch_file(
     workflow_id, batch_file, workflow_stage_info, workflow_out_dir
 ):
     app_relative_paths = format_relative_paths(workflow_stage_info)
-    command = 'dx run --yes {} --batch-tsv {} --destination={} {}'\
-        .format(
+    command = (
+        'dx run --yes --ignore-reuse {} --batch-tsv {} --destination={} {}'
+    ).format(
             workflow_id,
             batch_file,
             workflow_out_dir,

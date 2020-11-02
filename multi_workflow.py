@@ -117,7 +117,7 @@ def run_ms_workflow(ss_workflow_out_dir):
     ms_stage_input_dict = get_ms_stage_input_dict(ss_workflow_out_dir)
     ms_batch_file = make_ms_dias_batch_file(ms_stage_input_dict)
 
-    run_wf_command = "dx run --yes {} --batch-tsv={}".format(
+    run_wf_command = "dx run --yes --ignore-reuse {} --batch-tsv={}".format(
         ms_workflow_id, ms_batch_file
     )
 
