@@ -18,7 +18,7 @@ genepanels = genepanels_file
 
 # Single workflow
 
-ss_workflow_id = "{}:workflow-Fy6ffpQ40vZgbb3BG271fbgQ".format(ref_project_id)
+ss_workflow_id = "{}:workflow-Fy6k2pQ433Ggbb3BG271fp29".format(ref_project_id)
 sentieon_R1_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.reads_fastqgzs"
 sentieon_R2_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.reads2_fastqgzs"
 sentieon_sample_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.sample"
@@ -28,16 +28,7 @@ fastqc_fastqs_input_stage = "stage-Fy6fpV840vZZ0v6J8qBQYqZF.fastqs"
 
 happy_stage_prefix = "stage-Fq1BPKj433Gx3K4Y8J35j0fv.prefix"
 
-stage_input_dict = {
-    "stage-FpPQpk8433GZz7615xq3FyvF.flagstat": {
-        "app": "flagstat", "subdir": "", "pattern": "flagstat$"
-    },
-    "stage-FpPQpk8433GZz7615xq3FyvF.coverage": {
-        "app": "region_coverage", "subdir": "", "pattern": "5bp.gz$",
-    },
-    "stage-FpPQpk8433GZz7615xq3FyvF.coverage_index": {
-        "app": "region_coverage", "subdir": "", "pattern": "5bp.gz.tbi$",
-    },
+multi_stage_input_dict = {
     "stage-Fpz3Jqj433Gpv7yQFfKz5f8g.SampleSheet": {
         "app": None, "subdir": "", "pattern": "SampleSheet.csv$",
     },
@@ -47,14 +38,52 @@ stage_input_dict = {
     },
 }
 
-ms_workflow_id = "{}:workflow-FpKqKP8433Gj8JbxB0433F3y".format(ref_project_id)
+ms_workflow_id = "{}:workflow-FyQ2Gy0433Gz76Jp9j5YG80K".format(ref_project_id)
 
 # MultiQC
 
 mqc_applet_id = "{}:applet-Fxjpx8j433GZKqkG1vZp8vk6".format(ref_project_id)
 mqc_config_file = "{}:file-FxjpvF8433GvjKFVK6k77G4q".format(ref_project_id)
 
-# Vcf2xls
+# Reports
 
-vcf2xls_applet_id = "{}:applet-Fxjp588433GQ0V6b2bGYQz05".format(ref_project_id)
 exons_nirvana = "{}:file-Fq18Yp0433GjB7172630p9Yv".format(ref_project_id)
+
+rpt_workflow_id = "{}:workflow-FyPz398433Gb4jKGKqJYGvyq".format(ref_project_id)
+
+rpt_stage_input_dict = {
+    # vcf2xls
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.annotated_vcf": {
+        "app": "nirvana2vcf", "subdir": "", "pattern": ".annotated.vcf$"
+    },
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.raw_vcf": {
+        # pattern excludes "g" because g.vcf are in the same folder
+        "app": "sentieon-dnaseq", "subdir": "", "pattern": "[^g].vcf.gz$"
+    },
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.sample_coverage_file": {
+        "app": "region_coverage", "subdir": "", "pattern": "5bp.gz$",
+    },
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.sample_coverage_index": {
+        "app": "region_coverage", "subdir": "", "pattern": "5bp.gz.tbi$",
+    },
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.flagstat": {
+        "app": "flagstat", "subdir": "", "pattern": "flagstat$"
+    },
+    # athena
+    "stage-FyPz580433GVK5yJKy240B8V.mosdepth_files": {
+        "app": "nirvana2vcf", "subdir": "",
+        # athena requires both per-base files and reference files
+        "pattern": "-E '(per-base.bed.gz$|reference)'"
+    },
+}
+
+dynamic_files_batch_tsv = {
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.genepanels_file": genepanels_file,
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.bioinformatic_manifest": bioinformatic_manifest,
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.nirvana_genes2transcripts": nirvana_genes2transcripts,
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.exons_nirvana": exons_nirvana,
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.nirvana_genes2transcripts": nirvana_genes2transcripts,
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.gene_panels": genepanels_file,
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.manifest": bioinformatic_manifest,
+    "stage-FyPz580433GVK5yJKy240B8V.exons_nirvana": exons_nirvana,
+}
