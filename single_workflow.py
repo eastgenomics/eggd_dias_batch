@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from collections import OrderedDict
+import json
 import os
 import subprocess
 import uuid
@@ -12,40 +14,13 @@ from config import (
     fastqc_fastqs_input_stage,
 )
 from general_functions import (
-    get_object_attribute_from_object_id_or_path,
-    get_date,
-    dx_make_workflow_dir,
     format_relative_paths,
     get_workflow_stage_info,
-    make_app_out_dirs
+    make_app_out_dirs,
+    make_workflow_out_dir
 )
 
 # Single sample apps batch
-
-
-def make_ss_workflow_out_dir(workflow_id):
-    workflow_name = get_object_attribute_from_object_id_or_path(
-        workflow_id, "Name"
-    )
-    assert workflow_name, "Workflow name not found. Aborting"
-    workflow_output_dir_pattern = "/output/{workflow_name}-{date}-{index}/"
-    date = get_date()
-
-    i = 1
-    while i < 100:  # < 100 runs = sanity check
-        workflow_output_dir = workflow_output_dir_pattern.format(
-            workflow_name=workflow_name, date=date, index=i
-        )
-
-        if dx_make_workflow_dir(workflow_output_dir):
-            print("Using\t\t%s" % workflow_output_dir)
-            return workflow_output_dir
-        else:
-            print("Skipping\t%s" % workflow_output_dir)
-
-        i += 1
-
-    return None
 
 
 def make_ss_dias_batch_file(input_directory):
@@ -151,32 +126,35 @@ def make_fq_dict(path):
     return fastq_dict
 
 
-def run_dias_ss_batch_file(
-    workflow_id, batch_file, workflow_stage_info, workflow_out_dir
-):
-    app_relative_paths = format_relative_paths(workflow_stage_info)
-    command = (
-        'dx run --yes --ignore-reuse {} --batch-tsv {} --destination={} {}'
-    ).format(
-            workflow_id,
-            batch_file,
-            workflow_out_dir,
-            app_relative_paths
-        )
-    subprocess.call(command, shell=True)
-
-
-def run_ss_workflow(input_dir):
+def run_ss_workflow(input_dir, dry_run):
     assert input_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
-    ss_workflow_out_dir = make_ss_workflow_out_dir(ss_workflow_id)
+    ss_workflow_out_dir = make_workflow_out_dir(ss_workflow_id)
     ss_workflow_stage_info = get_workflow_stage_info(ss_workflow_id)
     ss_app_out_dirs = make_app_out_dirs(
         ss_workflow_stage_info, ss_workflow_out_dir
     )
     ss_batch_file = make_ss_dias_batch_file(input_dir)
-    run_dias_ss_batch_file(
-        ss_workflow_id, ss_batch_file,
-        ss_workflow_stage_info, ss_workflow_out_dir)
+    app_relative_paths = format_relative_paths(ss_workflow_stage_info)
+    command = (
+        'dx run --yes --ignore-reuse {} --batch-tsv {} --destination={} {}'
+    ).format(
+            ss_workflow_id,
+            ss_batch_file,
+            ss_workflow_out_dir,
+            app_relative_paths
+        )
+
+    if dry_run:
+        print("Created workflow dir: {}".format(ss_workflow_out_dir))
+        print("Stage info:")
+        print(json.dumps(OrderedDict(sorted(ss_workflow_stage_info.iteritems())), indent=2))
+        print("Created apps out dir: {}")
+        print(json.dumps(OrderedDict(sorted(ss_app_out_dirs.iteritems())), indent=4))
+        print("Created batch tsv: {}".format(ss_batch_file))
+        print("Format of stage output dirs: {}".format(app_relative_paths))
+        print("Final cmd ran: {}".format(command))
+    else:
+        subprocess.call(command, shell=True)
 
     return ss_workflow_out_dir
