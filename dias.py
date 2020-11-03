@@ -5,13 +5,18 @@ import argparse
 from single_workflow import run_ss_workflow
 from multi_workflow import run_ms_workflow
 from multiqc import run_multiqc_app
-from vcf2xls import run_vcf2xls_app, run_reanalysis
+from reports import run_reports, run_reanalysis
 from check import check_if_all_reports_created
 
 
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
+
+    parser.add_argument(
+        "-d", "--dry_run", action="store_true",
+        default=False, help="Make a dry run"
+    )
 
     parser_s = subparsers.add_parser('single', help='single help')
     parser_s.add_argument(
@@ -74,15 +79,18 @@ def main():
         args.input_dir = args.input_dir + "/"
 
     if workflow == "single":
-        ss_workflow_out_dir = run_ss_workflow(args.input_dir)
+        ss_workflow_out_dir = run_ss_workflow(args.input_dir, args.dry_run)
     elif workflow == "multi":
-        ms_workflow_out_dir = run_ms_workflow(args.input_dir)
+        ms_workflow_out_dir = run_ms_workflow(args.input_dir, args.dry_run)
     elif workflow == "qc":
-        mqc_applet_out_dir = run_multiqc_app(args.input_dir)
+        mqc_applet_out_dir = run_multiqc_app(
+            args.input_dir, args.config_multiqc, args.dry_run
+        )
     elif workflow == "reports":
-        reports_out_dir = run_vcf2xls_app(args.input_dir)
+        reports_out_dir = run_reports(args.input_dir, args.dry_run)
     elif workflow == "reanalysis":
-        reports_out_dir = run_reanalysis(args.input_dir, args.reanalysis_list)
+        reports_out_dir = run_reanalysis(
+            args.input_dir, args.reanalysis_list, args.dry_run)
     elif workflow == "check_reports":
         reports = check_if_all_reports_created(
             args.input_dir, args.sample_sheet
