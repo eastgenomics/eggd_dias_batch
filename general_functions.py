@@ -2,6 +2,7 @@
 
 import datetime
 import subprocess
+import uuid
 
 
 # Generic functions
@@ -181,22 +182,124 @@ def parse_sample_sheet(sample_sheet_path):
     index = 0
 
     for line in sample_sheet_content:
-        if data is True:
-            line = line.split(",")
+        if line:
+            if data is True:
+                line = line.split(",")
 
-            if index == 0:
-                # get column of sample_id programmatically
-                sample_id_pos = "".join([
-                    i
-                    for i, header in enumerate(line)
-                    if header == "Sample_ID"
-                ])
+                if index == 0:
+                    # get column of sample_id programmatically
+                    sample_id_pos = [
+                        i
+                        for i, header in enumerate(line)
+                        if header == "Sample_ID"
+                    ][0]
+                else:
+                    sample_ids.append(line[sample_id_pos])
+
+                index += 1
             else:
-                sample_ids.append(line[sample_id_pos])
-
-            index += 1
-
-        if line.startswith("[Data]"):
-            data = True
+                if line.startswith("[Data]"):
+                    data = True
 
     return sample_ids
+
+
+def fill_stage_input_dict(workflow_out_dir, stage_input_dict):
+    for stage_input, stage_input_info in stage_input_dict.items():
+        # workflow_out_dir = "/output/dias_v1.0.0_DEV-200430-1/"  # DEBUG
+        input_app_dir = find_app_dir(
+            workflow_out_dir, stage_input_info["app"]
+        )
+        stage_input_dict[stage_input]["file_list"] = get_stage_input_file_list(
+            input_app_dir, app_subdir=stage_input_info["subdir"],
+            filename_pattern=stage_input_info["pattern"]
+        )
+
+    return stage_input_dict
+
+
+def make_dias_batch_file(
+    stage_input_dict, workflow_type, workflow_specificity
+):
+    batch_uuid = str(uuid.uuid4())
+    batch_filename = ".".join([batch_uuid, "tsv"])
+
+    headers = ["batch ID"]
+    values = []
+
+    if workflow_type == "multi":
+        values.append("multi")
+
+        # Hap.py - static values
+        headers.append(workflow_specificity)
+        values.append("NA12878")
+    elif workflow_type == "reports":
+        values.append("reports")
+
+        for stage, file_id in workflow_specificity.iteritems():
+            # dynamic files to be added in the batch_tsv
+            headers.append(stage)
+            values.append("")
+            values.append(file_id)
+
+    # For each stage add the column header and the values in that column
+    for stage_input in stage_input_dict:
+
+        if len(stage_input_dict[stage_input]["file_list"]) == 0:
+            continue
+
+        headers.append(stage_input)  # col for file name
+        headers.append(" ".join([stage_input, "ID"]))  # col for file ID
+
+        # One file in file list - no need to merge into array
+        if len(stage_input_dict[stage_input]["file_list"]) == 1:
+            file_ids = stage_input_dict[stage_input]["file_list"][0]
+            values.append("")  # No need to provide file name in batch file
+            values.append(file_ids)
+
+        # make a square bracketed comma separated list if multiple input files
+        elif len(stage_input_dict[stage_input]["file_list"]) > 1:
+            # Square bracketed csv list
+            file_id_list = [
+                file_id
+                for file_id in stage_input_dict[stage_input]["file_list"]
+            ]
+            file_ids = "[{file_ids}]".format(file_ids=",".join(file_id_list))
+            values.append("")  # No need to provide file name in batch file
+            values.append(file_ids)
+
+    # Write the file content
+    with open(batch_filename, "w") as b_fh:
+        for line in [headers, values]:
+            tsv_line = "\t".join(line) + "\n"
+            b_fh.write(tsv_line)
+
+    return batch_filename
+
+
+def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
+    workflow_name = get_object_attribute_from_object_id_or_path(
+        workflow_id, "Name"
+    )
+    assert workflow_name, "Workflow name not found. Aborting"
+
+    workflow_dir = "{}{}".format(workflow_out_dir, workflow_name)
+
+    workflow_output_dir_pattern = "{workflow_dir}-{date}-{index}/"
+    date = get_date()
+
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        workflow_output_dir = workflow_output_dir_pattern.format(
+            workflow_dir=workflow_dir, date=date, index=i
+        )
+
+        if dx_make_workflow_dir(workflow_output_dir):
+            print("Using\t\t%s" % workflow_output_dir)
+            return workflow_output_dir
+        else:
+            print("Skipping\t%s" % workflow_output_dir)
+
+        i += 1
+
+    return None
