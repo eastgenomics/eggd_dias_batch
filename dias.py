@@ -43,6 +43,9 @@ def main():
         'input_dir', type=str,
         help='A multi sample workflow output directory path'
     )
+    parser_r.add_argument(
+        'sample_sheet', type=str, help="Path to the sample sheet"
+    )
     parser_r.set_defaults(which='reports')
 
     parser_r = subparsers.add_parser('reanalysis', help='reanalysis help')
@@ -87,10 +90,14 @@ def main():
             args.input_dir, args.config_multiqc, args.dry_run
         )
     elif workflow == "reports":
-        reports_out_dir = run_reports(args.input_dir, args.dry_run)
+        reports_out_dir = run_reports(
+            args.input_dir, args.dry_run, args.sample_sheet
+        )
     elif workflow == "reanalysis":
         reports_out_dir = run_reanalysis(
-            args.input_dir, args.reanalysis_list, args.dry_run)
+            args.input_dir, args.dry_run, args.sample_sheet,
+            args.reanalysis_list
+        )
     elif workflow == "check_reports":
         reports = check_if_all_reports_created(
             args.input_dir, args.sample_sheet
