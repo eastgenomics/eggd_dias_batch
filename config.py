@@ -71,19 +71,27 @@ rpt_stage_input_dict = {
     },
     # athena
     "stage-FyPz580433GVK5yJKy240B8V.mosdepth_files": {
-        "app": "nirvana2vcf", "subdir": "",
+        "app": "mosdepth", "subdir": "",
         # athena requires both per-base files and reference files
-        "pattern": "-E '(per-base.bed.gz$|reference)'"
+        "pattern": "(per-base.bed.gz$|reference)"
     },
 }
 
 dynamic_files_batch_tsv = {
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.genepanels_file": genepanels_file,
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.bioinformatic_manifest": bioinformatic_manifest,
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.nirvana_genes2transcripts": nirvana_genes2transcripts,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.exons_nirvana": exons_nirvana,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.nirvana_genes2transcripts": nirvana_genes2transcripts,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.gene_panels": genepanels_file,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.manifest": bioinformatic_manifest,
-    "stage-FyPz580433GVK5yJKy240B8V.exons_nirvana": exons_nirvana,
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.genepanels_file ID": genepanels_file,
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.genepanels_file": "",
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.bioinformatic_manifest ID": bioinformatic_manifest,
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.bioinformatic_manifest": "",
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
+    "stage-FyPz530433Gyjj0b5Q1QBzzg.nirvana_genes2transcripts": "",
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.exons_nirvana ID": exons_nirvana,
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.exons_nirvana": "",
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.nirvana_genes2transcripts": "",
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.gene_panels ID": genepanels_file,
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.gene_panels": "",
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.manifest ID": bioinformatic_manifest,
+    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.manifest": "",
+    "stage-FyPz580433GVK5yJKy240B8V.exons_nirvana ID": exons_nirvana,
+    "stage-FyPz580433GVK5yJKy240B8V.exons_nirvana": ""
 }
