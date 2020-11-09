@@ -137,7 +137,7 @@ def run_ss_workflow(input_dir, dry_run):
     ss_batch_file = make_ss_dias_batch_file(input_dir)
     app_relative_paths = format_relative_paths(ss_workflow_stage_info)
     command = (
-        'dx run --yes --ignore-reuse {} --batch-tsv {} --destination={} {}'
+        'dx run --yes --rerun-stage "*" {} --batch-tsv {} --destination={} {}'
     ).format(
             ss_workflow_id,
             ss_batch_file,
