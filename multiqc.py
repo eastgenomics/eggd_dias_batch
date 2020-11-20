@@ -15,7 +15,7 @@ from general_functions import (
 # MultiQC
 
 
-def run_multiqc_app(ms_workflow_out_dir):
+def run_multiqc_app(ms_workflow_out_dir, dry_run):
     assert ms_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
 
@@ -44,6 +44,9 @@ def run_multiqc_app(ms_workflow_out_dir):
         ms_for_multiqc, mqc_applet_out_dir
     )
 
-    subprocess.check_call(command, shell=True)
+    if dry_run is True:
+        print("Final cmd ran: {}".format(command))
+    else:
+        subprocess.call(command, shell=True)
 
     return mqc_applet_out_dir
