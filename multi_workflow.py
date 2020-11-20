@@ -31,11 +31,14 @@ def run_ms_workflow(ss_workflow_out_dir, dry_run):
         ms_workflow_stage_info, ms_workflow_out_dir
     )
 
+    # create sub dict to match the changes to get_stage_inputs
     ms_input_dict = {"multi": multi_stage_input_dict}
 
+    # gather files for given app/pattern
     ms_stage_input_dict = get_stage_inputs(
         ss_workflow_out_dir, ms_input_dict
     )
+    # get the header and values to write in the batch tsv
     ms_headers, ms_values = prepare_batch_writing(ms_stage_input_dict, "multi")
     ms_batch_file = create_batch_file(ms_headers, ms_values)
 
