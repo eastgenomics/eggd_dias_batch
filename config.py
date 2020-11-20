@@ -49,37 +49,37 @@ mqc_config_file = "{}:file-FxjpvF8433GvjKFVK6k77G4q".format(ref_project_id)
 
 exons_nirvana = "{}:file-Fq18Yp0433GjB7172630p9Yv".format(ref_project_id)
 
-rpt_workflow_id = "{}:workflow-FybF3k8433Gqj03b7yKxf42k".format(ref_project_id)
+rpt_workflow_id = "{}:workflow-Fyq5yf8433GzxPK360B8Qff0".format(ref_project_id)
 
 rpt_stage_input_dict = {
     # vcf2xls
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.annotated_vcf": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.annotated_vcf": {
         "app": "nirvana2vcf", "subdir": "",
         "pattern": "-E '{}(.*).annotated.vcf$'"
     },
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.raw_vcf": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.raw_vcf": {
         # pattern excludes "g" because g.vcf are in the same folder
         "app": "sentieon-dnaseq", "subdir": "",
         "pattern": "-E '{}(.*)[^g].vcf.gz$'"
     },
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.sample_coverage_file": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.sample_coverage_file": {
         "app": "region_coverage", "subdir": "",
         "pattern": "-E '{}(.*)5bp.gz$'",
     },
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.sample_coverage_index": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.sample_coverage_index": {
         "app": "region_coverage", "subdir": "",
         "pattern": "-E '{}(.*)5bp.gz.tbi$'",
     },
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.flagstat_file": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.flagstat_file": {
         "app": "flagstat", "subdir": "", "pattern": "-E '{}(.*)flagstat$'"
     },
     # generate_bed
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.sample_file": {
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.sample_file": {
         "app": "mosdepth", "subdir": "",
         "pattern": "-E '{}(.*).per-base.bed.gz.csi$'"
     },
     # athena
-    "stage-FyPz580433GVK5yJKy240B8V.mosdepth_files": {
+    "stage-Fyq5z18433GfYZbp3vX1KqjB.mosdepth_files": {
         "app": "mosdepth", "subdir": "",
         # athena requires both per-base files and reference files
         "pattern": "-E '{}(.*)(per-base.bed.gz$|reference)'"
@@ -87,50 +87,50 @@ rpt_stage_input_dict = {
 }
 
 rpt_dynamic_files = {
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.genepanels_file ID": genepanels_file,
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.genepanels_file": "",
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.bioinformatic_manifest ID": bioinformatic_manifest,
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.bioinformatic_manifest": "",
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.nirvana_genes2transcripts": "",
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.exons_nirvana ID": exons_nirvana,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.exons_nirvana": "",
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.nirvana_genes2transcripts": "",
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.gene_panels ID": genepanels_file,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.gene_panels": "",
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.manifest ID": bioinformatic_manifest,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.manifest": "",
-    "stage-FyPz580433GVK5yJKy240B8V.exons_nirvana ID": exons_nirvana,
-    "stage-FyPz580433GVK5yJKy240B8V.exons_nirvana": ""
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.genepanels_file ID": genepanels_file,
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.genepanels_file": "",
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.bioinformatic_manifest ID": bioinformatic_manifest,
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.bioinformatic_manifest": "",
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.nirvana_genes2transcripts": "",
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.exons_nirvana ID": exons_nirvana,
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.exons_nirvana": "",
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.nirvana_genes2transcripts": "",
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.gene_panels ID": genepanels_file,
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.gene_panels": "",
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.manifest ID": bioinformatic_manifest,
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.manifest": "",
+    "stage-Fyq5z18433GfYZbp3vX1KqjB.exons_nirvana ID": exons_nirvana,
+    "stage-Fyq5z18433GfYZbp3vX1KqjB.exons_nirvana": ""
 }
 
 # reanalysis
 
 rea_stage_input_dict = {
     # vcf2xls
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.annotated_vcf": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.annotated_vcf": {
         "app": "nirvana2vcf", "subdir": "",
         "pattern": "-E '{}(.*).annotated.vcf$'"
     },
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.raw_vcf": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.raw_vcf": {
         # pattern excludes "g" because g.vcf are in the same folder
         "app": "sentieon-dnaseq", "subdir": "",
         "pattern": "-E '{}(.*)[^g].vcf.gz$'"
     },
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.sample_coverage_file": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.sample_coverage_file": {
         "app": "region_coverage", "subdir": "",
         "pattern": "-E '{}(.*)5bp.gz$'",
     },
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.sample_coverage_index": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.sample_coverage_index": {
         "app": "region_coverage", "subdir": "",
         "pattern": "-E '{}(.*)5bp.gz.tbi$'",
     },
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.flagstat_file": {
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.flagstat_file": {
         "app": "flagstat", "subdir": "", "pattern": "-E '{}(.*)flagstat$'"
     },
     # athena
-    "stage-FyPz580433GVK5yJKy240B8V.mosdepth_files": {
+    "stage-Fyq5z18433GfYZbp3vX1KqjB.mosdepth_files": {
         "app": "mosdepth", "subdir": "",
         # athena requires both per-base files and reference files
         "pattern": "-E '{}(.*)(per-base.bed.gz$|reference)'"
@@ -138,18 +138,18 @@ rea_stage_input_dict = {
 }
 
 rea_dynamic_files = {
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.genepanels_file ID": genepanels_file,
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.genepanels_file": "",
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.bioinformatic_manifest ID": bioinformatic_manifest,
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.bioinformatic_manifest": "",
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
-    "stage-FyPz530433Gyjj0b5Q1QBzzg.nirvana_genes2transcripts": "",
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.exons_nirvana ID": exons_nirvana,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.exons_nirvana": "",
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.nirvana_genes2transcripts": "",
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.gene_panels ID": genepanels_file,
-    "stage-FyPz55Q433Gyjj0b5Q1QBzzj.gene_panels": "",
-    "stage-FyPz580433GVK5yJKy240B8V.exons_nirvana ID": exons_nirvana,
-    "stage-FyPz580433GVK5yJKy240B8V.exons_nirvana": ""
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.genepanels_file ID": genepanels_file,
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.genepanels_file": "",
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.bioinformatic_manifest ID": bioinformatic_manifest,
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.bioinformatic_manifest": "",
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
+    "stage-Fyq5ypj433GzxPK360B8Qfg5.nirvana_genes2transcripts": "",
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.exons_nirvana ID": exons_nirvana,
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.exons_nirvana": "",
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.nirvana_genes2transcripts ID": nirvana_genes2transcripts,
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.nirvana_genes2transcripts": "",
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.gene_panels ID": genepanels_file,
+    "stage-Fyq5yy0433GXxz691bKyvjPJ.gene_panels": "",
+    "stage-Fyq5z18433GfYZbp3vX1KqjB.exons_nirvana ID": exons_nirvana,
+    "stage-Fyq5z18433GfYZbp3vX1KqjB.exons_nirvana": ""
 }
