@@ -86,9 +86,7 @@ def main():
     elif workflow == "multi":
         ms_workflow_out_dir = run_ms_workflow(args.input_dir, args.dry_run)
     elif workflow == "qc":
-        mqc_applet_out_dir = run_multiqc_app(
-            args.input_dir, args.config_multiqc, args.dry_run
-        )
+        mqc_applet_out_dir = run_multiqc_app(args.input_dir, args.dry_run)
     elif workflow == "reports":
         reports_out_dir = run_reports(
             args.input_dir, args.dry_run, args.sample_sheet
