@@ -1,7 +1,13 @@
 #!/usr/bin/python
 
+from collections import defaultdict
+
 import datetime
 import subprocess
+import uuid
+
+
+from config import happy_stage_prefix
 
 
 # Generic functions
@@ -170,3 +176,200 @@ def get_dx_cwd_project_id():
     )
     project_id = subprocess.check_output(command, shell=True).strip()
     return project_id
+
+
+def parse_sample_sheet(sample_sheet_path):
+    sample_ids = []
+    cmd = "dx cat {}".format(sample_sheet_path).split()
+    sample_sheet_content = subprocess.check_output(cmd).split("\n")
+
+    data = False
+    index = 0
+
+    for line in sample_sheet_content:
+        if line:
+            if data is True:
+                line = line.split(",")
+
+                if index == 0:
+                    # get column of sample_id programmatically
+                    sample_id_pos = [
+                        i
+                        for i, header in enumerate(line)
+                        if header == "Sample_ID"
+                    ][0]
+                else:
+                    if line[sample_id_pos] != "NA12878":
+                        sample_ids.append(line[sample_id_pos])
+
+                index += 1
+            else:
+                if line.startswith("[Data]"):
+                    data = True
+
+    return sample_ids
+
+
+def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
+    workflow_name = get_object_attribute_from_object_id_or_path(
+        workflow_id, "Name"
+    )
+    assert workflow_name, "Workflow name not found. Aborting"
+
+    workflow_dir = "{}{}".format(workflow_out_dir, workflow_name)
+
+    workflow_output_dir_pattern = "{workflow_dir}-{date}-{index}/"
+    date = get_date()
+
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        workflow_output_dir = workflow_output_dir_pattern.format(
+            workflow_dir=workflow_dir, date=date, index=i
+        )
+
+        if dx_make_workflow_dir(workflow_output_dir):
+            print("Using\t\t%s" % workflow_output_dir)
+            return workflow_output_dir
+        else:
+            print("Skipping\t%s" % workflow_output_dir)
+
+        i += 1
+
+    return None
+
+
+def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
+    dict_res = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    for type_input in stage_input_dict:
+        for stage_input, stage_input_info in stage_input_dict[type_input].items():
+            input_app_dir = find_app_dir(
+                ss_workflow_out_dir, stage_input_info["app"]
+            )
+            inputs = get_stage_input_file_list(
+                input_app_dir,
+                app_subdir=stage_input_info["subdir"],
+                filename_pattern=stage_input_info["pattern"].format(type_input)
+            )
+            dict_res[type_input][stage_input]["file_list"] = inputs
+
+    return dict_res
+
+
+def prepare_batch_writing(
+    stage_input_dict, type_workflow, workflow_specificity={}
+):
+    batch_headers = []
+    batch_values = []
+
+    for type_input in stage_input_dict:
+        stage_data = stage_input_dict[type_input]
+        headers = ["batch ID"]
+        values = []
+
+        if type_workflow == "multi":
+            values.append("multi")
+            # Hap.py - static values
+            headers.append(happy_stage_prefix)
+            values.append("NA12878")
+        elif type_workflow == "reports":
+            values.append(type_input)
+
+            coverage_reports = find_previous_coverage_reports(type_input)
+            index = get_next_index(coverage_reports)
+            headers.append("stage-Fyq5z18433GfYZbp3vX1KqjB.name")
+            values.append("{}_{}".format(type_input, index))
+
+            for stage, file_id in workflow_specificity.items():
+                headers.append(stage)  # col for file name
+                values.append(file_id)
+
+        # For each stage add the column header and the values in that column
+        for stage_input in stage_data:
+            if len(stage_data[stage_input]["file_list"]) == 0:
+                continue
+
+            headers.append(stage_input)  # col for file name
+            headers.append(" ".join([stage_input, "ID"]))  # col for file ID
+
+            # One file in file list - no need to merge into array
+            if len(stage_data[stage_input]["file_list"]) == 1:
+                file_ids = stage_data[stage_input]["file_list"][0]
+                values.append("")  # No need to provide file name in batch file
+                values.append(file_ids)
+
+            # make a square bracketed comma separated list if multiple input files
+            elif len(stage_data[stage_input]["file_list"]) > 1:
+                # Square bracketed csv list
+                file_id_list = [
+                    file_id
+                    for file_id in stage_data[stage_input]["file_list"]
+                ]
+                file_ids = "[{file_ids}]".format(file_ids=",".join(file_id_list))
+                values.append("")  # No need to provide file name in batch file
+                values.append(file_ids)
+
+        batch_headers.append(tuple(headers))
+        batch_values.append(values)
+
+    return (batch_headers, batch_values)
+
+
+def create_batch_file(headers, values):
+    batch_uuid = str(uuid.uuid4())
+    batch_filename = ".".join([batch_uuid, "tsv"])
+
+    assert len(set(headers)) == 1, (
+        "Probably missed a file in the input gathering"
+    )
+
+    uniq_headers = headers[0]
+
+    # Write the file content
+    with open(batch_filename, "w") as b_fh:
+        tsv_line = "\t".join(uniq_headers) + "\n"
+        b_fh.write(tsv_line)
+
+        for line in values:
+            tsv_line = "\t".join(line) + "\n"
+            b_fh.write(tsv_line)
+
+    return batch_filename
+
+
+def assess_batch_file(batch_file):
+    with open(batch_file) as f:
+        for index, line in enumerate(f):
+            if index == 0:
+                headers = line.strip().split("\t")
+            else:
+                values = line.strip().split("\t")
+
+                if len(headers) != len(values):
+                    return index+1
+
+    return True
+
+
+def find_previous_coverage_reports(sample):
+    cmd = "dx find data --path / --name {}*coverage_report.html --brief".format(sample)
+    output = subprocess.check_output(cmd, shell=True).strip()
+
+    if output == "":
+        return None
+    else:
+        return output.split("\n")
+
+
+def get_next_index(file_ids):
+    index_to_return = 1
+
+    if file_ids:
+        for file_id in file_ids:
+            name = get_object_attribute_from_object_id_or_path(file_id, "Name")
+            index = name.split("_")[1]
+
+            if index.isdigit() and index > index_to_return:
+                index_to_return = int(index)+1
+
+    return index_to_return
