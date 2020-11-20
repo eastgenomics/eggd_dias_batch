@@ -3,7 +3,6 @@
 from collections import OrderedDict
 import json
 import subprocess
-import uuid
 
 from config import (
     multi_stage_input_dict, ms_workflow_id

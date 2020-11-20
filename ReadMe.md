@@ -20,5 +20,5 @@ Run the Dias pipeline stored in DNAnexus
   - Generates the batch tsv and runs the dx cmd to start the multi workflow
 - multiqc.py
   - Runs the multiqc
-- vcf2xls.py
-  - Generate batch files for vcf2xls, reports and reanalysis
+- reports.py
+  - Generate batch files for vcf2xls, athena. Does reports and reanalysis
