@@ -278,7 +278,7 @@ def prepare_batch_writing(
 
             coverage_reports = find_previous_coverage_reports(type_input)
             index = get_next_index(coverage_reports)
-            headers.append("stage-FyPz580433GVK5yJKy240B8V.name")
+            headers.append("stage-Fyq5z18433GfYZbp3vX1KqjB.name")
             values.append("{}_{}".format(type_input, index))
 
             for stage, file_id in workflow_specificity.items():
@@ -353,8 +353,9 @@ def assess_batch_file(batch_file):
 
 
 def find_previous_coverage_reports(sample):
-    cmd = "dx find data --name {}*coverage_report.html --brief".format(sample)
+    cmd = "dx find data --path / --name {}*coverage_report.html --brief".format(sample)
     output = subprocess.check_output(cmd, shell=True).strip()
+
     if output == "":
         return None
     else:
@@ -364,7 +365,7 @@ def find_previous_coverage_reports(sample):
 def get_next_index(file_ids):
     index_to_return = 1
 
-    if file_ids:    
+    if file_ids:
         for file_id in file_ids:
             name = get_object_attribute_from_object_id_or_path(file_id, "Name")
             index = name.split("_")[1]
