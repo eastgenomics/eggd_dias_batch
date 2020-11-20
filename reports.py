@@ -9,7 +9,6 @@ from config import (
     rea_stage_input_dict, rea_dynamic_files
 )
 from general_functions import (
-    get_object_attribute_from_object_id_or_path,
     format_relative_paths,
     get_workflow_stage_info,
     make_app_out_dirs,
@@ -84,9 +83,9 @@ def run_reports(
         for header in rea_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "stage-FyPz530433Gyjj0b5Q1QBzzg.list_panel_names_genes"
+                "stage-Fyq5ypj433GzxPK360B8Qfg5.list_panel_names_genes"
             )
-            new_headers.append("stage-FyPz55Q433Gyjj0b5Q1QBzzj.panel")
+            new_headers.append("stage-Fyq5yy0433GXxz691bKyvjPJ.panel")
             headers.append(tuple(new_headers))
 
         for line in rea_values:
