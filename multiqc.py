@@ -15,7 +15,7 @@ from general_functions import (
 # MultiQC
 
 
-def run_multiqc_app(ms_workflow_out_dir):
+def run_multiqc_app(ms_workflow_out_dir, dry_run):
     assert ms_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
 
@@ -35,7 +35,7 @@ def run_multiqc_app(ms_workflow_out_dir):
     dx_make_workflow_dir(mqc_applet_out_dir)
 
     command = (
-        "dx run {} --yes -ieggd_multiqc_config_file='{}' "
+        "dx run {} --yes --ignore-reuse -ieggd_multiqc_config_file='{}' "
         "-iproject_for_multiqc='{}' -iss_for_multiqc='{}' "
         "-ims_for_multiqc='{}' --destination='{}'"
     ).format(
@@ -44,6 +44,9 @@ def run_multiqc_app(ms_workflow_out_dir):
         ms_for_multiqc, mqc_applet_out_dir
     )
 
-    subprocess.check_call(command, shell=True)
+    if dry_run is True:
+        print("Final cmd ran: {}".format(command))
+    else:
+        subprocess.call(command, shell=True)
 
     return mqc_applet_out_dir
