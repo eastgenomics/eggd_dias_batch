@@ -36,8 +36,11 @@ def run_reanalysis(input_dir, dry_run, reanalysis_list):
                 "sample/panel combination per line"
             )
             sample, panel = fields
-            # get a dict of sample2panels
-            reanalysis_dict.setdefault(sample, set()).add(panel)
+            panels = panel.split(",")
+
+            for panel in panels:
+                # get a dict of sample2panels
+                reanalysis_dict.setdefault(sample, set()).add(panel)
 
     run_reports(input_dir, dry_run, reanalysis_dict=reanalysis_dict)
 
@@ -59,20 +62,16 @@ def run_reports(
     sample2stage_input_dict = {}
 
     if reanalysis_dict:
+        stage_input_dict = rea_stage_input_dict
         sample_id_list = reanalysis_dict
-
-        # put the sample id in a dictionary so that the stage inputs can be
-        # assigned to a sample id
-        for sample in sample_id_list:
-            sample2stage_input_dict[sample] = rea_stage_input_dict
-
     else:
+        stage_input_dict = rpt_stage_input_dict
         sample_id_list = parse_sample_sheet(sample_sheet_path)
 
-        # put the sample id in a dictionary so that the stage inputs can be
-        # assigned to a sample id
-        for sample in sample_id_list:
-            sample2stage_input_dict[sample] = rpt_stage_input_dict
+    # put the sample id in a dictionary so that the stage inputs can be
+    # assigned to a sample id
+    for sample in sample_id_list:
+        sample2stage_input_dict[sample] = stage_input_dict
 
     # get the inputs for the given app-pattern
     staging_dict = get_stage_inputs(
