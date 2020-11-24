@@ -6,13 +6,13 @@ import subprocess
 
 from config import (
     rpt_stage_input_dict, rpt_dynamic_files, rpt_workflow_id,
-    rea_stage_input_dict, rea_dynamic_files
+    rea_stage_input_dict, rea_dynamic_files,
+    vcf2xls_stage_id, generate_bed_stage_id
 )
 from general_functions import (
     format_relative_paths,
     get_workflow_stage_info,
     make_app_out_dirs,
-    parse_sample_sheet,
     make_workflow_out_dir,
     get_stage_inputs,
     prepare_batch_writing,
@@ -21,6 +21,11 @@ from general_functions import (
 )
 
 # reanalysis
+
+
+def gather_sample_ids_from_bams(ss_workflow_out_dir):
+    cmd = "dx ls {}/sentieon-dnaseq/*bam".format(ss_workflow_out_dir)
+    return subprocess.check_output(cmd, shell=True).split("\n")
 
 
 def run_reanalysis(input_dir, dry_run, reanalysis_list):
@@ -45,9 +50,7 @@ def run_reanalysis(input_dir, dry_run, reanalysis_list):
     run_reports(input_dir, dry_run, reanalysis_dict=reanalysis_dict)
 
 
-def run_reports(
-    ss_workflow_out_dir, dry_run, sample_sheet_path=None, reanalysis_dict=None
-):
+def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
     rpt_workflow_out_dir = make_workflow_out_dir(
@@ -66,7 +69,7 @@ def run_reports(
         sample_id_list = reanalysis_dict
     else:
         stage_input_dict = rpt_stage_input_dict
-        sample_id_list = parse_sample_sheet(sample_sheet_path)
+        sample_id_list = gather_sample_ids_from_bams(ss_workflow_out_dir)
 
     # put the sample id in a dictionary so that the stage inputs can be
     # assigned to a sample id
@@ -93,9 +96,9 @@ def run_reports(
         for header in rea_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "stage-Fyq5ypj433GzxPK360B8Qfg5.list_panel_names_genes"
+                "{}.list_panel_names_genes".format(vcf2xls_stage_id)
             )
-            new_headers.append("stage-Fyq5yy0433GXxz691bKyvjPJ.panel")
+            new_headers.append("{}.panel".format(generate_bed_stage_id))
             headers.append(tuple(new_headers))
 
         # manually add the values for reanalysis vcf2xls/generate_bed
