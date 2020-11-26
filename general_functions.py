@@ -184,7 +184,7 @@ def get_dx_cwd_project_id():
     return project_id
 
 
-def parse_sample_sheet(sample_sheet_path):
+def get_sample_ids_from_sample_sheet(sample_sheet_path):
     """ Return list of samples from the sample sheet
 
     Args:
