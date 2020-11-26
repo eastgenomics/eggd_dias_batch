@@ -17,8 +17,7 @@ from general_functions import (
     make_workflow_out_dir,
     format_relative_paths,
     get_workflow_stage_info,
-    make_app_out_dirs,
-    make_workflow_out_dir
+    make_app_out_dirs
 )
 
 # Single sample apps batch
