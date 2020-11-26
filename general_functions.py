@@ -184,7 +184,7 @@ def get_dx_cwd_project_id():
     return project_id
 
 
-def parse_sample_sheet(sample_sheet_path):
+def get_sample_ids_from_sample_sheet(sample_sheet_path):
     """ Return list of samples from the sample sheet
 
     Args:
@@ -468,13 +468,27 @@ def get_next_index(file_ids):
 
     index_to_return = 1
 
-    # if reports where found increment the index to return
+    indexes = []
+
+    # other reports found
     if file_ids:
         for file_id in file_ids:
             name = get_object_attribute_from_object_id_or_path(file_id, "Name")
             index = name.split("_")[1]
 
-            if index.isdigit() and index > index_to_return:
-                index_to_return = int(index) + 1
+            # check that the element is indeed a number
+            if index.isdigit():
+                # add it to the list of indices
+                indexes.append(index)
 
-    return index_to_return
+        assert indexes != [], (
+            "Couldn't find file names for"
+            "{}".format(file_ids)
+        )
+
+        # found some reports return the highest number + 1
+        return int(max(indexes)) + 1
+
+    # no reports found, just return 1
+    else:
+        return index_to_return
