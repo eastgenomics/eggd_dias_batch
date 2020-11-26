@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
 from collections import defaultdict
-
 import datetime
 import subprocess
 import uuid
 
-
-from config import happy_stage_prefix
+from config import (
+    happy_stage_prefix, athena_stage_id
+)
 
 
 # Generic functions
@@ -170,6 +170,12 @@ def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."):
 
 
 def get_dx_cwd_project_id():
+    """ Return project id using dx env
+
+    Returns:
+        str: DNAnexus project id
+    """
+
     command = (
         'dx env | grep -P "Current workspace\t" | '
         'awk -F "\t" \'{print $NF}\' | sed s/\'"\'//g'
@@ -179,9 +185,18 @@ def get_dx_cwd_project_id():
 
 
 def parse_sample_sheet(sample_sheet_path):
+    """ Return list of samples from the sample sheet
+
+    Args:
+        sample_sheet_path (str): Path to the sample sheet
+
+    Returns:
+        list: List of samples
+    """
+
     sample_ids = []
-    cmd = "dx cat {}".format(sample_sheet_path).split()
-    sample_sheet_content = subprocess.check_output(cmd).split("\n")
+    cmd = "dx cat {}".format(sample_sheet_path)
+    sample_sheet_content = subprocess.check_output(cmd, shell=True).split("\n")
 
     data = False
     index = 0
@@ -199,11 +214,13 @@ def parse_sample_sheet(sample_sheet_path):
                         if header == "Sample_ID"
                     ][0]
                 else:
+                    # get the sample ids using the header position
                     if line[sample_id_pos] != "NA12878":
                         sample_ids.append(line[sample_id_pos])
 
                 index += 1
             else:
+                # Use [Data] as a way to identify when we reached data
                 if line.startswith("[Data]"):
                     data = True
 
@@ -211,6 +228,16 @@ def parse_sample_sheet(sample_sheet_path):
 
 
 def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
+    """ Return the workflow output dir so that it is not duplicated when run
+
+    Args:
+        workflow_id (str): Workflow id
+        workflow_out_dir (str, optional): Where the workflow folder will be created. Defaults to "/output/".
+
+    Returns:
+        str: Workflow out dir
+    """
+
     workflow_name = get_object_attribute_from_object_id_or_path(
         workflow_id, "Name"
     )
@@ -221,6 +248,8 @@ def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
     workflow_output_dir_pattern = "{workflow_dir}-{date}-{index}/"
     date = get_date()
 
+    # when creating the new folder, check if the folder already exists
+    # increment index until it works or reaches 100
     i = 1
     while i < 100:  # < 100 runs = sanity check
         workflow_output_dir = workflow_output_dir_pattern.format(
@@ -239,9 +268,23 @@ def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
 
 
 def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
+    """ Return dict with sample2stage2files
+
+    Args:
+        ss_workflow_out_dir (str): Directory of single workflow
+        stage_input_dict (dict): Dict of stage2app
+
+    Returns:
+        dict: Dict of sample2stage2file_list
+    """
+
+    # Allows me to not have to check if a key exists before creating an entry in the dict
+    # Example: dict[entry][sub-entry][list-entry].append(ele)
     dict_res = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
+    # type_input can be either "multi" or a sample id
     for type_input in stage_input_dict:
+        # find the inputs for each stage using given app/pattern
         for stage_input, stage_input_info in stage_input_dict[type_input].items():
             input_app_dir = find_app_dir(
                 ss_workflow_out_dir, stage_input_info["app"]
@@ -259,6 +302,16 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
 def prepare_batch_writing(
     stage_input_dict, type_workflow, workflow_specificity={}
 ):
+    """ Return headers and values for the batch file writing
+
+    Args:
+        stage_input_dict (dict): Dict of sample2stage2file_list
+        type_workflow (str): String equal to either multi or reports
+        workflow_specificity (dict, optional): For the reports, add the dynamic files to headers + values. Defaults to {}.
+
+    Returns:
+        tuple: Tuple of headers and values
+    """
     batch_headers = []
     batch_values = []
 
@@ -267,19 +320,26 @@ def prepare_batch_writing(
         headers = ["batch ID"]
         values = []
 
+        # multi needs the happy static value
         if type_workflow == "multi":
             values.append("multi")
             # Hap.py - static values
             headers.append(happy_stage_prefix)
             values.append("NA12878")
+
         elif type_workflow == "reports":
             values.append(type_input)
 
+            # get the index for the coverage report that needs to be created
             coverage_reports = find_previous_coverage_reports(type_input)
             index = get_next_index(coverage_reports)
-            headers.append("stage-Fyq5z18433GfYZbp3vX1KqjB.name")
+
+            # add the name param to athena
+            headers.append("{}.name".format(athena_stage_id))
+            # add the value of name to athena
             values.append("{}_{}".format(type_input, index))
 
+            # add the dynamic files to the headers and values
             for stage, file_id in workflow_specificity.items():
                 headers.append(stage)  # col for file name
                 values.append(file_id)
@@ -309,18 +369,32 @@ def prepare_batch_writing(
                 values.append("")  # No need to provide file name in batch file
                 values.append(file_ids)
 
+        # add all headers for every sample (for sense check later)
         batch_headers.append(tuple(headers))
+        # add values for every sample
         batch_values.append(values)
 
     return (batch_headers, batch_values)
 
 
 def create_batch_file(headers, values):
+    """ Create batch file + return filename
+
+    Args:
+        headers (tuple): Tuple of headers
+        values (list): List of the values that need to be written for every line
+
+    Returns:
+        str: Batch filename
+    """
+
     batch_uuid = str(uuid.uuid4())
     batch_filename = ".".join([batch_uuid, "tsv"])
 
+    # check if all headers gathered are identical
     assert len(set(headers)) == 1, (
-        "Probably missed a file in the input gathering"
+        "All the headers retrieved are not identical\n"
+        "{}".format(set(headers))
     )
 
     uniq_headers = headers[0]
@@ -338,7 +412,18 @@ def create_batch_file(headers, values):
 
 
 def assess_batch_file(batch_file):
+    """ Check if the batch file has the same number of headers and values
+
+    Args:
+        batch_file (str): Batch file path
+
+    Returns:
+        int: Line number where the number of values is not the same as the number of headers
+    """
+
     with open(batch_file) as f:
+        # for every line check if the number of values is equal
+        # to the number of headers
         for index, line in enumerate(f):
             if index == 0:
                 headers = line.strip().split("\t")
@@ -346,12 +431,22 @@ def assess_batch_file(batch_file):
                 values = line.strip().split("\t")
 
                 if len(headers) != len(values):
-                    return index+1
+                    return index + 1
 
     return True
 
 
 def find_previous_coverage_reports(sample):
+    """ Return the coverage reports for given sample if they exist
+
+    Args:
+        sample (str): Sample id
+
+    Returns:
+        list: List of coverage reports
+    """
+
+    # go find coverage reports that have the same sample id
     cmd = "dx find data --path / --name {}*coverage_report.html --brief".format(sample)
     output = subprocess.check_output(cmd, shell=True).strip()
 
@@ -362,14 +457,38 @@ def find_previous_coverage_reports(sample):
 
 
 def get_next_index(file_ids):
+    """ Return the index to assign to the new coverage report
+
+    Args:
+        file_ids (list): List of coverage reports
+
+    Returns:
+        int: Index to assign to the new coverage report
+    """
+
     index_to_return = 1
 
+    indexes = []
+
+    # other reports found
     if file_ids:
         for file_id in file_ids:
             name = get_object_attribute_from_object_id_or_path(file_id, "Name")
             index = name.split("_")[1]
 
-            if index.isdigit() and index > index_to_return:
-                index_to_return = int(index)+1
+            # check that the element is indeed a number
+            if index.isdigit():
+                # add it to the list of indices
+                indexes.append(index)
 
-    return index_to_return
+        assert indexes != [], (
+            "Couldn't find file names for"
+            "{}".format(file_ids)
+        )
+
+        # found some reports return the highest number + 1
+        return int(max(indexes)) + 1
+
+    # no reports found, just return 1
+    else:
+        return index_to_return
