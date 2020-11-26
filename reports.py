@@ -25,7 +25,9 @@ from general_functions import (
 
 def gather_sample_ids_from_bams(ss_workflow_out_dir):
     cmd = "dx ls {}/sentieon-dnaseq/*bam".format(ss_workflow_out_dir)
-    return subprocess.check_output(cmd, shell=True).split("\n")
+    bams = subprocess.check_output(cmd, shell=True).strip().split("\n")
+    sample_list = [bam.split("_")[0] for bam in bams]
+    return sample_list
 
 
 def run_reanalysis(input_dir, dry_run, reanalysis_list):
