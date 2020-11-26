@@ -6,13 +6,13 @@ import subprocess
 
 from config import (
     rpt_stage_input_dict, rpt_dynamic_files, rpt_workflow_id,
-    rea_stage_input_dict, rea_dynamic_files
+    rea_stage_input_dict, rea_dynamic_files,
+    vcf2xls_stage_id, generate_bed_stage_id
 )
 from general_functions import (
     format_relative_paths,
     get_workflow_stage_info,
     make_app_out_dirs,
-    parse_sample_sheet,
     make_workflow_out_dir,
     get_stage_inputs,
     prepare_batch_writing,
@@ -23,9 +23,17 @@ from general_functions import (
 # reanalysis
 
 
+def gather_sample_ids_from_bams(ss_workflow_out_dir):
+    cmd = "dx ls {}/sentieon-dnaseq/*bam".format(ss_workflow_out_dir)
+    bams = subprocess.check_output(cmd, shell=True).strip().split("\n")
+    sample_list = [bam.split("_")[0] for bam in bams]
+    return sample_list
+
+
 def run_reanalysis(input_dir, dry_run, reanalysis_list):
     reanalysis_dict = {}
 
+    # parse reanalysis file
     with open(reanalysis_list) as r_fh:
         for line in r_fh:
             fields = line.strip().split("\t")
@@ -35,14 +43,16 @@ def run_reanalysis(input_dir, dry_run, reanalysis_list):
                 "sample/panel combination per line"
             )
             sample, panel = fields
-            reanalysis_dict.setdefault(sample, set()).add(panel)
+            panels = panel.split(",")
+
+            for panel in panels:
+                # get a dict of sample2panels
+                reanalysis_dict.setdefault(sample, set()).add(panel)
 
     run_reports(input_dir, dry_run, reanalysis_dict=reanalysis_dict)
 
 
-def run_reports(
-    ss_workflow_out_dir, dry_run, sample_sheet_path=None, reanalysis_dict=None
-):
+def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
     rpt_workflow_out_dir = make_workflow_out_dir(
@@ -57,37 +67,43 @@ def run_reports(
     sample2stage_input_dict = {}
 
     if reanalysis_dict:
+        stage_input_dict = rea_stage_input_dict
         sample_id_list = reanalysis_dict
-
-        for sample in sample_id_list:
-            sample2stage_input_dict[sample] = rea_stage_input_dict
-
     else:
-        sample_id_list = parse_sample_sheet(sample_sheet_path)
+        stage_input_dict = rpt_stage_input_dict
+        sample_id_list = gather_sample_ids_from_bams(ss_workflow_out_dir)
 
-        for sample in sample_id_list:
-            sample2stage_input_dict[sample] = rpt_stage_input_dict
+    # put the sample id in a dictionary so that the stage inputs can be
+    # assigned to a sample id
+    for sample in sample_id_list:
+        sample2stage_input_dict[sample] = stage_input_dict
 
+    # get the inputs for the given app-pattern
     staging_dict = get_stage_inputs(
         ss_workflow_out_dir, sample2stage_input_dict
     )
 
     if reanalysis_dict:
+        # reanalysis requires list of panels for vcf2xls
+        # reanalysis requires panel name for generate_bed
         headers = []
         values = []
 
+        # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
             staging_dict, "reports", rea_dynamic_files
         )
 
+        # manually add the headers for reanalysis vcf2xls/generate_bed
         for header in rea_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "stage-Fyq5ypj433GzxPK360B8Qfg5.list_panel_names_genes"
+                "{}.list_panel_names_genes".format(vcf2xls_stage_id)
             )
-            new_headers.append("stage-Fyq5yy0433GXxz691bKyvjPJ.panel")
+            new_headers.append("{}.panel".format(generate_bed_stage_id))
             headers.append(tuple(new_headers))
 
+        # manually add the values for reanalysis vcf2xls/generate_bed
         for line in rea_values:
             panels = [
                 list(panel) for sample, panel in reanalysis_dict.items()
@@ -98,6 +114,7 @@ def run_reports(
 
             values.append(line)
     else:
+        # get the headers and values from the staging inputs
         headers, values = prepare_batch_writing(
             staging_dict, "reports", rpt_dynamic_files
         )
@@ -107,6 +124,7 @@ def run_reports(
     command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
         rpt_workflow_id, rpt_batch_file
     )
+    # assign stage out folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
     destination = " --destination={} ".format(rpt_workflow_out_dir)
 
