@@ -1,13 +1,13 @@
 import subprocess
 
 from general_functions import (
-    get_dx_cwd_project_id, describe_object, parse_sample_sheet
+    get_dx_cwd_project_id, describe_object, get_sample_ids_from_sample_sheet
 )
 
 
 def check_if_all_reports_created(vcf2xls_dir, sample_sheet):
     report_list = []
-    sample_id_list = parse_sample_sheet(sample_sheet)
+    sample_id_list = get_sample_ids_from_sample_sheet(sample_sheet)
     field, project_name = describe_object(get_dx_cwd_project_id())[3].split()
     assert field == "Name", (
         "DNAnexus describe() may have changed positions of fields. "
