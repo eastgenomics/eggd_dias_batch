@@ -33,11 +33,8 @@ def check_if_all_reports_created(vcf2xls_dir, sample_sheet):
     # get reports generated in first iteration
     for report in list_of_created_reports:
         if report.endswith("_1.xls"):
-            # when i tried _1.xls and the sample id ended with a 1
-            # it would strip the 1 too e.g. "X111111_1.xls".strip("_1.xls") become X
-            # no idea why, can't be bothered to understand
-            # am lazy
-            report_list.append(report.strip("1.xls").strip("_"))
+            sample_id = report[:-6]
+            report_list.append(sample_id)
 
     difference = set(sample_id_list).difference(set(report_list))
 
