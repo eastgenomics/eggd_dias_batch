@@ -95,6 +95,7 @@ def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
+        # rea_headers contains theheaders for the batch file
         for header in rea_headers:
             new_headers = [field for field in header]
             new_headers.append(
@@ -104,14 +105,16 @@ def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
             headers.append(tuple(new_headers))
 
         # manually add the values for reanalysis vcf2xls/generate_bed
+        # rea_values contains the values for the headers for the batch file
         for line in rea_values:
+            # get all panels in a string and store it in a list with one ele
             panels = [
-                list(panel) for sample, panel in reanalysis_dict.items()
+                ",".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
-            ][0]
+            ]
+            # add panels twice for vcf2xls and for generate_bed
             line.extend(panels)
             line.extend(panels)
-
             values.append(line)
     else:
         # get the headers and values from the staging inputs
