@@ -26,6 +26,7 @@ fastqc_fastqs_input_stage = "stage-Fy6fpV840vZZ0v6J8qBQYqZF.fastqs"
 
 # Multi workflow
 
+happy_applet_id = "{}:applet-Fq1yZf84zYgF4bkF8XfBfPxX".format(ref_project_id)
 happy_stage_prefix = "stage-Fq1BPKj433Gx3K4Y8J35j0fv.prefix"
 
 multi_stage_input_dict = {
@@ -42,7 +43,7 @@ ms_workflow_id = "{}:workflow-FyQ2Gy0433Gz76Jp9j5YG80K".format(ref_project_id)
 
 # MultiQC
 
-mqc_applet_id = "{}:applet-Fxjpx8j433GZKqkG1vZp8vk6".format(ref_project_id)
+mqc_applet_id = "{}:applet-Fz93FfQ433Gvf6pKFZYbXZQf".format(ref_project_id)
 mqc_config_file = "{}:file-FxjpvF8433GvjKFVK6k77G4q".format(ref_project_id)
 
 # Reports
