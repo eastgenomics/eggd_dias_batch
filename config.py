@@ -18,7 +18,7 @@ genepanels = genepanels_file
 
 # Single workflow
 
-ss_workflow_id = "{}:workflow-Fy6k2pQ433Ggbb3BG271fp29".format(ref_project_id)
+ss_workflow_id = "{}:workflow-G0QfxJ0433GyPP9b1VKYZYBX".format(ref_project_id)
 sentieon_R1_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.reads_fastqgzs"
 sentieon_R2_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.reads2_fastqgzs"
 sentieon_sample_input_stage = "stage-Fy6fpk040vZZPPbq96Jb2KfK.sample"
@@ -43,7 +43,7 @@ ms_workflow_id = "{}:workflow-FyQ2Gy0433Gz76Jp9j5YG80K".format(ref_project_id)
 # MultiQC
 
 mqc_applet_id = "{}:applet-Fz93FfQ433Gvf6pKFZYbXZQf".format(ref_project_id)
-mqc_config_file = "{}:file-FxjpvF8433GvjKFVK6k77G4q".format(ref_project_id)
+mqc_config_file = "{}:file-Fz947KQ433GbpkvQ104ybPVg".format(ref_project_id)
 
 # Reports
 
