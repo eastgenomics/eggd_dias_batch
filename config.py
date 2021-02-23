@@ -56,5 +56,5 @@ mqc_config_file = "{}:file-FxjpvF8433GvjKFVK6k77G4q".format(ref_project_id)
 
 # Vcf2xls
 
-vcf2xls_applet_id = "{}:applet-Fxjp588433GQ0V6b2bGYQz05".format(ref_project_id)
+vcf2xls_applet_id = "{}:applet-G0pQfG8433Gp4p069x7yFz1x".format(ref_project_id)
 exons_nirvana = "{}:file-Fq18Yp0433GjB7172630p9Yv".format(ref_project_id)
