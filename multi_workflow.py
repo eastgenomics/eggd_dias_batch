@@ -5,7 +5,7 @@ import json
 import subprocess
 
 from config import (
-    multi_stage_input_dict, ms_workflow_id
+    multi_stage_input_dict, ms_workflow_id, happy_stage_bed
 )
 from general_functions import (
     assess_batch_file, create_batch_file, format_relative_paths,
@@ -39,7 +39,9 @@ def run_ms_workflow(ss_workflow_out_dir, dry_run):
         ss_workflow_out_dir, ms_input_dict
     )
     # get the header and values to write in the batch tsv
-    ms_headers, ms_values = prepare_batch_writing(ms_stage_input_dict, "multi")
+    ms_headers, ms_values = prepare_batch_writing(
+        ms_stage_input_dict, "multi", happy_stage_bed
+    )
     ms_batch_file = create_batch_file(ms_headers, ms_values)
 
     run_wf_command = "dx run --yes --rerun-stage '*' {} --batch-tsv={}".format(
