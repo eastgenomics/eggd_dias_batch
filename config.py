@@ -14,6 +14,9 @@ from egg1_config import (
     multi_stage_input_dict,
     ms_workflow_id,
     happy_stage_bed,
+    # multiqc
+    mqc_applet_id,
+    mqc_config_file,
     # reports workflow
     rpt_stage_input_dict,
     rpt_dynamic_files,
