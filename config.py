@@ -24,5 +24,8 @@ from egg1_config import (
     rea_stage_input_dict,
     rea_dynamic_files,
     vcf2xls_stage_id,
-    generate_bed_stage_id
+    generate_bed_stage_id,
+    # general_functions
+    happy_stage_prefix,
+    athena_stage_id
 )
