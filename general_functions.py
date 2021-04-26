@@ -339,10 +339,10 @@ def prepare_batch_writing(
             # add the value of name to athena
             values.append("{}_{}".format(type_input, index))
 
-            # add the dynamic files to the headers and values
-            for stage, file_id in workflow_specificity.items():
-                headers.append(stage)  # col for file name
-                values.append(file_id)
+        # add the dynamic files to the headers and values
+        for stage, file_id in workflow_specificity.items():
+            headers.append(stage)  # col for file name
+            values.append(file_id)
 
         # For each stage add the column header and the values in that column
         for stage_input in stage_data:
