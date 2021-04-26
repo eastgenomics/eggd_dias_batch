@@ -12,6 +12,7 @@ from config import (
     sentieon_R2_input_stage,
     sentieon_sample_input_stage,
     fastqc_fastqs_input_stage,
+    ss_beds_inputs
 )
 from general_functions import (
     make_workflow_out_dir,
@@ -42,6 +43,10 @@ def make_ss_dias_batch_file(input_directory):
         fastqc_fastqs_input_stage + id_suffix
     ]
 
+    # add stage and stage id headers to the header line
+    for stage in ss_beds_inputs:
+        headers.append(stage)
+
     batch_file_lines = []
     header_line = "\t".join(headers)
     batch_file_lines.append(header_line)
@@ -55,6 +60,14 @@ def make_ss_dias_batch_file(input_directory):
             [",".join(reads["R1"]), ",".join(reads["R2"])]
         ) + "]"
         data_fields = [sample, "-", "-", sample, "-", r_1, r_2, r_all]
+
+        # check which header is needed for the 8 through 17 positions
+        # i'd like to just loop on the ss_beds_inputs twice but since we're not
+        # using python3.7, the order will be random, so i'm checking the stage
+        # at each position and getting the appropriate file id
+        for i in range(8, len(headers)):
+            data_fields.append(ss_beds_inputs[headers[i]])
+
         data_line = "\t".join(data_fields)
         batch_file_lines.append(data_line)
 
