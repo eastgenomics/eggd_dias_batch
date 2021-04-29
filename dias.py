@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import argparse
+import imp
 
 from single_workflow import run_ss_workflow
 from multi_workflow import run_ms_workflow
@@ -16,6 +17,12 @@ def main():
     parser.add_argument(
         "-d", "--dry_run", action="store_true",
         default=False, help="Make a dry run"
+    )
+
+    parser.add_argument(
+        "-a", "--assay", default="TSOE", choices=["TSOE", "FH", "WES"], help=(
+            "Type of assay needed for this run of samples. Defaults to TSOE"
+        )
     )
 
     parser_s = subparsers.add_parser('single', help='single help')
@@ -75,13 +82,33 @@ def main():
 
     assert workflow, "Please specify a subcommand"
 
+    if args.assay == "TSOE":
+        config = imp.load_source(
+            "egg1_config",
+            "/mnt/storage/home/kimy/duty_stuff/dias/egg1_dias_TSOE_config/"
+        )
+    elif args.assay == "FH":
+        config = imp.load_source(
+            "egg3_config",
+            "/mnt/storage/home/kimy/duty_stuff/dias/egg3_dias_FH_config/"
+        )
+    elif args.assay == "WES":
+        config = imp.load_source(
+            "egg1_config",
+            "/mnt/storage/home/kimy/duty_stuff/dias/egg4_dias_WES_config/"
+        )
+
     if args.input_dir and not args.input_dir.endswith("/"):
         args.input_dir = args.input_dir + "/"
 
     if workflow == "single":
-        ss_workflow_out_dir = run_ss_workflow(args.input_dir, args.dry_run)
+        ss_workflow_out_dir = run_ss_workflow(
+            args.input_dir, args.dry_run, config
+        )
     elif workflow == "multi":
-        ms_workflow_out_dir = run_ms_workflow(args.input_dir, args.dry_run)
+        ms_workflow_out_dir = run_ms_workflow(
+            args.input_dir, args.dry_run, config
+        )
     elif workflow == "qc":
         mqc_applet_out_dir = run_multiqc_app(args.input_dir, args.dry_run)
     elif workflow == "reports":

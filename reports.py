@@ -4,11 +4,11 @@ from collections import OrderedDict
 import json
 import subprocess
 
-from config import (
-    rpt_stage_input_dict, rpt_dynamic_files, rpt_workflow_id,
-    rea_stage_input_dict, rea_dynamic_files,
-    vcf2xls_stage_id, generate_bed_stage_id
-)
+# from config import (
+#     rpt_stage_input_dict, rpt_dynamic_files, rpt_workflow_id,
+#     rea_stage_input_dict, rea_dynamic_files,
+#     vcf2xls_stage_id, generate_bed_stage_id
+# )
 from general_functions import (
     format_relative_paths,
     get_workflow_stage_info,

@@ -4,9 +4,9 @@ from collections import OrderedDict
 import json
 import subprocess
 
-from config import (
-    multi_stage_input_dict, ms_workflow_id, happy_stage_bed
-)
+# from config import (
+#     multi_stage_input_dict, ms_workflow_id, happy_stage_bed
+# )
 from general_functions import (
     assess_batch_file, create_batch_file, format_relative_paths,
     get_workflow_stage_info,
@@ -20,7 +20,7 @@ from general_functions import (
 # Multi sample apps
 
 
-def run_ms_workflow(ss_workflow_out_dir, dry_run):
+def run_ms_workflow(ss_workflow_out_dir, dry_run, assay):
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
     ms_workflow_out_dir = make_workflow_out_dir(

@@ -2,10 +2,10 @@
 
 import subprocess
 
-from config import (
-    mqc_applet_id,
-    mqc_config_file
-)
+# from config import (
+#     mqc_applet_id,
+#     mqc_config_file
+# )
 
 from general_functions import (
     get_dx_cwd_project_id, get_object_attribute_from_object_id_or_path,

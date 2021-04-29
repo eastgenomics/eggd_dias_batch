@@ -5,9 +5,9 @@ import datetime
 import subprocess
 import uuid
 
-from config import (
-    happy_stage_prefix, athena_stage_id
-)
+# from config import (
+#     happy_stage_prefix, athena_stage_id
+# )
 
 
 # Generic functions
