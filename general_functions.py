@@ -5,11 +5,6 @@ import datetime
 import subprocess
 import uuid
 
-# from config import (
-#     happy_stage_prefix, athena_stage_id
-# )
-
-
 # Generic functions
 
 
@@ -300,7 +295,7 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
 
 
 def prepare_batch_writing(
-    stage_input_dict, type_workflow, workflow_specificity={}
+    stage_input_dict, type_workflow, assay_config, workflow_specificity={}
 ):
     """ Return headers and values for the batch file writing
 
@@ -324,7 +319,7 @@ def prepare_batch_writing(
         if type_workflow == "multi":
             values.append("multi")
             # Hap.py - static values
-            headers.append(happy_stage_prefix)
+            headers.append(assay_config.happy_stage_prefix)
             values.append("NA12878")
 
         elif type_workflow == "reports":
@@ -335,7 +330,7 @@ def prepare_batch_writing(
             index = get_next_index(coverage_reports)
 
             # add the name param to athena
-            headers.append("{}.name".format(athena_stage_id))
+            headers.append("{}.name".format(assay_config.athena_stage_id))
             # add the value of name to athena
             values.append("{}_{}".format(type_input, index))
 
