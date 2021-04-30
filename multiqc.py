@@ -2,11 +2,6 @@
 
 import subprocess
 
-# from config import (
-#     mqc_applet_id,
-#     mqc_config_file
-# )
-
 from general_functions import (
     get_dx_cwd_project_id, get_object_attribute_from_object_id_or_path,
     dx_make_workflow_dir
@@ -15,7 +10,7 @@ from general_functions import (
 # MultiQC
 
 
-def run_multiqc_app(ms_workflow_out_dir, dry_run):
+def run_multiqc_app(ms_workflow_out_dir, dry_run, assay_config):
     assert ms_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
 
@@ -37,7 +32,7 @@ def run_multiqc_app(ms_workflow_out_dir, dry_run):
         multi_folder = ""
 
     mqc_applet_name = get_object_attribute_from_object_id_or_path(
-        mqc_applet_id, "Name"
+        assay_config.mqc_applet_id, "Name"
     )
     mqc_applet_out_dir = "".join([ms_workflow_out_dir, mqc_applet_name])
 
@@ -48,7 +43,7 @@ def run_multiqc_app(ms_workflow_out_dir, dry_run):
         "-iproject_for_multiqc='{}' -iss_for_multiqc='{}' "
         "{} --destination='{}'"
     ).format(
-        mqc_applet_id, mqc_config_file,
+        assay_config.mqc_applet_id, assay_config.mqc_config_file,
         project_id, ss_for_multiqc,
         multi_folder, mqc_applet_out_dir
     )
