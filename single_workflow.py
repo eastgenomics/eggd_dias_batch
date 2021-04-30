@@ -6,14 +6,6 @@ import os
 import subprocess
 import uuid
 
-# from config import (
-#     ss_workflow_id,
-#     sentieon_R1_input_stage,
-#     sentieon_R2_input_stage,
-#     sentieon_sample_input_stage,
-#     fastqc_fastqs_input_stage,
-#     ss_beds_inputs
-# )
 from general_functions import (
     make_workflow_out_dir,
     format_relative_paths,
@@ -24,7 +16,7 @@ from general_functions import (
 # Single sample apps batch
 
 
-def make_ss_dias_batch_file(input_directory):
+def make_ss_dias_batch_file(input_directory, assay_config):
     # uuids for temp files to prevent collisions during parallel runs
     fastq_dict = make_fq_dict(input_directory)
     batch_uuid = str(uuid.uuid4())
@@ -34,17 +26,17 @@ def make_ss_dias_batch_file(input_directory):
 
     headers = [
         "batch ID",
-        sentieon_R1_input_stage,
-        sentieon_R2_input_stage,
-        sentieon_sample_input_stage,
-        fastqc_fastqs_input_stage,
-        sentieon_R1_input_stage + id_suffix,
-        sentieon_R2_input_stage + id_suffix,
-        fastqc_fastqs_input_stage + id_suffix
+        assay_config.sentieon_R1_input_stage,
+        assay_config.sentieon_R2_input_stage,
+        assay_config.sentieon_sample_input_stage,
+        assay_config.fastqc_fastqs_input_stage,
+        assay_config.sentieon_R1_input_stage + id_suffix,
+        assay_config.sentieon_R2_input_stage + id_suffix,
+        assay_config.fastqc_fastqs_input_stage + id_suffix
     ]
 
     # add stage and stage id headers to the header line
-    for stage in ss_beds_inputs:
+    for stage in assay_config.ss_beds_inputs:
         headers.append(stage)
 
     batch_file_lines = []
@@ -66,7 +58,7 @@ def make_ss_dias_batch_file(input_directory):
         # using python3.7, the order will be random, so i'm checking the stage
         # at each position and getting the appropriate file id
         for i in range(8, len(headers)):
-            data_fields.append(ss_beds_inputs[headers[i]])
+            data_fields.append(assay_config.ss_beds_inputs[headers[i]])
 
         data_line = "\t".join(data_fields)
         batch_file_lines.append(data_line)
@@ -139,21 +131,21 @@ def make_fq_dict(path):
     return fastq_dict
 
 
-def run_ss_workflow(input_dir, dry_run, assay):
+def run_ss_workflow(input_dir, dry_run, assay_config):
     assert input_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
-    ss_workflow_out_dir = make_workflow_out_dir(ss_workflow_id)
-    ss_workflow_stage_info = get_workflow_stage_info(ss_workflow_id)
+    ss_workflow_out_dir = make_workflow_out_dir(assay_config.ss_workflow_id)
+    ss_workflow_stage_info = get_workflow_stage_info(assay_config.ss_workflow_id)
     ss_app_out_dirs = make_app_out_dirs(
         ss_workflow_stage_info, ss_workflow_out_dir
     )
-    ss_batch_file = make_ss_dias_batch_file(input_dir)
+    ss_batch_file = make_ss_dias_batch_file(input_dir, assay_config)
     app_relative_paths = format_relative_paths(ss_workflow_stage_info)
 
     command = (
         "dx run --yes --rerun-stage '*' {} --batch-tsv {} --destination={} {}"
     ).format(
-            ss_workflow_id,
+            assay_config.ss_workflow_id,
             ss_batch_file,
             ss_workflow_out_dir,
             app_relative_paths
