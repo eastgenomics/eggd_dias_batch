@@ -222,7 +222,7 @@ def get_sample_ids_from_sample_sheet(sample_sheet_path):
     return sample_ids
 
 
-def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
+def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
     """ Return the workflow output dir so that it is not duplicated when run
 
     Args:
@@ -240,7 +240,7 @@ def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
 
     workflow_dir = "{}{}".format(workflow_out_dir, workflow_name)
 
-    workflow_output_dir_pattern = "{workflow_dir}-{date}-{index}/"
+    workflow_output_dir_pattern = "{workflow_dir}-{assay}-{date}-{index}/"
     date = get_date()
 
     # when creating the new folder, check if the folder already exists
@@ -248,7 +248,7 @@ def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
     i = 1
     while i < 100:  # < 100 runs = sanity check
         workflow_output_dir = workflow_output_dir_pattern.format(
-            workflow_dir=workflow_dir, date=date, index=i
+            workflow_dir=workflow_dir, assay=assay_id, date=date, index=i
         )
 
         if dx_make_workflow_dir(workflow_output_dir):
