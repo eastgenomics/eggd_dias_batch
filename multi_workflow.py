@@ -17,11 +17,11 @@ from general_functions import (
 # Multi sample apps
 
 
-def run_ms_workflow(ss_workflow_out_dir, dry_run, assay_config):
+def run_ms_workflow(ss_workflow_out_dir, dry_run, assay_config, assay_id):
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
     ms_workflow_out_dir = make_workflow_out_dir(
-        assay_config.ms_workflow_id, ss_workflow_out_dir
+        assay_config.ms_workflow_id, assay_id, ss_workflow_out_dir
     )
     ms_workflow_stage_info = get_workflow_stage_info(
         assay_config.ms_workflow_id
