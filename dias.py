@@ -2,6 +2,7 @@
 
 import argparse
 import imp
+import os
 
 from single_workflow import run_ss_workflow
 from multi_workflow import run_ms_workflow
@@ -20,9 +21,12 @@ def main():
     )
 
     parser.add_argument(
-        "-a", "--assay", default="TSOE", choices=["TSOE", "FH", "WES"], help=(
+        "-a", "--assay", choices=["TSOE", "FH", "WES"], help=(
             "Type of assay needed for this run of samples. Defaults to TSOE"
         )
+    )
+    parser.add_argument(
+        "-c", "--config", help="Config file to overwrite the config assay setup"
     )
 
     parser_s = subparsers.add_parser('single', help='single help')
@@ -82,40 +86,51 @@ def main():
 
     assert workflow, "Please specify a subcommand"
 
-    if args.assay == "TSOE":
-        config = imp.load_source(
-            "egg1_config",
-            "/mnt/storage/home/kimy/duty_stuff/dias/egg1_dias_TSOE_config/"
-        )
-    elif args.assay == "FH":
-        config = imp.load_source(
-            "egg3_config",
-            "/mnt/storage/home/kimy/duty_stuff/dias/egg3_dias_FH_config/"
-        )
-    elif args.assay == "WES":
-        config = imp.load_source(
-            "egg1_config",
-            "/mnt/storage/home/kimy/duty_stuff/dias/egg4_dias_WES_config/"
-        )
+    if args.config:
+        assay_id = "CUSTOM_CONFIG"
+        name_config = os.path.splitext(args.config)[0]
+        config = imp.load_source(name_config, args.config)
+    else:
+        if args.assay == "TSOE":
+            config = imp.load_source(
+                "egg1_config",
+                "/mnt/storage/apps/software/egg1_dias_TSO_config/egg1_config.py"
+            )
+        elif args.assay == "FH":
+            config = imp.load_source(
+                "egg3_config",
+                "/mnt/storage/apps/software/egg3_dias_FH_config/egg3_config.py"
+            )
+        elif args.assay == "WES":
+            config = imp.load_source(
+                "egg4_config",
+                "/mnt/storage/apps/software/egg4_dias_WES_config/egg4_config.py"
+            )
+        assay_id = "{}_{}".format(config.assay_name, config.assay_version)
 
     if args.input_dir and not args.input_dir.endswith("/"):
         args.input_dir = args.input_dir + "/"
 
     if workflow == "single":
         ss_workflow_out_dir = run_ss_workflow(
-            args.input_dir, args.dry_run, config
+            args.input_dir, args.dry_run, config, assay_id
         )
     elif workflow == "multi":
         ms_workflow_out_dir = run_ms_workflow(
-            args.input_dir, args.dry_run, config
+            args.input_dir, args.dry_run, config, assay_id
         )
     elif workflow == "qc":
-        mqc_applet_out_dir = run_multiqc_app(args.input_dir, args.dry_run)
+        mqc_applet_out_dir = run_multiqc_app(
+            args.input_dir, args.dry_run, config
+        )
     elif workflow == "reports":
-        reports_out_dir = run_reports(args.input_dir, args.dry_run)
+        reports_out_dir = run_reports(
+            args.input_dir, args.dry_run, config, assay_id
+        )
     elif workflow == "reanalysis":
         reports_out_dir = run_reanalysis(
-            args.input_dir, args.dry_run, args.reanalysis_list
+            args.input_dir, args.dry_run, config, assay_id,
+            args.reanalysis_list
         )
     elif workflow == "check_reports":
         reports = check_if_all_reports_created(
