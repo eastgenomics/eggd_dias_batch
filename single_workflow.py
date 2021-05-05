@@ -131,10 +131,12 @@ def make_fq_dict(path):
     return fastq_dict
 
 
-def run_ss_workflow(input_dir, dry_run, assay_config):
+def run_ss_workflow(input_dir, dry_run, assay_config, assay_id):
     assert input_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
-    ss_workflow_out_dir = make_workflow_out_dir(assay_config.ss_workflow_id)
+    ss_workflow_out_dir = make_workflow_out_dir(
+        assay_config.ss_workflow_id, assay_id
+    )
     ss_workflow_stage_info = get_workflow_stage_info(assay_config.ss_workflow_id)
     ss_app_out_dirs = make_app_out_dirs(
         ss_workflow_stage_info, ss_workflow_out_dir
