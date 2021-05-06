@@ -5,11 +5,6 @@ import datetime
 import subprocess
 import uuid
 
-from config import (
-    happy_stage_prefix, athena_stage_id
-)
-
-
 # Generic functions
 
 
@@ -227,7 +222,7 @@ def get_sample_ids_from_sample_sheet(sample_sheet_path):
     return sample_ids
 
 
-def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
+def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
     """ Return the workflow output dir so that it is not duplicated when run
 
     Args:
@@ -245,7 +240,7 @@ def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
 
     workflow_dir = "{}{}".format(workflow_out_dir, workflow_name)
 
-    workflow_output_dir_pattern = "{workflow_dir}-{date}-{index}/"
+    workflow_output_dir_pattern = "{workflow_dir}-{assay}-{date}-{index}/"
     date = get_date()
 
     # when creating the new folder, check if the folder already exists
@@ -253,7 +248,7 @@ def make_workflow_out_dir(workflow_id, workflow_out_dir="/output/"):
     i = 1
     while i < 100:  # < 100 runs = sanity check
         workflow_output_dir = workflow_output_dir_pattern.format(
-            workflow_dir=workflow_dir, date=date, index=i
+            workflow_dir=workflow_dir, assay=assay_id, date=date, index=i
         )
 
         if dx_make_workflow_dir(workflow_output_dir):
@@ -300,7 +295,7 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
 
 
 def prepare_batch_writing(
-    stage_input_dict, type_workflow, workflow_specificity={}
+    stage_input_dict, type_workflow, assay_config, workflow_specificity={}
 ):
     """ Return headers and values for the batch file writing
 
@@ -324,7 +319,7 @@ def prepare_batch_writing(
         if type_workflow == "multi":
             values.append("multi")
             # Hap.py - static values
-            headers.append(happy_stage_prefix)
+            headers.append(assay_config.happy_stage_prefix)
             values.append("NA12878")
 
         elif type_workflow == "reports":
@@ -335,14 +330,14 @@ def prepare_batch_writing(
             index = get_next_index(coverage_reports)
 
             # add the name param to athena
-            headers.append("{}.name".format(athena_stage_id))
+            headers.append("{}.name".format(assay_config.athena_stage_id))
             # add the value of name to athena
             values.append("{}_{}".format(type_input, index))
 
-            # add the dynamic files to the headers and values
-            for stage, file_id in workflow_specificity.items():
-                headers.append(stage)  # col for file name
-                values.append(file_id)
+        # add the dynamic files to the headers and values
+        for stage, file_id in workflow_specificity.items():
+            headers.append(stage)  # col for file name
+            values.append(file_id)
 
         # For each stage add the column header and the values in that column
         for stage_input in stage_data:

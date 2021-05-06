@@ -4,11 +4,6 @@ from collections import OrderedDict
 import json
 import subprocess
 
-from config import (
-    rpt_stage_input_dict, rpt_dynamic_files, rpt_workflow_id,
-    rea_stage_input_dict, rea_dynamic_files,
-    vcf2xls_stage_id, generate_bed_stage_id
-)
 from general_functions import (
     format_relative_paths,
     get_workflow_stage_info,
@@ -22,7 +17,6 @@ from general_functions import (
 
 # reanalysis
 
-
 def gather_sample_ids_from_bams(ss_workflow_out_dir):
     cmd = "dx ls {}/sentieon-dnaseq/*bam".format(ss_workflow_out_dir)
     bams = subprocess.check_output(cmd, shell=True).strip().split("\n")
@@ -30,7 +24,7 @@ def gather_sample_ids_from_bams(ss_workflow_out_dir):
     return sample_list
 
 
-def run_reanalysis(input_dir, dry_run, reanalysis_list):
+def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
     reanalysis_dict = {}
 
     # parse reanalysis file
@@ -49,17 +43,24 @@ def run_reanalysis(input_dir, dry_run, reanalysis_list):
                 # get a dict of sample2panels
                 reanalysis_dict.setdefault(sample, set()).add(panel)
 
-    run_reports(input_dir, dry_run, reanalysis_dict=reanalysis_dict)
+    run_reports(
+        input_dir, dry_run, assay_config, assay_id,
+        reanalysis_dict=reanalysis_dict
+    )
 
 
-def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
+def run_reports(
+    ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
+):
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
     rpt_workflow_out_dir = make_workflow_out_dir(
-        rpt_workflow_id, ss_workflow_out_dir
+        assay_config.rpt_workflow_id, assay_id, ss_workflow_out_dir
     )
 
-    rpt_workflow_stage_info = get_workflow_stage_info(rpt_workflow_id)
+    rpt_workflow_stage_info = get_workflow_stage_info(
+        assay_config.rpt_workflow_id
+    )
     rpt_output_dirs = make_app_out_dirs(
         rpt_workflow_stage_info, rpt_workflow_out_dir
     )
@@ -67,10 +68,10 @@ def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
     sample2stage_input_dict = {}
 
     if reanalysis_dict:
-        stage_input_dict = rea_stage_input_dict
+        stage_input_dict = assay_config.rea_stage_input_dict
         sample_id_list = reanalysis_dict
     else:
-        stage_input_dict = rpt_stage_input_dict
+        stage_input_dict = assay_config.rpt_stage_input_dict
         sample_id_list = gather_sample_ids_from_bams(ss_workflow_out_dir)
 
     # put the sample id in a dictionary so that the stage inputs can be
@@ -91,7 +92,7 @@ def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
 
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "reports", rea_dynamic_files
+            staging_dict, "reports", assay_config, assay_config.rea_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
@@ -99,9 +100,9 @@ def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
         for header in rea_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "{}.list_panel_names_genes".format(vcf2xls_stage_id)
+                "{}.list_panel_names_genes".format(assay_config.vcf2xls_stage_id)
             )
-            new_headers.append("{}.panel".format(generate_bed_stage_id))
+            new_headers.append("{}.panel".format(assay_config.generate_bed_stage_id))
             headers.append(tuple(new_headers))
 
         # manually add the values for reanalysis vcf2xls/generate_bed
@@ -119,13 +120,13 @@ def run_reports(ss_workflow_out_dir, dry_run, reanalysis_dict=None):
     else:
         # get the headers and values from the staging inputs
         headers, values = prepare_batch_writing(
-            staging_dict, "reports", rpt_dynamic_files
+            staging_dict, "reports", assay_config, assay_config.rpt_dynamic_files
         )
 
     rpt_batch_file = create_batch_file(headers, values)
 
     command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
-        rpt_workflow_id, rpt_batch_file
+        assay_config.rpt_workflow_id, rpt_batch_file
     )
     # assign stage out folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)

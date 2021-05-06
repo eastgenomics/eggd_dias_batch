@@ -4,9 +4,6 @@ from collections import OrderedDict
 import json
 import subprocess
 
-from config import (
-    multi_stage_input_dict, ms_workflow_id
-)
 from general_functions import (
     assess_batch_file, create_batch_file, format_relative_paths,
     get_workflow_stage_info,
@@ -20,30 +17,35 @@ from general_functions import (
 # Multi sample apps
 
 
-def run_ms_workflow(ss_workflow_out_dir, dry_run):
+def run_ms_workflow(ss_workflow_out_dir, dry_run, assay_config, assay_id):
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
     ms_workflow_out_dir = make_workflow_out_dir(
-        ms_workflow_id, ss_workflow_out_dir
+        assay_config.ms_workflow_id, assay_id, ss_workflow_out_dir
     )
-    ms_workflow_stage_info = get_workflow_stage_info(ms_workflow_id)
+    ms_workflow_stage_info = get_workflow_stage_info(
+        assay_config.ms_workflow_id
+    )
     ms_output_dirs = make_app_out_dirs(
         ms_workflow_stage_info, ms_workflow_out_dir
     )
 
     # create sub dict to match the changes to get_stage_inputs
-    ms_input_dict = {"multi": multi_stage_input_dict}
+    ms_input_dict = {"multi": assay_config.multi_stage_input_dict}
 
     # gather files for given app/pattern
     ms_stage_input_dict = get_stage_inputs(
         ss_workflow_out_dir, ms_input_dict
     )
     # get the header and values to write in the batch tsv
-    ms_headers, ms_values = prepare_batch_writing(ms_stage_input_dict, "multi")
+    ms_headers, ms_values = prepare_batch_writing(
+        ms_stage_input_dict, "multi", assay_config,
+        assay_config.happy_stage_bed
+    )
     ms_batch_file = create_batch_file(ms_headers, ms_values)
 
     run_wf_command = "dx run --yes --rerun-stage '*' {} --batch-tsv={}".format(
-        ms_workflow_id, ms_batch_file
+        assay_config.ms_workflow_id, ms_batch_file
     )
 
     app_relative_paths = format_relative_paths(ms_workflow_stage_info)
