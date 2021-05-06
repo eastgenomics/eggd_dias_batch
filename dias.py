@@ -22,7 +22,7 @@ def main():
 
     parser.add_argument(
         "-a", "--assay", choices=["TSOE", "FH", "WES"], help=(
-            "Type of assay needed for this run of samples. Defaults to TSOE"
+            "Type of assay needed for this run of samples"
         )
     )
     parser.add_argument(
@@ -99,7 +99,7 @@ def main():
         elif args.assay == "FH":
             config = imp.load_source(
                 "egg3_config",
-                "/mnt/storage/apps/software/egg3_dias_FH_config/egg3_config.py"
+                "/mnt/storage/home/kimy/duty_stuff/dias/egg3_dias_FH_config/egg3_config.py"
             )
         elif args.assay == "WES":
             config = imp.load_source(
