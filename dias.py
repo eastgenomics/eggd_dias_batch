@@ -99,7 +99,7 @@ def main():
         elif args.assay == "FH":
             config = imp.load_source(
                 "egg3_config",
-                "/mnt/storage/home/kimy/duty_stuff/dias/egg3_dias_FH_config/egg3_config.py"
+                "/mnt/storage/apps/software/egg3_dias_FH_config/egg3_config.py"
             )
         elif args.assay == "WES":
             config = imp.load_source(
