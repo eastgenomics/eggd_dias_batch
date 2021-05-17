@@ -9,6 +9,12 @@ from multi_workflow import run_ms_workflow
 from multiqc import run_multiqc_app
 from reports import run_reports, run_reanalysis
 from check import check_if_all_reports_created
+from general_functions import get_latest_config
+
+
+TSOE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg1_dias_TSO_config"
+FH_CONFIG_LOCATION = "/mnt/storage/apps/software/egg3_dias_FH_config"
+WES_CONFIG_LOCATION = "/mnt/storage/apps/software/egg4_dias_WES_config"
 
 
 def main():
@@ -92,19 +98,25 @@ def main():
         config = imp.load_source(name_config, args.config)
     else:
         if args.assay == "TSOE":
+            latest_version = get_latest_config(TSOE_CONFIG_LOCATION)
             config = imp.load_source(
-                "egg1_config",
-                "/mnt/storage/apps/software/egg1_dias_TSO_config/egg1_config.py"
+                "egg1_config", "{}/{}/egg1_config.py".format(
+                    TSOE_CONFIG_LOCATION, latest_version
+                )
             )
         elif args.assay == "FH":
+            latest_version = get_latest_config(FH_CONFIG_LOCATION)
             config = imp.load_source(
-                "egg3_config",
-                "/mnt/storage/apps/software/egg3_dias_FH_config/egg3_config.py"
+                "egg3_config", "{}/{}/egg3_config.py".format(
+                    FH_CONFIG_LOCATION, latest_version
+                )
             )
         elif args.assay == "WES":
+            latest_version = get_latest_config(WES_CONFIG_LOCATION)
             config = imp.load_source(
-                "egg4_config",
-                "/mnt/storage/apps/software/egg4_dias_WES_config/egg4_config.py"
+                "egg4_config", "{}/{}/egg4_config.py".format(
+                    WES_CONFIG_LOCATION, latest_version
+                )
             )
         assay_id = "{}_{}".format(config.assay_name, config.assay_version)
 
