@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 import datetime
-from pathlib import Path
+import os
 import subprocess
 import uuid
 
@@ -492,18 +492,17 @@ def get_next_index(file_ids):
         return index_to_return
 
 
-def get_latest_config(folder: Path):
+def get_latest_config(folder):
     """ Get the latest config given a folder containing the version folders
 
     Args:
-        folder (Path): Folder containing folders for every version of the config
+        folder (str): Folder containing folders for every version of the config
 
     Returns:
         str: Latest version of the config
     """
 
-    config_folder = Path(folder)
     config_latest_version = str(max(
-        [version.parse(str(f)) for f in config_folder.iterdir()]
+        [version.parse(str(f)) for f in os.listdir(folder)]
     ))
     return config_latest_version
