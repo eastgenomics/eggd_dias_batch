@@ -2,8 +2,11 @@
 
 from collections import defaultdict
 import datetime
+import os
 import subprocess
 import uuid
+
+from packaging import version
 
 # Generic functions
 
@@ -487,3 +490,21 @@ def get_next_index(file_ids):
     # no reports found, just return 1
     else:
         return index_to_return
+
+
+def get_latest_config(folder):
+    """ Get the latest config given a folder containing the version folders
+
+    Args:
+        folder (str): Folder containing folders for every version of the config
+
+    Returns:
+        str: Latest version of the config
+    """
+
+    # loop through folders in the folder config given and parse the folder name
+    # using the packaging package and get the max value
+    config_latest_version = str(max(
+        [version.parse(str(f)) for f in os.listdir(folder)]
+    ))
+    return config_latest_version
