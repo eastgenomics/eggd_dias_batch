@@ -502,6 +502,8 @@ def get_latest_config(folder):
         str: Latest version of the config
     """
 
+    # loop through folders in the folder config given and parse the folder name
+    # using the packaging package and get the max value
     config_latest_version = str(max(
         [version.parse(str(f)) for f in os.listdir(folder)]
     ))
