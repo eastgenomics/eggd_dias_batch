@@ -110,7 +110,7 @@ def run_reports(
         for line in rea_values:
             # get all panels in a string and store it in a list with one ele
             panels = [
-                ",".join(panel) for sample, panel in reanalysis_dict.items()
+                ";".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
             ]
             # add panels twice for vcf2xls and for generate_bed
