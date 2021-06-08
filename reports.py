@@ -37,7 +37,7 @@ def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
                 "sample/panel combination per line"
             )
             sample, panel = fields
-            panels = panel.split(",")
+            panels = panel.split(";")
 
             for panel in panels:
                 # get a dict of sample2panels
