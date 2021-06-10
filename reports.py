@@ -37,7 +37,7 @@ def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
                 "sample/panel combination per line"
             )
             sample, panel = fields
-            panels = panel.split(",")
+            panels = panel.split(";")
 
             for panel in panels:
                 # get a dict of sample2panels
@@ -110,7 +110,7 @@ def run_reports(
         for line in rea_values:
             # get all panels in a string and store it in a list with one ele
             panels = [
-                ",".join(panel) for sample, panel in reanalysis_dict.items()
+                ";".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
             ]
             # add panels twice for vcf2xls and for generate_bed
