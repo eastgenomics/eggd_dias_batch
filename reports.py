@@ -125,8 +125,8 @@ def run_reports(
 
     rpt_batch_file = create_batch_file(headers, values)
 
-    command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
-        assay_config.rpt_workflow_id, rpt_batch_file
+    command = "dx run -y --rerun-stage '*' {} -iflanks={} --batch-tsv={}".format(
+        assay_config.rpt_workflow_id, assay_config.xlsx_flanks , rpt_batch_file
     )
     # assign stage out folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
