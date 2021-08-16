@@ -14,7 +14,7 @@ from general_functions import get_latest_config
 
 TSOE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg1_dias_TSO_config"
 FH_CONFIG_LOCATION = "/mnt/storage/apps/software/egg3_dias_FH_config"
-WES_CONFIG_LOCATION = "/mnt/storage/apps/software/egg4_dias_WES_config"
+TWE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg4_dias_TWE_config"
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
     )
 
     parser.add_argument(
-        "-a", "--assay", choices=["TSOE", "FH", "WES"], help=(
+        "-a", "--assay", choices=["TSOE", "FH", "TWE"], help=(
             "Type of assay needed for this run of samples"
         )
     )
@@ -111,11 +111,11 @@ def main():
                     FH_CONFIG_LOCATION, latest_version
                 )
             )
-        elif args.assay == "WES":
-            latest_version = get_latest_config(WES_CONFIG_LOCATION)
+        elif args.assay == "TWE":
+            latest_version = get_latest_config(TWE_CONFIG_LOCATION)
             config = imp.load_source(
                 "egg4_config", "{}/{}/egg4_config.py".format(
-                    WES_CONFIG_LOCATION, latest_version
+                    TWE_CONFIG_LOCATION, latest_version
                 )
             )
         assay_id = "{}_{}".format(config.assay_name, config.assay_version)
