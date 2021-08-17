@@ -15,6 +15,7 @@ from general_functions import get_latest_config
 TSOE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg1_dias_TSO_config"
 FH_CONFIG_LOCATION = "/mnt/storage/apps/software/egg3_dias_FH_config"
 TWE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg4_dias_TWE_config"
+CEN_CONFIG_LOCATION = "/mnt/storage/apps/software/egg5_dias_CEN_config"
 
 
 def main():
@@ -116,6 +117,13 @@ def main():
             config = imp.load_source(
                 "egg4_config", "{}/{}/egg4_config.py".format(
                     TWE_CONFIG_LOCATION, latest_version
+                )
+            )
+        elif args.assay == "CEN":
+            latest_version = get_latest_config(CEN_CONFIG_LOCATION)
+            config = imp.load_source(
+                "egg5_config", "{}/{}/egg5_config.py".format(
+                    CEN_CONFIG_LOCATION, latest_version
                 )
             )
         assay_id = "{}_{}".format(config.assay_name, config.assay_version)
