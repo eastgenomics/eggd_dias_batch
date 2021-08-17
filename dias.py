@@ -28,7 +28,7 @@ def main():
     )
 
     parser.add_argument(
-        "-a", "--assay", choices=["TSOE", "FH", "TWE"], help=(
+        "-a", "--assay", choices=["TSOE", "FH", "TWE", "CEN"], help=(
             "Type of assay needed for this run of samples"
         )
     )
