@@ -114,7 +114,7 @@ def run_reports(
                 ";".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
             ]
-            # add panels twice for vcf2xls and for generate_bed
+            # add panels three times for vcf2xls, generate_bed, generate_bed_vcf2xls
             line.extend(panels)
             line.extend(panels)
             line.extend(panels)
