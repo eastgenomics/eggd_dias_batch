@@ -117,6 +117,7 @@ def run_reports(
             # add panels twice for vcf2xls and for generate_bed
             line.extend(panels)
             line.extend(panels)
+            line.extend(panels)
             values.append(line)
     else:
         # get the headers and values from the staging inputs
