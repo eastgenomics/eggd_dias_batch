@@ -103,6 +103,7 @@ def run_reports(
                 "{}.list_panel_names_genes".format(assay_config.vcf2xls_stage_id)
             )
             new_headers.append("{}.panel".format(assay_config.generate_bed_stage_id))
+            new_headers.append("{}.panel".format(assay_config.generate_bed_xlsx_stage_id))
             headers.append(tuple(new_headers))
 
         # manually add the values for reanalysis vcf2xls/generate_bed
