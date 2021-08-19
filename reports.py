@@ -103,6 +103,7 @@ def run_reports(
                 "{}.list_panel_names_genes".format(assay_config.vcf2xls_stage_id)
             )
             new_headers.append("{}.panel".format(assay_config.generate_bed_stage_id))
+            new_headers.append("{}.panel".format(assay_config.generate_bed_xlsx_stage_id))
             headers.append(tuple(new_headers))
 
         # manually add the values for reanalysis vcf2xls/generate_bed
@@ -113,7 +114,8 @@ def run_reports(
                 ";".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
             ]
-            # add panels twice for vcf2xls and for generate_bed
+            # add panels three times for vcf2xls, generate_bed, generate_bed_vcf2xls
+            line.extend(panels)
             line.extend(panels)
             line.extend(panels)
             values.append(line)
@@ -125,8 +127,8 @@ def run_reports(
 
     rpt_batch_file = create_batch_file(headers, values)
 
-    command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
-        assay_config.rpt_workflow_id, rpt_batch_file
+    command = "dx run -y --rerun-stage '*' {} -istage-G4BJkJQ4JxJvBv5vJq50vJZ8.flank={} --batch-tsv={}".format(
+        assay_config.rpt_workflow_id, assay_config.xlsx_flanks , rpt_batch_file
     )
     # assign stage out folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
