@@ -326,16 +326,18 @@ def prepare_batch_writing(
             values.append("NA12878")
 
         elif type_workflow == "reports":
-            values.append(type_input)
+            # renaming type_input for comprehension in this elif
+            sample_id = type_input
+            values.append(sample_id)
 
             # get the index for the coverage report that needs to be created
-            coverage_reports = find_previous_coverage_reports(type_input)
+            coverage_reports = find_previous_coverage_reports(sample_id)
             index = get_next_index(coverage_reports)
 
             # add the name param to athena
             headers.append("{}.name".format(assay_config.athena_stage_id))
             # add the value of name to athena
-            values.append("{}_{}".format(type_input, index))
+            values.append("{}_{}".format(sample_id, index))
 
         # add the dynamic files to the headers and values
         for stage, file_id in workflow_specificity.items():
