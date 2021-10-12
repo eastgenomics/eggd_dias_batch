@@ -10,8 +10,8 @@ Run the Dias pipeline stored in DNAnexus
 
 - dias.py
   - Main script, called to run every part of the pipeline
-- config.py
-  - Contains the apps id, stage ids.. Also contains the importing of the dias_config file
+- check.py
+  - Check if all reports were created
 - general_functions.py
   - Contains general purpose functions: get the date, create folders, get file ids...
 - single_workflow.py
@@ -20,5 +20,5 @@ Run the Dias pipeline stored in DNAnexus
   - Generates the batch tsv and runs the dx cmd to start the multi workflow
 - multiqc.py
   - Runs the multiqc
-- vcf2xls.py
+- reports.py
   - Generate batch files for vcf2xls, reports and reanalysis
