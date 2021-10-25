@@ -17,13 +17,14 @@ from general_functions import (
 
 
 def make_ss_dias_batch_file(input_directory, assay_config):
-    # uuids for temp files to prevent collisions during parallel runs
     fastq_dict = make_fq_dict(input_directory)
+    # uuids for temp files to prevent collisions during parallel runs
     batch_uuid = str(uuid.uuid4())
     batch_tsv = batch_uuid + ".dx_batch.tsv"
 
     id_suffix = " ID"
 
+    # first headers necessary in the single batch tsv file
     headers = [
         "batch ID",
         assay_config.sentieon_R1_input_stage,
@@ -39,6 +40,7 @@ def make_ss_dias_batch_file(input_directory, assay_config):
     for stage in assay_config.ss_beds_inputs:
         headers.append(stage)
 
+    # start by adding the headers to the batch_file_lines list
     batch_file_lines = []
     header_line = "\t".join(headers)
     batch_file_lines.append(header_line)
@@ -72,9 +74,17 @@ def make_ss_dias_batch_file(input_directory, assay_config):
 
 
 def make_fq_dict(path):
+    """ Match fastq files located in the given DNAnexus path
 
+    Args:
+        path (str): DNAnexus path
+
+    Returns:
+        dict: Dict containing R1 and R2 fastqs
+    """
+
+    # get all the files ending by fastq.gz in the DNAnexus path
     command = "dx find data --path {} --name *fastq.gz --brief".format(path)
-
     fastq_id_list = subprocess.check_output(
         command, shell=True
     ).strip().split("\n")

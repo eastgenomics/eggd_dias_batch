@@ -52,21 +52,21 @@ def main():
     parser_q = subparsers.add_parser('qc', help='multiqc help')
     parser_q.add_argument(
         'input_dir', type=str,
-        help='A multi sample workflow output directory path'
+        help='A single/multi sample workflow output directory path'
     )
     parser_q.set_defaults(which='qc')
 
     parser_r = subparsers.add_parser('reports', help='reports help')
     parser_r.add_argument(
         'input_dir', type=str,
-        help='A multi sample workflow output directory path'
+        help='A single/multi sample workflow output directory path'
     )
     parser_r.set_defaults(which='reports')
 
     parser_r = subparsers.add_parser('reanalysis', help='reanalysis help')
     parser_r.add_argument(
         'input_dir', type=str,
-        help='A multi sample workflow output directory path'
+        help='A single/multi sample workflow output directory path'
     )
     parser_r.add_argument(
         'reanalysis_list', type=str,
