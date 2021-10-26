@@ -48,11 +48,16 @@ def run_ms_workflow(ss_workflow_out_dir, dry_run, assay_config, assay_id):
         assay_config.ms_workflow_id, ms_batch_file
     )
 
+    somalier_thresholds = " -istage-G5j1jvj433GYYY25B5jKxFYp.female_threshold={} \
+                            -istage-G5j1jvj433GYYY25B5jKxFYp.male_threshold={}".format(
+        assay_config.female_threshold, assay_config.male_threshold
+    )
+
     app_relative_paths = format_relative_paths(ms_workflow_stage_info)
 
     destination = " --destination={} ".format(ms_workflow_out_dir)
 
-    command = " ".join([run_wf_command, app_relative_paths, destination])
+    command = " ".join([run_wf_command, app_relative_paths, somalier_thresholds, destination])
 
     if dry_run is True:
         print("Created workflow dir: {}".format(ss_workflow_out_dir))
