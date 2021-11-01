@@ -12,11 +12,26 @@ from packaging import version
 
 
 def get_date():
+    """ Get the date in YYMMDD format
+
+    Returns:
+        str: String of date in YYMMDD format
+    """
+
     date = datetime.datetime.now()
     return date.strftime("%y%m%d")
 
 
 def dx_make_workflow_dir(dx_dir_path):
+    """ Create workflow directories
+
+    Args:
+        dx_dir_path (str): String of the DNAnexus path to create
+
+    Returns:
+        bool: Bool to check whether creation of folders was successful
+    """
+
     command = "dx mkdir -p /output/; dx mkdir {dx_dir_path}".format(
         dx_dir_path=dx_dir_path)
     try:
@@ -29,6 +44,15 @@ def dx_make_workflow_dir(dx_dir_path):
 
 
 def describe_object(object_id_or_path):
+    """ Describe DNAnexus object
+
+    Args:
+        object_id_or_path (str): DNAnexus object id or path
+
+    Returns:
+        str: Description of object
+    """
+
     command = "dx describe {object_id_or_path}".format(
         object_id_or_path=object_id_or_path)
 
@@ -47,6 +71,15 @@ def describe_object(object_id_or_path):
 
 
 def get_object_attribute_from_object_id_or_path(object_id_or_path, attribute):
+    """ Get specific attribute from DNAnexus description
+
+    Args:
+        object_id_or_path (str): DNAnexus object id or path
+        attribute (str): Attribute to extract from description
+
+    Returns:
+        str: Value of attribute
+    """
 
     workflow_description = describe_object(object_id_or_path)
 
@@ -58,14 +91,23 @@ def get_object_attribute_from_object_id_or_path(object_id_or_path, attribute):
 
 
 def get_workflow_stage_info(workflow_id):
+    """ Get the workflow stage info i.e. stage id, app id and app name
+
+    Args:
+        workflow_id (str): Workflow id
+
+    Returns:
+        dict: Dict of stage id to app info
+    """
+
     workflow_description = describe_object(workflow_id)
 
     stages = {}
 
     previous_line_is_stage = False
 
+    # go through the workflow description
     for index, line in enumerate(workflow_description):
-
         if line.startswith("Stage "):
             previous_line_is_stage = True
             stage = line.split(" ")[1]
@@ -82,6 +124,7 @@ def get_workflow_stage_info(workflow_id):
                 app_id, "Name"
             )
 
+            # gather app id and app name of the stage
             stages[stage] = {
                 "app_id": app_id, "app_name": app_name
             }
@@ -94,9 +137,20 @@ def get_workflow_stage_info(workflow_id):
 
 
 def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
+    """ Create directories for the apps
+
+    Args:
+        workflow_stage_info (str): Dict of stage to app info
+        workflow_output_dir (str): Output directory for the workflow
+
+    Returns:
+        dict: Dict of stage id to app output directory
+    """
+
     out_dirs = {}
 
     for stage, stage_info in sorted(workflow_stage_info.items()):
+        # full path of the app output folder
         app_out_dir = "{workflow_output_dir}{app_name}".format(
             workflow_output_dir=workflow_output_dir,
             app_name=stage_info["app_name"]
@@ -112,6 +166,15 @@ def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
 
 
 def format_relative_paths(workflow_stage_info):
+    """ Add specific app output directory to final command line
+
+    Args:
+        workflow_stage_info (dict): Dict containing the stage to app info
+
+    Returns:
+        str: String containing the DNAnexus option to specify apps output directory
+    """
+
     result = ""
     for stage_id, stage_info in sorted(workflow_stage_info.items()):
         command_option = '--stage-relative-output-folder {} "{}" '.format(
@@ -122,6 +185,16 @@ def format_relative_paths(workflow_stage_info):
 
 
 def find_app_dir(workflow_output_dir, app_basename):
+    """ Find app directory
+
+    Args:
+        workflow_output_dir (str): Workflow output directory
+        app_basename (str): App name without version
+
+    Returns:
+        str: Full path of app directory
+    """
+
     if app_basename is None:
         return "/"
 
@@ -145,6 +218,17 @@ def find_app_dir(workflow_output_dir, app_basename):
 
 
 def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."):
+    """ Get the file ids for a given app directory
+
+    Args:
+        app_dir (str): App directory
+        app_subdir (str, optional): App sub-directory. Defaults to "".
+        filename_pattern (str, optional): Pattern used to find files. Defaults to ".".
+
+    Returns:
+        list: List of file ids for the app folder
+    """
+
     command = "dx ls {app_dir}{app_subdir} | grep {filename_pattern}".format(
         app_dir=app_dir, app_subdir=app_subdir,
         filename_pattern=filename_pattern
@@ -326,16 +410,18 @@ def prepare_batch_writing(
             values.append("NA12878")
 
         elif type_workflow == "reports":
-            values.append(type_input)
+            # renaming type_input for comprehension in this elif
+            sample_id = type_input
+            values.append(sample_id)
 
             # get the index for the coverage report that needs to be created
-            coverage_reports = find_previous_coverage_reports(type_input)
+            coverage_reports = find_previous_coverage_reports(sample_id)
             index = get_next_index(coverage_reports)
 
             # add the name param to athena
             headers.append("{}.name".format(assay_config.athena_stage_id))
             # add the value of name to athena
-            values.append("{}_{}".format(type_input, index))
+            values.append("{}_{}".format(sample_id, index))
 
         # add the dynamic files to the headers and values
         for stage, file_id in workflow_specificity.items():

@@ -17,10 +17,21 @@ from general_functions import (
 
 # reanalysis
 
+
 def gather_sample_ids_from_bams(ss_workflow_out_dir):
+    """ Get a list of sample ids from the bams files
+
+    Args:
+        ss_workflow_out_dir (str): Path of single folder workflow in DNAnexus
+
+    Returns:
+        list: List of samples ids
+    """
+
     cmd = "dx ls {}/sentieon-dnaseq/*bam".format(ss_workflow_out_dir)
     bams = subprocess.check_output(cmd, shell=True).strip().split("\n")
-    sample_list = [bam.split("_")[0] for bam in bams]
+    # get the sample name from the bam and take the X number out of the sample name
+    sample_list = [bam.split("_")[0].split("-")[0] for bam in bams]
     return sample_list
 
 
@@ -96,7 +107,7 @@ def run_reports(
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
-        # rea_headers contains theheaders for the batch file
+        # rea_headers contains the headers for the batch file
         for header in rea_headers:
             new_headers = [field for field in header]
             new_headers.append(
@@ -130,6 +141,7 @@ def run_reports(
     command = "dx run -y --rerun-stage '*' {} -istage-G4BJkJQ4JxJvBv5vJq50vJZ8.flank={} --batch-tsv={}".format(
         assay_config.rpt_workflow_id, assay_config.xlsx_flanks , rpt_batch_file
     )
+
     # assign stage out folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
     destination = " --destination={} ".format(rpt_workflow_out_dir)
