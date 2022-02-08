@@ -3,7 +3,7 @@
 import subprocess
 
 from general_functions import (
-    get_dx_cwd_project_id, get_object_attribute_from_object_id_or_path,
+    get_dx_cwd_project_name, get_object_attribute_from_object_id_or_path,
     dx_make_workflow_dir
 )
 
