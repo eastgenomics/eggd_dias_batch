@@ -10,7 +10,7 @@ from general_functions import (
 # MultiQC
 
 
-def run_multiqc_app(ms_workflow_out_dir, dry_run, assay_config):
+def run_multiqc_app(ms_workflow_out_dir, dry_run, assay_config, assay_id):
     assert ms_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
 
@@ -46,6 +46,9 @@ def run_multiqc_app(ms_workflow_out_dir, dry_run, assay_config):
         assay_config.mqc_applet_id, assay_config.mqc_config_file,
         project_name, ss_for_multiqc, multi_folder, mqc_applet_out_dir
     )
+
+    if "TWE" in assay_id:
+        command += " --instance-type {}".format("mem1_ssd1_v2_x8")
 
     if dry_run is True:
         print("Final cmd ran: {}".format(command))
