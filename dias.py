@@ -141,7 +141,7 @@ def main():
         )
     elif workflow == "qc":
         mqc_applet_out_dir = run_multiqc_app(
-            args.input_dir, args.dry_run, config
+            args.input_dir, args.dry_run, config, assay_id
         )
     elif workflow == "reports":
         reports_out_dir = run_reports(
