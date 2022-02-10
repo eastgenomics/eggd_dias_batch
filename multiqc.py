@@ -27,7 +27,7 @@ def run_multiqc_app(ms_workflow_out_dir, dry_run, assay_config, assay_id):
     ss_for_multiqc = ss_for_multiqc[0]
 
     if ms_for_multiqc != []:
-        multi_folder = ms_for_multiqc[0]
+        multi_folder = "-isecondary_workflow_output='{}'".format(ms_for_multiqc[0])
     else:
         multi_folder = ""
 
@@ -41,7 +41,7 @@ def run_multiqc_app(ms_workflow_out_dir, dry_run, assay_config, assay_id):
     command = (
         "dx run {} --yes --ignore-reuse -imultiqc_config_file='{}' "
         "-iproject_for_multiqc='{}' -iprimary_workflow_output='{}' "
-        "-isecondary_workflow_output='{}' --destination='{}'"
+        "{} --destination='{}'"
     ).format(
         assay_config.mqc_applet_id, assay_config.mqc_config_file,
         project_name, ss_for_multiqc, multi_folder, mqc_applet_out_dir
