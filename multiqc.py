@@ -39,8 +39,8 @@ def run_multiqc_app(ms_workflow_out_dir, dry_run, assay_config):
     dx_make_workflow_dir(mqc_applet_out_dir)
 
     command = (
-        "dx run {} --yes --ignore-reuse -ieggd_multiqc_config_file='{}' "
-        "-iproject_for_multiqc='{}' -iss_for_multiqc='{}' "
+        "dx run {} --yes --ignore-reuse -imultiqc_config_file='{}' "
+        "-iproject_for_multiqc='{}' -iprimary_workflow_output='{}' "
         "{} --destination='{}'"
     ).format(
         assay_config.mqc_applet_id, assay_config.mqc_config_file,
