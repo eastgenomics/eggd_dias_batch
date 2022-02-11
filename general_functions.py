@@ -266,6 +266,22 @@ def get_dx_cwd_project_id():
     return project_id
 
 
+def get_dx_cwd_project_name():
+    """ Return project name using dx env
+
+    Returns:
+        str: DNAnexus project name
+    """
+
+    command = (
+        'dx env | grep -P "Current workspace name" | '
+        'awk -F "\t" \'{print $NF}\' | sed s/\'"\'//g'
+    )
+
+    project_name = subprocess.check_output(command, shell=True).strip()
+    return project_name
+
+
 def get_sample_ids_from_sample_sheet(sample_sheet_path):
     """ Return list of samples from the sample sheet
 
