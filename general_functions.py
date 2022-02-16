@@ -87,7 +87,7 @@ def get_object_attribute_from_object_id_or_path(object_id_or_path, attribute):
         str: Value of attribute
     """
 
-    workflow_description = describe_object(object_id_or_path)
+    workflow_description = describe_object(object_id_or_path, "string")
 
     for line in workflow_description:
         if line.startswith("{attribute} ".format(attribute=attribute)):
@@ -106,7 +106,7 @@ def get_workflow_stage_info(workflow_id):
         dict: Dict of stage id to app info
     """
 
-    workflow_description = describe_object(workflow_id)
+    workflow_description = describe_object(workflow_id, "json")
     workflow_description_json = json.loads(workflow_description)
 
     stages = {}
