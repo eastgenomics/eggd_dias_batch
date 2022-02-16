@@ -114,9 +114,7 @@ def get_workflow_stage_info(workflow_id):
     # gather app id and app name of the stage
         stage = workflow_description_json['stages'][each_stage]['id']
         app_id = workflow_description_json['stages'][each_stage]['executable']
-        app_name = workflow_description_json['stages'][each_stage]['name']
-        if app_name is None:
-            app_name = dxpy.describe(app_id)['name']
+        app_name = dxpy.describe(app_id)['name']
         stages[stage] = {
             "app_id": app_id, "app_name": app_name
         }
