@@ -5,6 +5,7 @@ import datetime
 import os
 import subprocess
 import uuid
+import json
 
 from packaging import version
 
@@ -101,37 +102,26 @@ def get_workflow_stage_info(workflow_id):
     """
 
     workflow_description = describe_object(workflow_id)
+    workflow_description_json = json.loads(workflow_description)
 
     stages = {}
 
-    previous_line_is_stage = False
+    # go through the workflow json description and select stage,
+    # app_id and app_name
+    # first find out how many stage sections there are
+    num_stages = len(workflow_description_json['stages'])
 
-    # go through the workflow description
-    for index, line in enumerate(workflow_description):
-        if line.startswith("Stage "):
-            previous_line_is_stage = True
-            stage = line.split(" ")[1]
+    for each_stage in range(num_stages):
+    # gather app id and app name of the stage
+        stage = workflow_description_json['stages'][each_stage]['id']
+        app_id = workflow_description_json['stages'][each_stage]['executable']
+        app_name = workflow_description_json['stages'][each_stage]['name']
+        stages[stage] = {
+            "app_id": app_id, "app_name": app_name
+        }
 
-        # If prev line was stage line then this line contains executable
-        elif previous_line_is_stage:
-            error_msg = "Expected \'Executable\' line after stage line \
-                {line_num}\n{line}".format(line_num=index+1, line=line)
+    return stages
 
-            assert line.startswith("  Executable"), error_msg
-
-            app_id = line.split(" ")[-1]
-            app_name = get_object_attribute_from_object_id_or_path(
-                app_id, "Name"
-            )
-
-            # gather app id and app name of the stage
-            stages[stage] = {
-                "app_id": app_id, "app_name": app_name
-            }
-            previous_line_is_stage = False
-
-        else:
-            previous_line_is_stage = False
 
     return stages
 
