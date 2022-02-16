@@ -5,7 +5,7 @@ import datetime
 import os
 import subprocess
 import uuid
-import json
+import dxpy
 
 from packaging import version
 
@@ -44,13 +44,11 @@ def dx_make_workflow_dir(dx_dir_path):
         return False
 
 
-def describe_object(object_id_or_path, data_type):
+def describe_object(object_id_or_path):
     """ Describe DNAnexus object
 
     Args:
         object_id_or_path (str): DNAnexus object id or path
-        data_type (str) : selects whether to extract from standard or
-                            as json
 
     Returns:
         str: Description of object
@@ -64,9 +62,6 @@ def describe_object(object_id_or_path, data_type):
     # to access.
     # In these cases the description is returned but the commands has non-0
     # exit status so errors out
-
-    if "json" in data_type:
-        command += " --json"
 
     try:
         workflow_description = subprocess\
@@ -87,7 +82,7 @@ def get_object_attribute_from_object_id_or_path(object_id_or_path, attribute):
         str: Value of attribute
     """
 
-    workflow_description = describe_object(object_id_or_path, "string")
+    workflow_description = describe_object(object_id_or_path)
 
     for line in workflow_description:
         if line.startswith("{attribute} ".format(attribute=attribute)):
@@ -106,8 +101,7 @@ def get_workflow_stage_info(workflow_id):
         dict: Dict of stage id to app info
     """
 
-    workflow_description = describe_object(workflow_id, "json")
-    workflow_description_json = json.loads(workflow_description)
+    workflow_description_json = dxpy.describe(workflow_id.split(":")[1])
 
     stages = {}
 
