@@ -5,6 +5,7 @@ import datetime
 import os
 import subprocess
 import uuid
+import dxpy
 
 from packaging import version
 
@@ -100,41 +101,21 @@ def get_workflow_stage_info(workflow_id):
         dict: Dict of stage id to app info
     """
 
-    workflow_description = describe_object(workflow_id)
+    workflow_description_json = dxpy.describe(workflow_id.split(":")[1])
 
     stages = {}
 
-    previous_line_is_stage = False
-
-    # go through the workflow description
-    for index, line in enumerate(workflow_description):
-        if line.startswith("Stage "):
-            previous_line_is_stage = True
-            stage = line.split(" ")[1]
-
-        # If prev line was stage line then this line contains executable
-        elif previous_line_is_stage:
-            error_msg = "Expected \'Executable\' line after stage line \
-                {line_num}\n{line}".format(line_num=index+1, line=line)
-
-            assert line.startswith("  Executable"), error_msg
-
-            app_id = line.split(" ")[-1]
-            app_name = get_object_attribute_from_object_id_or_path(
-                app_id, "Name"
-            )
-
-            # gather app id and app name of the stage
-            stages[stage] = {
-                "app_id": app_id, "app_name": app_name
-            }
-            previous_line_is_stage = False
-
-        else:
-            previous_line_is_stage = False
+    # go through the workflow json description and select stage,
+    # app_id and app_name
+    for stage in workflow_description_json['stages']:
+        # gather app id and app name of the stage
+        app_id = stage['executable']
+        app_name = dxpy.describe(app_id)['name']
+        stages[stage['id']] = {
+            "app_id": app_id, "app_name": app_name
+        }
 
     return stages
-
 
 def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
     """ Create directories for the apps
