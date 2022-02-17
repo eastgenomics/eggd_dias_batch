@@ -107,15 +107,11 @@ def get_workflow_stage_info(workflow_id):
 
     # go through the workflow json description and select stage,
     # app_id and app_name
-    # first find out how many stage sections there are
-    num_stages = len(workflow_description_json['stages'])
-
-    for each_stage in range(num_stages):
+    for stage in workflow_description_json['stages']:
         # gather app id and app name of the stage
-        stage = workflow_description_json['stages'][each_stage]['id']
-        app_id = workflow_description_json['stages'][each_stage]['executable']
+        app_id = stage['executable']
         app_name = dxpy.describe(app_id)['name']
-        stages[stage] = {
+        stages[stage['id']] = {
             "app_id": app_id, "app_name": app_name
         }
 
