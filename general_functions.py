@@ -452,6 +452,13 @@ def prepare_batch_writing(
 
         # add all headers for every sample (for sense check later)
         batch_headers.append(tuple(headers))
+
+        assert len(set(map(len, batch_headers))) == 1, (
+            "Sample {} doesn't have the same number of files gathered. "
+            "Check if no single jobs failed/fastqs "
+            "for this sample were given".format(type_input)
+        )
+
         # add values for every sample
         batch_values.append(values)
 
@@ -475,7 +482,6 @@ def create_batch_file(headers, values):
     # check if all headers gathered are identical
     assert len(set(headers)) == 1, (
         "All the headers retrieved are not identical\n"
-        "{}".format(set(headers))
     )
 
     uniq_headers = headers[0]
@@ -591,3 +597,15 @@ def get_latest_config(folder):
         [version.parse(str(f)) for f in os.listdir(folder)]
     ))
     return config_latest_version
+
+
+def parse_manifest(manifest_file_id):
+    data = defaultdict(lambda: defaultdict(set))
+
+    with dxpy.open_dxfile(manifest_file_id) as f:
+        for line in f:
+            sample, clinical_indication, panel, gene = line.strip().split("\t")
+            data[sample]["clinical_indications"].add(clinical_indication)
+            data[sample]["panels"].add(panel)
+
+    return data
