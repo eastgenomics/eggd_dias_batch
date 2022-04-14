@@ -12,7 +12,9 @@ from general_functions import (
     get_stage_inputs,
     prepare_batch_writing,
     create_batch_file,
-    assess_batch_file
+    assess_batch_file,
+    parse_manifest,
+    get_sample_ids_from_sample_sheet
 )
 
 # reanalysis
@@ -33,6 +35,63 @@ def gather_sample_ids_from_bams(ss_workflow_out_dir):
     # get the sample name from the bam and take the X number out of the sample name
     sample_list = [bam.split("_")[0].split("-")[0] for bam in bams]
     return sample_list
+
+
+def create_job_reports(
+    rpt_out_dir, total_samples, job_starting,
+    list_missing_samples_from_manifest
+):
+    """ Create and upload a job report file where reports are categorised in:
+        - expected samples
+        - running jobs for samples found
+        - missing samples from the manifest
+
+    Args:
+        rpt_out_dir (str): Dias reports directory
+        total_samples (list): List with all samples in sample sheet minus NA
+        job_starting (list): List with all samples which will have a report job
+        list_missing_samples_from_manifest (list): List with all samples missing from manifest
+
+    Returns:
+        str: Name and path of job report file
+    """
+    # rpt_out_dir should always be /output/dias_reports_version but in case
+    # someone adds a "/" at the end, which i do sometimes
+    name_file = [
+        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias")
+    ]
+
+    # there should only be one ele in name_file
+    job_report = "{}.txt".format(name_file[0])
+
+    # get samples for which a report is expected but the job will not started
+    # for reasons other than absence from manifest
+    # i.e. present in sample sheet but fastqs were not provided
+    difference_expected_starting = set(total_samples).difference(
+        set(job_starting)
+    )
+
+    with open(job_report, "w") as f:
+        f.write("Number of reports expected: {}\n".format(len(total_samples)))
+
+        f.write(
+            "Number of samples for which a job started: {}\n".format(
+                len(job_starting)
+            )
+        )
+
+        for sample_id in difference_expected_starting:
+            f.write("{}\n".format(sample_id))
+
+        f.write("Samples not found in manifest:\n")
+
+        for sample_id in list_missing_samples_from_manifest:
+            f.write("{}\n".format(sample_id))
+
+    cmd = "dx upload {} --path {}".format(job_report, rpt_out_dir)
+    subprocess.check_output(cmd, shell=True)
+
+    return "{}/{}".format(rpt_out_dir, job_report)
 
 
 def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
@@ -61,7 +120,8 @@ def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
 
 
 def run_reports(
-    ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
+    ss_workflow_out_dir, dry_run, assay_config, assay_id,
+    sample_sheet_path=None, reanalysis_dict=None
 ):
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
@@ -95,12 +155,12 @@ def run_reports(
         ss_workflow_out_dir, sample2stage_input_dict
     )
 
+    headers = []
+    values = []
+
     if reanalysis_dict:
         # reanalysis requires list of panels for vcf2xls
         # reanalysis requires panel name for generate_bed
-        headers = []
-        values = []
-
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
             staging_dict, "reports", assay_config, assay_config.rea_dynamic_files
@@ -131,10 +191,51 @@ def run_reports(
             line.extend(panels)
             values.append(line)
     else:
+        samples_job_starting = []
+        missing_samples_from_manifest = []
+
         # get the headers and values from the staging inputs
-        headers, values = prepare_batch_writing(
+        rpt_headers, rpt_values = prepare_batch_writing(
             staging_dict, "reports", assay_config, assay_config.rpt_dynamic_files
         )
+
+        manifest_data = parse_manifest(assay_config.bioinformatic_manifest)
+
+        # manually add the headers for reanalysis vcf2xls/generate_bed
+        # rea_headers contains the headers for the batch file
+        for header in rpt_headers:
+            new_headers = [field for field in header]
+            new_headers.append(
+                "{}.clinical_indication".format(assay_config.workbook_stage_id)
+            )
+            new_headers.append(
+                "{}.panel".format(assay_config.workbook_stage_id)
+            )
+            headers.append(tuple(new_headers))
+
+        for line in rpt_values:
+            # sample id is the first element of every list according to
+            # the prepare_batch_writing function
+            sample_id = values[0]
+
+            if sample_id in manifest_data:
+                cis = manifest_data[sample_id]["clinical_indications"]
+                panels = manifest_data[sample_id]["panels"]
+                samples_job_starting.append(sample_id)
+                line.extend(cis)
+                line.extend(panels)
+                values.append(line)
+            else:
+                missing_samples_from_manifest.append(sample_id)
+
+        all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
+
+        report_file = create_job_reports(
+            rpt_workflow_out_dir, all_samples, samples_job_starting,
+            missing_samples_from_manifest
+        )
+
+        print("Created job report file: {}".format(report_file))
 
     rpt_batch_file = create_batch_file(headers, values)
 
