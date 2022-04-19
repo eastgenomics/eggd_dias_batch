@@ -80,13 +80,19 @@ def create_job_reports(
             )
         )
 
-        for sample_id in difference_expected_starting:
-            f.write("{}\n".format(sample_id))
+        if difference_expected_starting:
+            for sample_id in difference_expected_starting:
+                f.write("{}\n".format(sample_id))
 
-        f.write("Samples not found in manifest:\n")
+        f.write(
+            "Samples not found in manifest: {}\n".format(
+                len(list_missing_samples_from_manifest)
+            )
+        )
 
-        for sample_id in list_missing_samples_from_manifest:
-            f.write("{}\n".format(sample_id))
+        if list_missing_samples_from_manifest:
+            for sample_id in list_missing_samples_from_manifest:
+                f.write("{}\n".format(sample_id))
 
     cmd = "dx upload {} --path {}".format(job_report, rpt_out_dir)
     subprocess.check_output(cmd, shell=True)
@@ -235,7 +241,7 @@ def run_reports(
             missing_samples_from_manifest
         )
 
-        print("Created job report file: {}".format(report_file))
+        print("Created and uploaded job report file: {}".format(report_file))
 
     rpt_batch_file = create_batch_file(headers, values)
 
