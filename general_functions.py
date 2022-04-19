@@ -117,6 +117,7 @@ def get_workflow_stage_info(workflow_id):
 
     return stages
 
+
 def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
     """ Create directories for the apps
 
