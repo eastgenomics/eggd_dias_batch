@@ -55,10 +55,10 @@ def create_job_reports(
     Returns:
         str: Name and path of job report file
     """
-    # rpt_out_dir should always be /output/dias_reports_version but in case
+    # rpt_out_dir should always be /output/dias_single/dias_reports but in case
     # someone adds a "/" at the end, which i do sometimes
     name_file = [
-        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias")
+        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_reports")
     ]
 
     # there should only be one ele in name_file
@@ -200,29 +200,29 @@ def run_reports(
         samples_job_starting = []
         missing_samples_from_manifest = []
 
+        manifest_data = parse_manifest(assay_config.bioinformatic_manifest)
+
         # get the headers and values from the staging inputs
         rpt_headers, rpt_values = prepare_batch_writing(
             staging_dict, "reports", assay_config, assay_config.rpt_dynamic_files
         )
-
-        manifest_data = parse_manifest(assay_config.bioinformatic_manifest)
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
         # rea_headers contains the headers for the batch file
         for header in rpt_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "{}.clinical_indication".format(assay_config.workbook_stage_id)
+                "{}.clinical_indication".format(assay_config.generate_workbook_stage_id)
             )
             new_headers.append(
-                "{}.panel".format(assay_config.workbook_stage_id)
+                "{}.panel".format(assay_config.generate_workbook_stage_id)
             )
             headers.append(tuple(new_headers))
 
         for line in rpt_values:
             # sample id is the first element of every list according to
             # the prepare_batch_writing function
-            sample_id = values[0]
+            sample_id = line[0]
 
             if sample_id in manifest_data:
                 cis = manifest_data[sample_id]["clinical_indications"]
@@ -245,8 +245,17 @@ def run_reports(
 
     rpt_batch_file = create_batch_file(headers, values)
 
-    command = "dx run -y --rerun-stage '*' {} -istage-G4BJkJQ4JxJvBv5vJq50vJZ8.flank={} --batch-tsv={}".format(
-        assay_config.rpt_workflow_id, assay_config.xlsx_flanks , rpt_batch_file
+    flank_arg = "-istage-G9P8p104vyJJGy6y86FQBxkv.flank={}".format(
+        assay_config.xlsx_flanks
+    )
+
+    vep_config_file_arg = "-istage-G9Q0jzQ4vyJ3x37X4KBKXZ5v.config_file={}".format(
+        assay_config.vep_config
+    )
+
+    command = "dx run -y --rerun-stage '*' {} {} {} --batch-tsv={}".format(
+        assay_config.rpt_workflow_id, vep_config_file_arg, flank_arg,
+        rpt_batch_file
     )
 
     # assign stage out folders
