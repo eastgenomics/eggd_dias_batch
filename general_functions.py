@@ -410,6 +410,10 @@ def prepare_batch_writing(
         elif type_workflow == "reports":
             # renaming type_input for comprehension in this elif
             sample_id = type_input
+
+            if sample_id.startswith("NA12878"):
+                continue
+
             values.append(sample_id)
 
             # get the index for the coverage report that needs to be created
@@ -603,7 +607,9 @@ def get_latest_config(folder):
 def parse_manifest(manifest_file_id):
     data = defaultdict(lambda: defaultdict(set))
 
-    with dxpy.open_dxfile(manifest_file_id) as f:
+    project_id, manifest_id = manifest_file_id.split(":")
+
+    with dxpy.open_dxfile(manifest_id, project=project_id) as f:
         for line in f:
             sample, clinical_indication, panel, gene = line.strip().split("\t")
             data[sample]["clinical_indications"].add(clinical_indication)
