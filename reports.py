@@ -71,8 +71,12 @@ def create_job_reports(
         set(job_starting)
     )
 
+    na_samples = 0
+
     with open(job_report, "w") as f:
-        f.write("Number of reports expected: {}\n".format(len(total_samples)))
+        f.write(
+            "Number of reports expected: {}\n\n".format(len(total_samples))
+        )
 
         f.write(
             "Number of samples for which a job started: {}\n".format(
@@ -82,10 +86,18 @@ def create_job_reports(
 
         if difference_expected_starting:
             for sample_id in difference_expected_starting:
-                f.write("{}\n".format(sample_id))
+                if not sample_id.startswith("NA12878"):
+                    f.write("{}\n".format(sample_id))
+                else:
+                    na_samples += 1
+
+            f.write(
+                f"\n{na_samples} NA12878 samples for which jobs aren't "
+                "started\n"
+            )
 
         f.write(
-            "Samples not found in manifest: {}\n".format(
+            "\nSamples not found in manifest: {}\n".format(
                 len(list_missing_samples_from_manifest)
             )
         )
@@ -97,7 +109,7 @@ def create_job_reports(
     cmd = "dx upload {} --path {}".format(job_report, rpt_out_dir)
     subprocess.check_output(cmd, shell=True)
 
-    return "{}/{}".format(rpt_out_dir, job_report)
+    return "{}{}".format(rpt_out_dir, job_report)
 
 
 def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
