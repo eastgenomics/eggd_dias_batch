@@ -14,7 +14,8 @@ from general_functions import (
     create_batch_file,
     assess_batch_file,
     parse_manifest,
-    get_sample_ids_from_sample_sheet
+    get_sample_ids_from_sample_sheet,
+    gather_sample_sheet
 )
 
 # reanalysis
@@ -92,8 +93,8 @@ def create_job_reports(
                     na_samples += 1
 
             f.write(
-                f"\n{na_samples} NA12878 samples for which jobs aren't "
-                "started\n"
+                "\n{} NA12878 samples for which jobs aren't "
+                "started\n".format(na_samples)
             )
 
         f.write(
@@ -138,8 +139,7 @@ def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
 
 
 def run_reports(
-    ss_workflow_out_dir, dry_run, assay_config, assay_id,
-    sample_sheet_path=None, reanalysis_dict=None
+    ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
 ):
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
@@ -246,6 +246,7 @@ def run_reports(
             else:
                 missing_samples_from_manifest.append(sample_id)
 
+        sample_sheet_path = gather_sample_sheet()
         all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
 
         report_file = create_job_reports(
