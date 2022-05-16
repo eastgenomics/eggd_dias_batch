@@ -605,6 +605,15 @@ def get_latest_config(folder):
 
 
 def parse_manifest(manifest_file_id):
+    """ Parse manifest
+
+    Args:
+        manifest_file_id (str): DNAnexus file id for manifest file
+
+    Returns:
+        dict: Dict of samples linked to panels and clinical indications
+    """
+
     data = defaultdict(lambda: defaultdict(set))
 
     project_id, manifest_id = manifest_file_id.split(":")
@@ -616,3 +625,27 @@ def parse_manifest(manifest_file_id):
             data[sample]["panels"].add(panel)
 
     return data
+
+
+def gather_sample_sheet():
+    """ Get sample sheet id
+
+    Returns:
+        str: Sample sheet DNAnexus id
+    """
+
+    # get the project id from the environment variable
+    current_project = os.environ.get('DX_PROJECT_CONTEXT_ID')
+    result = dxpy.find_data_objects(
+        classname="file", name="SampleSheet.csv", project=current_project
+    )
+
+    sample_sheets = []
+
+    for sample_sheet in result:
+        sample_sheets.append(sample_sheet)
+
+    # quick check to see if we get none or multiple
+    assert len(sample_sheets) == 1, "Didn't gather only one sample sheet file"
+
+    return sample_sheets[0]["id"]
