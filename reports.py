@@ -180,8 +180,6 @@ def run_reports(
     values = []
 
     if reanalysis_dict:
-        # reanalysis requires list of panels for vcf2xls
-        # reanalysis requires panel name for generate_bed
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
             staging_dict, "reports", assay_config, assay_config.rea_dynamic_files
