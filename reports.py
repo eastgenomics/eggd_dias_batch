@@ -20,24 +20,6 @@ from general_functions import (
 
 # reanalysis
 
-
-def gather_sample_ids_from_bams(ss_workflow_out_dir):
-    """ Get a list of sample ids from the bams files
-
-    Args:
-        ss_workflow_out_dir (str): Path of single folder workflow in DNAnexus
-
-    Returns:
-        list: List of samples ids
-    """
-
-    cmd = "dx ls {}/sentieon-dnaseq/*bam".format(ss_workflow_out_dir)
-    bams = subprocess.check_output(cmd, shell=True).strip().split("\n")
-    # get the sample name from the bam and take the X number out of the sample name
-    sample_list = [bam.split("_")[0].split("-")[0] for bam in bams]
-    return sample_list
-
-
 def create_job_reports(
     rpt_out_dir, total_samples, job_starting,
     list_missing_samples_from_manifest
@@ -156,12 +138,15 @@ def run_reports(
 
     sample2stage_input_dict = {}
 
+    sample_sheet_path = gather_sample_sheet()
+    all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
+
     if reanalysis_dict:
         stage_input_dict = assay_config.rea_stage_input_dict
         sample_id_list = reanalysis_dict
     else:
         stage_input_dict = assay_config.rpt_stage_input_dict
-        sample_id_list = gather_sample_ids_from_bams(ss_workflow_out_dir)
+        sample_id_list = all_samples
 
     # put the sample id in a dictionary so that the stage inputs can be
     # assigned to a sample id
@@ -246,9 +231,6 @@ def run_reports(
                 values.append(line)
             else:
                 missing_samples_from_manifest.append(sample_id)
-
-        sample_sheet_path = gather_sample_sheet()
-        all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
 
         report_file = create_job_reports(
             rpt_workflow_out_dir, all_samples, samples_job_starting,
