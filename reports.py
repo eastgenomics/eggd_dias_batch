@@ -173,7 +173,10 @@ def run_reports(
         ss_workflow_out_dir, sample2stage_input_dict
     )
 
+    # list that is going to represent the header in the batch tsv file
     headers = []
+    # list that is going to represent the lines for each sample in the batch
+    # tsv file
     values = []
 
     if reanalysis_dict:
