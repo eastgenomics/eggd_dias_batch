@@ -411,7 +411,7 @@ def prepare_batch_writing(
             # renaming type_input for comprehension in this elif
             sample_id = type_input
 
-            if sample_id.startswith("NA12878"):
+            if sample_id.startswith("NA"):
                 continue
 
             values.append(sample_id)
