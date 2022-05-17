@@ -117,6 +117,7 @@ def get_workflow_stage_info(workflow_id):
 
     return stages
 
+
 def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
     """ Create directories for the apps
 
@@ -409,6 +410,10 @@ def prepare_batch_writing(
         elif type_workflow == "reports":
             # renaming type_input for comprehension in this elif
             sample_id = type_input
+
+            if sample_id.startswith("NA"):
+                continue
+
             values.append(sample_id)
 
             # get the index for the coverage report that needs to be created
@@ -452,6 +457,13 @@ def prepare_batch_writing(
 
         # add all headers for every sample (for sense check later)
         batch_headers.append(tuple(headers))
+
+        assert len(set(map(len, batch_headers))) == 1, (
+            "Sample {} doesn't have the same number of files gathered. "
+            "Check if no single jobs failed/fastqs "
+            "for this sample were given".format(type_input)
+        )
+
         # add values for every sample
         batch_values.append(values)
 
@@ -475,7 +487,6 @@ def create_batch_file(headers, values):
     # check if all headers gathered are identical
     assert len(set(headers)) == 1, (
         "All the headers retrieved are not identical\n"
-        "{}".format(set(headers))
     )
 
     uniq_headers = headers[0]
@@ -591,3 +602,50 @@ def get_latest_config(folder):
         [version.parse(str(f)) for f in os.listdir(folder)]
     ))
     return config_latest_version
+
+
+def parse_manifest(manifest_file_id):
+    """ Parse manifest
+
+    Args:
+        manifest_file_id (str): DNAnexus file id for manifest file
+
+    Returns:
+        dict: Dict of samples linked to panels and clinical indications
+    """
+
+    data = defaultdict(lambda: defaultdict(set))
+
+    project_id, manifest_id = manifest_file_id.split(":")
+
+    with dxpy.open_dxfile(manifest_id, project=project_id) as f:
+        for line in f:
+            sample, clinical_indication, panel, gene = line.strip().split("\t")
+            data[sample]["clinical_indications"].add(clinical_indication)
+            data[sample]["panels"].add(panel)
+
+    return data
+
+
+def gather_sample_sheet():
+    """ Get sample sheet id
+
+    Returns:
+        str: Sample sheet DNAnexus id
+    """
+
+    # get the project id from the environment variable
+    current_project = os.environ.get('DX_PROJECT_CONTEXT_ID')
+    result = dxpy.find_data_objects(
+        classname="file", name="SampleSheet.csv", project=current_project
+    )
+
+    sample_sheets = []
+
+    for sample_sheet in result:
+        sample_sheets.append(sample_sheet)
+
+    # quick check to see if we get none or multiple
+    assert len(sample_sheets) == 1, "Didn't gather only one sample sheet file"
+
+    return sample_sheets[0]["id"]
