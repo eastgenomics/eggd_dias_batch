@@ -417,13 +417,27 @@ def prepare_batch_writing(
             values.append(sample_id)
 
             # get the index for the coverage report that needs to be created
-            coverage_reports = find_previous_coverage_reports(sample_id)
-            index = get_next_index(coverage_reports)
+            coverage_reports = find_previous_reports(
+                sample_id, "coverage_report.html"
+            )
+            # get the index for the xls report that needs to be created
+            xls_reports = find_previous_reports(sample_id, ".xls")
+            xls_index = get_next_index(xls_reports)
+            coverage_index = get_next_index(coverage_reports)
+
+            index_to_use = max([xls_index, coverage_index])
 
             # add the name param to athena
             headers.append("{}.name".format(assay_config.athena_stage_id))
+            # add the name output_prefix to generate_workbooks
+            headers.append("{}.output_prefix".format(
+                    assay_config.generate_workbook_stage_id
+                )
+            )
             # add the value of name to athena
-            values.append("{}_{}".format(sample_id, index))
+            values.append("{}_{}".format(sample_id, index_to_use))
+            # add the value of output prefix to generate workbooks
+            values.append("{}_{}".format(sample_id, index_to_use))
 
         # add the dynamic files to the headers and values
         for stage, file_id in workflow_specificity.items():
@@ -463,6 +477,8 @@ def prepare_batch_writing(
             "Check if no single jobs failed/fastqs "
             "for this sample were given".format(type_input)
         )
+
+        print(values)
 
         # add values for every sample
         batch_values.append(values)
@@ -528,8 +544,8 @@ def assess_batch_file(batch_file):
     return True
 
 
-def find_previous_coverage_reports(sample):
-    """ Return the coverage reports for given sample if they exist
+def find_previous_reports(sample, suffix):
+    """ Return the reports for given sample if they exist
 
     Args:
         sample (str): Sample id
@@ -538,14 +554,22 @@ def find_previous_coverage_reports(sample):
         list: List of coverage reports
     """
 
-    # go find coverage reports that have the same sample id
-    cmd = "dx find data --path / --name {}*coverage_report.html --brief".format(sample)
-    output = subprocess.check_output(cmd, shell=True).strip()
+    current_project = os.environ.get('DX_PROJECT_CONTEXT_ID')
+    report_name = "{}*{}".format(sample, suffix)
 
-    if output == "":
-        return None
-    else:
-        return output.split("\n")
+    output = dxpy.find_data_objects(
+        name=report_name, project=current_project, name_mode="glob"
+    )
+
+    reports = []
+
+    for dnanexus_dict in output:
+        report = dxpy.DXFile(id=dnanexus_dict["id"])
+        reports.append(report.name)
+
+    print(reports)
+
+    return reports
 
 
 def get_next_index(file_ids):
@@ -574,8 +598,7 @@ def get_next_index(file_ids):
                 indexes.append(index)
 
         assert indexes != [], (
-            "Couldn't find file names for"
-            "{}".format(file_ids)
+            "Couldn't find file names for {}".format(file_ids)
         )
 
         # found some reports return the highest number + 1
