@@ -241,12 +241,12 @@ def run_reports(
 
     rpt_batch_file = create_batch_file(headers, values)
 
-    flank_arg = "-istage-G9P8p104vyJJGy6y86FQBxkv.flank={}".format(
-        assay_config.xlsx_flanks
+    flank_arg = "{}.flank={}".format(
+        assay_config.generate_bed_vep_stage_id, assay_config.xlsx_flanks
     )
 
-    vep_config_file_arg = "-istage-G9Q0jzQ4vyJ3x37X4KBKXZ5v.config_file={}".format(
-        assay_config.vep_config
+    vep_config_file_arg = "{}.config_file={}".format(
+        assay_config.vep_stage_id, assay_config.vep_config
     )
 
     command = "dx run -y --rerun-stage '*' {} {} {} --batch-tsv={}".format(
