@@ -241,17 +241,20 @@ def run_reports(
 
     rpt_batch_file = create_batch_file(headers, values)
 
-    flank_arg = "{}.flank={}".format(
+    args = ""
+    args += "-i{}.flank={} ".format(
         assay_config.generate_bed_vep_stage_id, assay_config.xlsx_flanks
     )
 
-    vep_config_file_arg = "{}.config_file={}".format(
+    args += "-i{}.config_file={} ".format(
         assay_config.vep_stage_id, assay_config.vep_config
     )
 
-    command = "dx run -y --rerun-stage '*' {} {} {} --batch-tsv={}".format(
-        assay_config.rpt_workflow_id, vep_config_file_arg, flank_arg,
-        rpt_batch_file
+    if assay_config.assay_name == "TWE":
+        args += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
+
+    command = "dx run -y --rerun-stage '*' {} {} --batch-tsv={}".format(
+        assay_config.rpt_workflow_id, args, rpt_batch_file
     )
 
     # assign stage out folders
