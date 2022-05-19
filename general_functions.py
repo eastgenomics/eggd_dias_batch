@@ -296,7 +296,9 @@ def get_sample_ids_from_sample_sheet(sample_sheet_path):
                 else:
                     # get the sample ids using the header position
                     if line[sample_id_pos] != "NA12878":
-                        sample_ids.append(line[sample_id_pos])
+                        sample_ids.append(
+                            line[sample_id_pos].split("-")[0]
+                        )
 
                 index += 1
             else:
@@ -478,8 +480,6 @@ def prepare_batch_writing(
             "for this sample were given".format(type_input)
         )
 
-        print(values)
-
         # add values for every sample
         batch_values.append(values)
 
@@ -564,19 +564,17 @@ def find_previous_reports(sample, suffix):
     reports = []
 
     for dnanexus_dict in output:
-        report = dxpy.DXFile(id=dnanexus_dict["id"])
-        reports.append(report.name)
-
-    print(reports)
+        report = dxpy.DXFile(dnanexus_dict["id"])
+        reports.append(report.name.split(".")[0])
 
     return reports
 
 
-def get_next_index(file_ids):
+def get_next_index(file_names):
     """ Return the index to assign to the new coverage report
 
     Args:
-        file_ids (list): List of coverage reports
+        file_names (list): List of coverage reports
 
     Returns:
         int: Index to assign to the new coverage report
@@ -587,10 +585,9 @@ def get_next_index(file_ids):
     indexes = []
 
     # other reports found
-    if file_ids:
-        for file_id in file_ids:
-            name = get_object_attribute_from_object_id_or_path(file_id, "Name")
-            index = name.split("_")[1]
+    if file_names:
+        for file_name in file_names:
+            index = file_name.split("_")[1]
 
             # check that the element is indeed a number
             if index.isdigit():
@@ -598,7 +595,7 @@ def get_next_index(file_ids):
                 indexes.append(index)
 
         assert indexes != [], (
-            "Couldn't find file names for {}".format(file_ids)
+            "Couldn't find file names for {}".format(file_names)
         )
 
         # found some reports return the highest number + 1
