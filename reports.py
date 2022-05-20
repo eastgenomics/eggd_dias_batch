@@ -14,6 +14,7 @@ from general_functions import (
     create_batch_file,
     assess_batch_file,
     parse_manifest,
+    parse_genepanels,
     get_sample_ids_from_sample_sheet,
     gather_sample_sheet
 )
@@ -165,9 +166,12 @@ def run_reports(
     values = []
 
     if reanalysis_dict:
+        genepanels_data = parse_genepanels(assay_config.genepanels_file)
+
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config, assay_config.rea_dynamic_files
+            staging_dict, "reports", assay_config,
+            assay_config.rea_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
@@ -175,24 +179,44 @@ def run_reports(
         for header in rea_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "{}.list_panel_names_genes".format(assay_config.vcf2xls_stage_id)
+                "{}.clinical_indication".format(
+                    assay_config.generate_workbook_stage_id
+                )
             )
-            new_headers.append("{}.panel".format(assay_config.generate_bed_stage_id))
-            new_headers.append("{}.panel".format(assay_config.generate_bed_xlsx_stage_id))
+            new_headers.append(
+                "{}.panel".format(
+                    assay_config.generate_workbook_stage_id
+                )
+            )
+            new_headers.append(
+                "{}.panel".format(assay_config.generate_bed_vep_stage_id)
+            )
+            new_headers.append(
+                "{}.panel".format(assay_config.generate_bed_athena_stage_id)
+            )
             headers.append(tuple(new_headers))
 
-        # manually add the values for reanalysis vcf2xls/generate_bed
+        # manually add the values for reanalysis workbook/generate_bed
         # rea_values contains the values for the headers for the batch file
         for line in rea_values:
-            # get all panels in a string and store it in a list with one ele
-            panels = [
+            # get all clinical_indications in a string and store it in a list
+            # with one ele
+            clinical_indications = [
                 ";".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
             ]
-            # add panels three times for vcf2xls, generate_bed, generate_bed_vcf2xls
+            # add clinical_indications three times for generate_workbook, generate_bed_vep,
+            # generate_bed_athena
+            line.extend(clinical_indications)
+
+            panels = []
+
+            for clinical_indication in clinical_indications:
+                panels.extend(genepanels_data[clinical_indication])
+
             line.extend(panels)
-            line.extend(panels)
-            line.extend(panels)
+            line.extend(clinical_indications)
+            line.extend(clinical_indications)
             values.append(line)
     else:
         samples_job_starting = []
