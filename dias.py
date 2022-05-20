@@ -8,7 +8,6 @@ from single_workflow import run_ss_workflow
 from multi_workflow import run_ms_workflow
 from multiqc import run_multiqc_app
 from reports import run_reports, run_reanalysis
-from check import check_if_all_reports_created
 from general_functions import get_latest_config
 
 
