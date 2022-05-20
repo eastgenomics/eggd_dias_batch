@@ -13,7 +13,7 @@ from general_functions import get_latest_config
 
 TSOE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg1_dias_TSO_config"
 FH_CONFIG_LOCATION = "/mnt/storage/apps/software/egg3_dias_FH_config"
-TWE_CONFIG_LOCATION = "/home/kimy/NHS/repos/dias_batch_running/egg4_dias_TWE_config"
+TWE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg4_dias_TWE_config"
 CEN_CONFIG_LOCATION = "/mnt/storage/apps/software/egg5_dias_CEN_config"
 
 
