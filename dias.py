@@ -14,7 +14,7 @@ from general_functions import get_latest_config
 
 TSOE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg1_dias_TSO_config"
 FH_CONFIG_LOCATION = "/mnt/storage/apps/software/egg3_dias_FH_config"
-TWE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg4_dias_TWE_config"
+TWE_CONFIG_LOCATION = "/home/kimy/NHS/repos/dias_batch_running/egg4_dias_TWE_config"
 CEN_CONFIG_LOCATION = "/mnt/storage/apps/software/egg5_dias_CEN_config"
 
 
@@ -76,17 +76,6 @@ def main():
         )
     )
     parser_r.set_defaults(which='reanalysis')
-
-    parser_c = subparsers.add_parser("check", help="check help")
-    parser_c.add_argument(
-        "input_dir", type=str,
-        help="A vcf2xls output directory path"
-    )
-    parser_c.add_argument(
-        "sample_sheet", type=str,
-        help="Path to the sample sheet"
-    )
-    parser_c.set_defaults(which="check_reports")
 
     args = parser.parse_args()
     workflow = args.which
@@ -152,15 +141,6 @@ def main():
             args.input_dir, args.dry_run, config, assay_id,
             args.reanalysis_list
         )
-    elif workflow == "check_reports":
-        reports = check_if_all_reports_created(
-            args.input_dir, args.sample_sheet
-        )
-
-        if reports:
-            print("{} have not been generated".format(", ".join(reports)))
-        else:
-            print("All reports have been generated")
 
 
 if __name__ == "__main__":
