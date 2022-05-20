@@ -456,7 +456,11 @@ def prepare_batch_writing(
 
             # One file in file list - no need to merge into array
             if len(stage_data[stage_input]["file_list"]) == 1:
-                file_ids = stage_data[stage_input]["file_list"][0]
+                if "{}".format(assay_config.somalier_relate_stage_id) in stage_input:
+                    file_ids = stage_data[stage_input]["file_list"]
+                else:
+                    file_ids = stage_data[stage_input]["file_list"][0]
+
                 values.append("")  # No need to provide file name in batch file
                 values.append(file_ids)
 
@@ -643,6 +647,28 @@ def parse_manifest(manifest_file_id):
             sample, clinical_indication, panel, gene = line.strip().split("\t")
             data[sample]["clinical_indications"].add(clinical_indication)
             data[sample]["panels"].add(panel)
+
+    return data
+
+
+def parse_genepanels(genepanels_file_id):
+    """ Parse genepanels
+
+    Args:
+        genepanels_file_id (str): DNAnexus file id for genepanels file
+
+    Returns:
+        dict: Dict of samples linked to panels and clinical indications
+    """
+
+    data = {}
+
+    project_id, genepanels_id = genepanels_file_id.split(":")
+
+    with dxpy.open_dxfile(genepanels_id, project=project_id) as f:
+        for line in f:
+            clinical_indication, panel, gene = line.strip().split("\t")
+            data.setdefault(clinical_indication, set()).add(panel)
 
     return data
 
