@@ -274,7 +274,7 @@ def get_sample_ids_from_sample_sheet(sample_sheet_path):
         list: List of samples
     """
 
-    sample_ids = []
+    sample_ids = set()
     cmd = "dx cat {}".format(sample_sheet_path)
     sample_sheet_content = subprocess.check_output(cmd, shell=True).split("\n")
 
@@ -296,7 +296,7 @@ def get_sample_ids_from_sample_sheet(sample_sheet_path):
                 else:
                     # get the sample ids using the header position
                     if line[sample_id_pos] != "NA12878":
-                        sample_ids.append(
+                        sample_ids.add(
                             line[sample_id_pos].split("-")[0]
                         )
 
