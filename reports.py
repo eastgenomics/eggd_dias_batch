@@ -19,7 +19,6 @@ from general_functions import (
     gather_sample_sheet
 )
 
-# reanalysis
 
 def create_job_reports(
     rpt_out_dir, total_samples, job_starting,
@@ -94,6 +93,9 @@ def create_job_reports(
     subprocess.check_output(cmd, shell=True)
 
     return "{}{}".format(rpt_out_dir, job_report)
+
+
+# reanalysis
 
 
 def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
