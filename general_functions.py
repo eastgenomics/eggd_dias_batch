@@ -553,6 +553,7 @@ def find_previous_reports(sample, suffix):
 
     Args:
         sample (str): Sample id
+        suffix (str): Suffix of the report to find
 
     Returns:
         list: List of coverage reports
@@ -575,13 +576,13 @@ def find_previous_reports(sample, suffix):
 
 
 def get_next_index(file_names):
-    """ Return the index to assign to the new coverage report
+    """ Return the index to assign to the new report
 
     Args:
-        file_names (list): List of coverage reports
+        file_names (list): List of reports
 
     Returns:
-        int: Index to assign to the new coverage report
+        int: Index to assign to the new report
     """
 
     index_to_return = 1
