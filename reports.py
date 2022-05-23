@@ -14,28 +14,10 @@ from general_functions import (
     create_batch_file,
     assess_batch_file,
     parse_manifest,
+    parse_genepanels,
     get_sample_ids_from_sample_sheet,
     gather_sample_sheet
 )
-
-# reanalysis
-
-
-def gather_sample_ids_from_bams(ss_workflow_out_dir):
-    """ Get a list of sample ids from the bams files
-
-    Args:
-        ss_workflow_out_dir (str): Path of single folder workflow in DNAnexus
-
-    Returns:
-        list: List of samples ids
-    """
-
-    cmd = "dx ls {}/sentieon-dnaseq/*bam".format(ss_workflow_out_dir)
-    bams = subprocess.check_output(cmd, shell=True).strip().split("\n")
-    # get the sample name from the bam and take the X number out of the sample name
-    sample_list = [bam.split("_")[0].split("-")[0] for bam in bams]
-    return sample_list
 
 
 def create_job_reports(
@@ -113,6 +95,9 @@ def create_job_reports(
     return "{}{}".format(rpt_out_dir, job_report)
 
 
+# reanalysis
+
+
 def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
     reanalysis_dict = {}
 
@@ -156,12 +141,15 @@ def run_reports(
 
     sample2stage_input_dict = {}
 
+    sample_sheet_path = gather_sample_sheet()
+    all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
+
     if reanalysis_dict:
         stage_input_dict = assay_config.rea_stage_input_dict
         sample_id_list = reanalysis_dict
     else:
         stage_input_dict = assay_config.rpt_stage_input_dict
-        sample_id_list = gather_sample_ids_from_bams(ss_workflow_out_dir)
+        sample_id_list = all_samples
 
     # put the sample id in a dictionary so that the stage inputs can be
     # assigned to a sample id
@@ -180,9 +168,12 @@ def run_reports(
     values = []
 
     if reanalysis_dict:
+        genepanels_data = parse_genepanels(assay_config.genepanels_file)
+
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config, assay_config.rea_dynamic_files
+            staging_dict, "reports", assay_config,
+            assay_config.rea_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
@@ -190,24 +181,44 @@ def run_reports(
         for header in rea_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "{}.list_panel_names_genes".format(assay_config.vcf2xls_stage_id)
+                "{}.clinical_indication".format(
+                    assay_config.generate_workbook_stage_id
+                )
             )
-            new_headers.append("{}.panel".format(assay_config.generate_bed_stage_id))
-            new_headers.append("{}.panel".format(assay_config.generate_bed_xlsx_stage_id))
+            new_headers.append(
+                "{}.panel".format(
+                    assay_config.generate_workbook_stage_id
+                )
+            )
+            new_headers.append(
+                "{}.panel".format(assay_config.generate_bed_vep_stage_id)
+            )
+            new_headers.append(
+                "{}.panel".format(assay_config.generate_bed_athena_stage_id)
+            )
             headers.append(tuple(new_headers))
 
-        # manually add the values for reanalysis vcf2xls/generate_bed
+        # manually add the values for reanalysis workbook/generate_bed
         # rea_values contains the values for the headers for the batch file
         for line in rea_values:
-            # get all panels in a string and store it in a list with one ele
-            panels = [
+            # get all clinical_indications in a string and store it in a list
+            # with one ele
+            clinical_indications = [
                 ";".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
             ]
-            # add panels three times for vcf2xls, generate_bed, generate_bed_vcf2xls
+            # add clinical_indications three times for generate_workbook, generate_bed_vep,
+            # generate_bed_athena
+            line.extend(clinical_indications)
+
+            panels = []
+
+            for clinical_indication in clinical_indications:
+                panels.extend(genepanels_data[clinical_indication])
+
             line.extend(panels)
-            line.extend(panels)
-            line.extend(panels)
+            line.extend(clinical_indications)
+            line.extend(clinical_indications)
             values.append(line)
     else:
         samples_job_starting = []
@@ -247,9 +258,6 @@ def run_reports(
             else:
                 missing_samples_from_manifest.append(sample_id)
 
-        sample_sheet_path = gather_sample_sheet()
-        all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
-
         report_file = create_job_reports(
             rpt_workflow_out_dir, all_samples, samples_job_starting,
             missing_samples_from_manifest
@@ -259,17 +267,20 @@ def run_reports(
 
     rpt_batch_file = create_batch_file(headers, values)
 
-    flank_arg = "-istage-G9P8p104vyJJGy6y86FQBxkv.flank={}".format(
-        assay_config.xlsx_flanks
+    args = ""
+    args += "-i{}.flank={} ".format(
+        assay_config.generate_bed_vep_stage_id, assay_config.xlsx_flanks
     )
 
-    vep_config_file_arg = "-istage-G9Q0jzQ4vyJ3x37X4KBKXZ5v.config_file={}".format(
-        assay_config.vep_config
+    args += "-i{}.config_file={} ".format(
+        assay_config.vep_stage_id, assay_config.vep_config
     )
 
-    command = "dx run -y --rerun-stage '*' {} {} {} --batch-tsv={}".format(
-        assay_config.rpt_workflow_id, vep_config_file_arg, flank_arg,
-        rpt_batch_file
+    if assay_config.assay_name == "TWE":
+        args += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
+
+    command = "dx run -y --rerun-stage '*' {} {} --batch-tsv={}".format(
+        assay_config.rpt_workflow_id, args, rpt_batch_file
     )
 
     # assign stage out folders

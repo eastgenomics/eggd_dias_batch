@@ -8,7 +8,6 @@ from single_workflow import run_ss_workflow
 from multi_workflow import run_ms_workflow
 from multiqc import run_multiqc_app
 from reports import run_reports, run_reanalysis
-from check import check_if_all_reports_created
 from general_functions import get_latest_config
 
 
@@ -77,17 +76,6 @@ def main():
     )
     parser_r.set_defaults(which='reanalysis')
 
-    parser_c = subparsers.add_parser("check", help="check help")
-    parser_c.add_argument(
-        "input_dir", type=str,
-        help="A vcf2xls output directory path"
-    )
-    parser_c.add_argument(
-        "sample_sheet", type=str,
-        help="Path to the sample sheet"
-    )
-    parser_c.set_defaults(which="check_reports")
-
     args = parser.parse_args()
     workflow = args.which
 
@@ -152,15 +140,6 @@ def main():
             args.input_dir, args.dry_run, config, assay_id,
             args.reanalysis_list
         )
-    elif workflow == "check_reports":
-        reports = check_if_all_reports_created(
-            args.input_dir, args.sample_sheet
-        )
-
-        if reports:
-            print("{} have not been generated".format(", ".join(reports)))
-        else:
-            print("All reports have been generated")
 
 
 if __name__ == "__main__":

@@ -274,7 +274,7 @@ def get_sample_ids_from_sample_sheet(sample_sheet_path):
         list: List of samples
     """
 
-    sample_ids = []
+    sample_ids = set()
     cmd = "dx cat {}".format(sample_sheet_path)
     sample_sheet_content = subprocess.check_output(cmd, shell=True).split("\n")
 
@@ -296,7 +296,9 @@ def get_sample_ids_from_sample_sheet(sample_sheet_path):
                 else:
                     # get the sample ids using the header position
                     if line[sample_id_pos] != "NA12878":
-                        sample_ids.append(line[sample_id_pos])
+                        sample_ids.add(
+                            line[sample_id_pos].split("-")[0]
+                        )
 
                 index += 1
             else:
@@ -417,13 +419,27 @@ def prepare_batch_writing(
             values.append(sample_id)
 
             # get the index for the coverage report that needs to be created
-            coverage_reports = find_previous_coverage_reports(sample_id)
-            index = get_next_index(coverage_reports)
+            coverage_reports = find_previous_reports(
+                sample_id, "coverage_report.html"
+            )
+            # get the index for the xls report that needs to be created
+            xls_reports = find_previous_reports(sample_id, ".xls")
+            xls_index = get_next_index(xls_reports)
+            coverage_index = get_next_index(coverage_reports)
+
+            index_to_use = max([xls_index, coverage_index])
 
             # add the name param to athena
             headers.append("{}.name".format(assay_config.athena_stage_id))
+            # add the name output_prefix to generate_workbooks
+            headers.append("{}.output_prefix".format(
+                    assay_config.generate_workbook_stage_id
+                )
+            )
             # add the value of name to athena
-            values.append("{}_{}".format(sample_id, index))
+            values.append("{}_{}".format(sample_id, index_to_use))
+            # add the value of output prefix to generate workbooks
+            values.append("{}_{}".format(sample_id, index_to_use))
 
         # add the dynamic files to the headers and values
         for stage, file_id in workflow_specificity.items():
@@ -440,7 +456,11 @@ def prepare_batch_writing(
 
             # One file in file list - no need to merge into array
             if len(stage_data[stage_input]["file_list"]) == 1:
-                file_ids = stage_data[stage_input]["file_list"][0]
+                if "{}".format(assay_config.somalier_relate_stage_id) in stage_input:
+                    file_ids = stage_data[stage_input]["file_list"]
+                else:
+                    file_ids = stage_data[stage_input]["file_list"][0]
+
                 values.append("")  # No need to provide file name in batch file
                 values.append(file_ids)
 
@@ -528,34 +548,41 @@ def assess_batch_file(batch_file):
     return True
 
 
-def find_previous_coverage_reports(sample):
-    """ Return the coverage reports for given sample if they exist
+def find_previous_reports(sample, suffix):
+    """ Return the reports for given sample if they exist
 
     Args:
         sample (str): Sample id
+        suffix (str): Suffix of the report to find
 
     Returns:
         list: List of coverage reports
     """
 
-    # go find coverage reports that have the same sample id
-    cmd = "dx find data --path / --name {}*coverage_report.html --brief".format(sample)
-    output = subprocess.check_output(cmd, shell=True).strip()
+    current_project = os.environ.get('DX_PROJECT_CONTEXT_ID')
+    report_name = "{}*{}".format(sample, suffix)
 
-    if output == "":
-        return None
-    else:
-        return output.split("\n")
+    output = dxpy.find_data_objects(
+        name=report_name, project=current_project, name_mode="glob"
+    )
+
+    reports = []
+
+    for dnanexus_dict in output:
+        report = dxpy.DXFile(dnanexus_dict["id"])
+        reports.append(report.name.split(".")[0])
+
+    return reports
 
 
-def get_next_index(file_ids):
-    """ Return the index to assign to the new coverage report
+def get_next_index(file_names):
+    """ Return the index to assign to the new report
 
     Args:
-        file_ids (list): List of coverage reports
+        file_names (list): List of reports
 
     Returns:
-        int: Index to assign to the new coverage report
+        int: Index to assign to the new report
     """
 
     index_to_return = 1
@@ -563,10 +590,9 @@ def get_next_index(file_ids):
     indexes = []
 
     # other reports found
-    if file_ids:
-        for file_id in file_ids:
-            name = get_object_attribute_from_object_id_or_path(file_id, "Name")
-            index = name.split("_")[1]
+    if file_names:
+        for file_name in file_names:
+            index = file_name.split("_")[1]
 
             # check that the element is indeed a number
             if index.isdigit():
@@ -574,8 +600,7 @@ def get_next_index(file_ids):
                 indexes.append(index)
 
         assert indexes != [], (
-            "Couldn't find file names for"
-            "{}".format(file_ids)
+            "Couldn't find file names for {}".format(file_names)
         )
 
         # found some reports return the highest number + 1
@@ -623,6 +648,28 @@ def parse_manifest(manifest_file_id):
             sample, clinical_indication, panel, gene = line.strip().split("\t")
             data[sample]["clinical_indications"].add(clinical_indication)
             data[sample]["panels"].add(panel)
+
+    return data
+
+
+def parse_genepanels(genepanels_file_id):
+    """ Parse genepanels
+
+    Args:
+        genepanels_file_id (str): DNAnexus file id for genepanels file
+
+    Returns:
+        dict: Dict of samples linked to panels and clinical indications
+    """
+
+    data = {}
+
+    project_id, genepanels_id = genepanels_file_id.split(":")
+
+    with dxpy.open_dxfile(genepanels_id, project=project_id) as f:
+        for line in f:
+            clinical_indication, panel, gene = line.strip().split("\t")
+            data.setdefault(clinical_indication, set()).add(panel)
 
     return data
 
