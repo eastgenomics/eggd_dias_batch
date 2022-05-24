@@ -69,13 +69,13 @@ def create_job_reports(
 
         if difference_expected_starting:
             for sample_id in difference_expected_starting:
-                if not sample_id.startswith("NA12878"):
+                if not sample_id.startswith("NA"):
                     f.write("{}\n".format(sample_id))
                 else:
                     na_samples += 1
 
             f.write(
-                "\n{} NA12878 samples for which jobs aren't "
+                "\n{} NA samples for which jobs aren't "
                 "started\n".format(na_samples)
             )
 
