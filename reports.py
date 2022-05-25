@@ -213,8 +213,13 @@ def run_reports(
 
             panels = []
 
-            for clinical_indication in clinical_indications:
-                panels.extend(genepanels_data[clinical_indication])
+            for sample, clinical_indications in reanalysis_dict.items():
+                if line[0] == sample:
+                    display_panel_list = ";".join([
+                        genepanels_data[ci] for ci in clinical_indications
+                    ])
+
+            panels.extend(display_panel_list)
 
             line.extend(panels)
             line.extend(clinical_indications)
