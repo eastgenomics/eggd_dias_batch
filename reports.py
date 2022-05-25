@@ -207,23 +207,30 @@ def run_reports(
                 ";".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
             ]
-            # add clinical_indications three times for generate_workbook, generate_bed_vep,
-            # generate_bed_athena
+            # clinical indications for generate_workbook
             line.extend(clinical_indications)
 
-            panels = []
-
+            # gather panels from clinical indications for displaying in
+            # generate_workbook
             for sample, clinical_indications in reanalysis_dict.items():
                 if line[0] == sample:
-                    display_panel_list = ";".join([
-                        genepanels_data[ci] for ci in clinical_indications
-                        # handle HGNC ids
-                        if not ci.startswith("_")
-                    ])
+                    display_panel_list = []
 
-            panels.extend(display_panel_list)
+                    # gather every panel associated with the clinical
+                    # indication. Also gather HGNC ids specified in the
+                    # reanalysis file
+                    for ci in clinical_indications:
+                        if not ci.startswith("_"):
+                            display_panel_list.append(
+                                ";".join(genepanels_data[ci])
+                            )
+                        else:
+                            display_panel_list.append(ci)
 
-            line.extend(panels)
+            line.extend(";".join(display_panel_list))
+
+            # add clinical_indications for generate_bed_vep and
+            # generate_bed_athena
             line.extend(clinical_indications)
             line.extend(clinical_indications)
             values.append(line)
