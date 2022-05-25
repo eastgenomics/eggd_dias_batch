@@ -47,7 +47,7 @@ def run_multiqc_app(ms_workflow_out_dir, dry_run, assay_config, assay_id):
         project_name, ss_for_multiqc, multi_folder, mqc_applet_out_dir
     )
 
-    if "TWE" in assay_id:
+    if "TWE" in assay_config.assay_name:
         command += " --instance-type {}".format("mem1_ssd1_v2_x8")
 
     if dry_run is True:

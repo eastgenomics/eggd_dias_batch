@@ -67,6 +67,8 @@ def create_job_reports(
             )
         )
 
+        f.write("Samples for which jobs didn't start:\n")
+
         if difference_expected_starting:
             for sample_id in difference_expected_starting:
                 if not sample_id.startswith("NA"):
@@ -207,16 +209,30 @@ def run_reports(
                 ";".join(panel) for sample, panel in reanalysis_dict.items()
                 if line[0] == sample
             ]
-            # add clinical_indications three times for generate_workbook, generate_bed_vep,
-            # generate_bed_athena
+            # clinical indications for generate_workbook
             line.extend(clinical_indications)
 
-            panels = []
+            # gather panels from clinical indications for displaying in
+            # generate_workbook
+            for sample, clinical_indications in reanalysis_dict.items():
+                if line[0] == sample:
+                    display_panel_list = []
 
-            for clinical_indication in clinical_indications:
-                panels.extend(genepanels_data[clinical_indication])
+                    # gather every panel associated with the clinical
+                    # indication. Also gather HGNC ids specified in the
+                    # reanalysis file
+                    for ci in clinical_indications:
+                        if not ci.startswith("_"):
+                            display_panel_list.append(
+                                ";".join(genepanels_data[ci])
+                            )
+                        else:
+                            display_panel_list.append(ci)
 
-            line.extend(panels)
+            line.append(";".join(display_panel_list))
+
+            # add clinical_indications for generate_bed_vep and
+            # generate_bed_athena
             line.extend(clinical_indications)
             line.extend(clinical_indications)
             values.append(line)
