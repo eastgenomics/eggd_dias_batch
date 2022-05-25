@@ -217,6 +217,8 @@ def run_reports(
                 if line[0] == sample:
                     display_panel_list = ";".join([
                         genepanels_data[ci] for ci in clinical_indications
+                        # handle HGNC ids
+                        if not ci.startswith("_")
                     ])
 
             panels.extend(display_panel_list)
