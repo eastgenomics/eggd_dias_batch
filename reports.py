@@ -67,6 +67,8 @@ def create_job_reports(
             )
         )
 
+        f.write("Samples for which jobs didn't start:\n")
+
         if difference_expected_starting:
             for sample_id in difference_expected_starting:
                 if not sample_id.startswith("NA"):
