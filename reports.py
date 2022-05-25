@@ -227,7 +227,7 @@ def run_reports(
                         else:
                             display_panel_list.append(ci)
 
-            line.extend(";".join(display_panel_list))
+            line.append(";".join(display_panel_list))
 
             # add clinical_indications for generate_bed_vep and
             # generate_bed_athena
