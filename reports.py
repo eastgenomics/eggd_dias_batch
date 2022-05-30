@@ -143,9 +143,6 @@ def run_reports(
 
     sample2stage_input_dict = {}
 
-    sample_sheet_path = gather_sample_sheet()
-    all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
-
     if reanalysis_dict:
         stage_input_dict = assay_config.rea_stage_input_dict
         sample_id_list = reanalysis_dict
@@ -237,6 +234,9 @@ def run_reports(
             line.extend(clinical_indications)
             values.append(line)
     else:
+        sample_sheet_path = gather_sample_sheet()
+        all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
+
         samples_job_starting = []
         missing_samples_from_manifest = []
 
