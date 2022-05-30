@@ -214,14 +214,14 @@ def run_reports(
 
             # gather panels from clinical indications for displaying in
             # generate_workbook
-            for sample, clinical_indications in reanalysis_dict.items():
+            for sample, cis_in_reanalysis_file in reanalysis_dict.items():
                 if line[0] == sample:
                     display_panel_list = []
 
                     # gather every panel associated with the clinical
                     # indication. Also gather HGNC ids specified in the
                     # reanalysis file
-                    for ci in clinical_indications:
+                    for ci in cis_in_reanalysis_file:
                         if not ci.startswith("_"):
                             display_panel_list.append(
                                 ";".join(genepanels_data[ci])
