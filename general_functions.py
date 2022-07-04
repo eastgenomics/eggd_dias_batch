@@ -295,7 +295,7 @@ def get_sample_ids_from_sample_sheet(sample_sheet_path):
                     ][0]
                 else:
                     # get the sample ids using the header position
-                    if line[sample_id_pos] != "NA12878":
+                    if not line[sample_id_pos].startswith("NA"):
                         sample_ids.add(
                             line[sample_id_pos].split("-")[0]
                         )
