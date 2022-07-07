@@ -74,21 +74,22 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     for file in sample_bambis:
         full_path = "".join([folder_path, file])
         file_id = get_object_attribute_from_object_id_or_path(full_path, "ID")
-        file_ids += " -ibambis=" + file_id
+        file_ids += " -ibambais=" + file_id
 
     command = (
         "dx run {} --yes --ignore-reuse -iGATK_docker='{}' "
         "-iinterval_list='{}' -iannotation_tsv='{}' {} "
-        "-irun_name='{}' -itoAnnotate=False -itoVisualise=True "
+        "-idebug_fail_start=False -idebug_fail_end=False"
+        "-irun_name='{}' "
         "--destination='{}'"
     ).format(
         assay_config.cnvcall_applet_id,
         assay_config.cnvcalling_fixed_inputs["gatk_docker"],
         assay_config.cnvcalling_fixed_inputs["interval_list"],
         assay_config.cnvcalling_fixed_inputs["annotation_tsv"],
-        file_ids, project_name, applet_out_dir
+        file_ids,
+        project_name, applet_out_dir
     )
-    print(command)
 
     if dry_run is True:
         print("Final cmd ran: {}".format(command))
