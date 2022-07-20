@@ -281,14 +281,16 @@ def run_reports(
                 ]
 
                 # if there are single genes
-                if any(single_genes):
+                if single_genes:
                     # check if they are HGNC ids
-                    symbols = [gene for gene in single_genes if gene.startswith("_HGNC")]
+                    symbols = [gene.startswith("_HGNC") for gene in single_genes]
 
                     # if they are not, assume it is gene symbols or at least
                     # something is going on and needs checking
                     if not all(symbols):
-                        job_dict["symbols"].append((sample_id, panels))
+                        job_dict["symbols"].append(
+                            (sample_id, ";".join(cis))
+                        )
                         continue
 
                 job_dict["starting"].append(sample_id)
