@@ -70,15 +70,7 @@ def create_job_reports(rpt_out_dir, total_samples, job_dict):
 
         if difference_expected_starting:
             for sample_id in difference_expected_starting:
-                if not sample_id.startswith("NA"):
-                    f.write("{}\n".format(sample_id))
-                else:
-                    na_samples += 1
-
-            f.write(
-                "\n{} NA samples for which jobs aren't "
-                "started\n".format(na_samples)
-            )
+                f.write("{}\n".format(sample_id))
 
         f.write(
             "\nSamples not found in manifest: {}\n".format(
