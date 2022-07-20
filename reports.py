@@ -267,8 +267,10 @@ def run_reports(
                 cis = manifest_data[sample_id]["clinical_indications"]
                 panels = manifest_data[sample_id]["panels"]
                 samples_job_starting.append(sample_id)
-                line.extend(cis)
-                line.extend(panels)
+                cis = ";".join(cis)
+                panels = ";".join(panels)
+                line.append(cis)
+                line.append(panels)
                 values.append(line)
             else:
                 missing_samples_from_manifest.append(sample_id)
