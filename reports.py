@@ -20,24 +20,23 @@ from general_functions import (
 )
 
 
-def create_job_reports(
-    rpt_out_dir, total_samples, job_starting,
-    list_missing_samples_from_manifest
-):
+def create_job_reports(rpt_out_dir, all_samples, job_dict):
     """ Create and upload a job report file where reports are categorised in:
         - expected samples
         - running jobs for samples found
         - missing samples from the manifest
+        - samples with gene symbols as panels causing them to fail later on
 
     Args:
         rpt_out_dir (str): Dias reports directory
-        total_samples (list): List with all samples in sample sheet minus NA
-        job_starting (list): List with all samples which will have a report job
-        list_missing_samples_from_manifest (list): List with all samples missing from manifest
+        all_samples (list): List with all samples in sample sheet minus NA
+        job_dict (dict): Dict with the lists of samples for the categories
+        listed at the top of the docstring
 
     Returns:
         str: Name and path of job report file
     """
+
     # rpt_out_dir should always be /output/dias_single/dias_reports but in case
     # someone adds a "/" at the end, which i do sometimes
     name_file = [
@@ -50,20 +49,18 @@ def create_job_reports(
     # get samples for which a report is expected but the job will not started
     # for reasons other than absence from manifest
     # i.e. present in sample sheet but fastqs were not provided
-    difference_expected_starting = set(total_samples).difference(
-        set(job_starting)
+    difference_expected_starting = set(all_samples).difference(
+        set(job_dict["starting"])
     )
-
-    na_samples = 0
 
     with open(job_report, "w") as f:
         f.write(
-            "Number of reports expected: {}\n\n".format(len(total_samples))
+            "Number of reports expected: {}\n\n".format(len(all_samples))
         )
 
         f.write(
             "Number of samples for which a job started: {}\n".format(
-                len(job_starting)
+                len(job_dict["starting"])
             )
         )
 
@@ -71,25 +68,27 @@ def create_job_reports(
 
         if difference_expected_starting:
             for sample_id in difference_expected_starting:
-                if not sample_id.startswith("NA"):
-                    f.write("{}\n".format(sample_id))
-                else:
-                    na_samples += 1
-
-            f.write(
-                "\n{} NA samples for which jobs aren't "
-                "started\n".format(na_samples)
-            )
+                f.write("{}\n".format(sample_id))
 
         f.write(
             "\nSamples not found in manifest: {}\n".format(
-                len(list_missing_samples_from_manifest)
+                len(job_dict["missing_from_manifest"])
             )
         )
 
-        if list_missing_samples_from_manifest:
-            for sample_id in list_missing_samples_from_manifest:
+        if job_dict["missing_from_manifest"]:
+            for sample_id in job_dict["missing_from_manifest"]:
                 f.write("{}\n".format(sample_id))
+
+        f.write(
+            "\nSamples booked with gene symbols: {}\n".format(
+                len(job_dict["symbols"])
+            )
+        )
+
+        if job_dict["symbols"]:
+            for sample_id, panels in job_dict["symbols"]:
+                f.write("{}\t{}\n".format(sample_id, panels))
 
     cmd = "dx upload {} --path {}".format(job_report, rpt_out_dir)
     subprocess.check_output(cmd, shell=True)
@@ -236,8 +235,7 @@ def run_reports(
             line.extend(clinical_indications)
             values.append(line)
     else:
-        samples_job_starting = []
-        missing_samples_from_manifest = []
+        job_dict = {"starting": [], "missing_from_manifest": [], "symbols": []}
 
         manifest_data = parse_manifest(assay_config.bioinformatic_manifest)
 
@@ -266,16 +264,38 @@ def run_reports(
             if sample_id in manifest_data:
                 cis = manifest_data[sample_id]["clinical_indications"]
                 panels = manifest_data[sample_id]["panels"]
-                samples_job_starting.append(sample_id)
-                line.extend(cis)
-                line.extend(panels)
+
+                # get single genes with the sample
+                single_genes = [
+                    panel for panel in panels if panel.startswith("_")
+                ]
+
+                # if there are single genes
+                if single_genes:
+                    # check if they are HGNC ids
+                    symbols = [gene.startswith("_HGNC") for gene in single_genes]
+
+                    # if they are not, assume it is gene symbols or at least
+                    # something is going on and needs checking
+                    if not all(symbols):
+                        job_dict["symbols"].append(
+                            (sample_id, ";".join(cis))
+                        )
+                        continue
+
+                job_dict["starting"].append(sample_id)
+                # join up potential lists of cis and panels to align the batch
+                # file properly
+                cis = ";".join(cis)
+                panels = ";".join(panels)
+                line.append(cis)
+                line.append(panels)
                 values.append(line)
             else:
-                missing_samples_from_manifest.append(sample_id)
+                job_dict["missing_from_manifest"].append(sample_id)
 
         report_file = create_job_reports(
-            rpt_workflow_out_dir, all_samples, samples_job_starting,
-            missing_samples_from_manifest
+            rpt_workflow_out_dir, all_samples, job_dict
         )
 
         print("Created and uploaded job report file: {}".format(report_file))
