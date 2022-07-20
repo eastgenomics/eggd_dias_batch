@@ -20,7 +20,7 @@ from general_functions import (
 )
 
 
-def create_job_reports(rpt_out_dir, total_samples, job_dict):
+def create_job_reports(rpt_out_dir, all_samples, job_dict):
     """ Create and upload a job report file where reports are categorised in:
         - expected samples
         - running jobs for samples found
@@ -29,7 +29,7 @@ def create_job_reports(rpt_out_dir, total_samples, job_dict):
 
     Args:
         rpt_out_dir (str): Dias reports directory
-        total_samples (list): List with all samples in sample sheet minus NA
+        all_samples (list): List with all samples in sample sheet minus NA
         job_dict (dict): Dict with the lists of samples for the categories
         listed at the top of the docstring
 
@@ -49,15 +49,13 @@ def create_job_reports(rpt_out_dir, total_samples, job_dict):
     # get samples for which a report is expected but the job will not started
     # for reasons other than absence from manifest
     # i.e. present in sample sheet but fastqs were not provided
-    difference_expected_starting = set(total_samples).difference(
+    difference_expected_starting = set(all_samples).difference(
         set(job_dict["starting"])
     )
 
-    na_samples = 0
-
     with open(job_report, "w") as f:
         f.write(
-            "Number of reports expected: {}\n\n".format(len(total_samples))
+            "Number of reports expected: {}\n\n".format(len(all_samples))
         )
 
         f.write(
