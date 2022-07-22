@@ -45,11 +45,11 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     ss_for_multiqc = ss_for_multiqc[0]
 
     # Find the app name and create an output folder for it under ss
-    applet_name = get_object_attribute_from_object_id_or_path(
-        assay_config.cnvcall_applet_id, "Name"
+    app_name = get_object_attribute_from_object_id_or_path(
+        assay_config.cnvcall_app_id, "Name"
     )
-    applet_out_dir = "".join([ss_workflow_out_dir, applet_name])
-    dx_make_workflow_dir(applet_out_dir)
+    appl_out_dir = "".join([ss_workflow_out_dir, app_name])
+    dx_make_workflow_dir(app_out_dir)
 
     # Find bam and bai files from sentieon folder
     bambi_files = []
@@ -83,12 +83,12 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         "-irun_name='{}' "
         "--destination='{}'"
     ).format(
-        assay_config.cnvcall_applet_id,
+        assay_config.cnvcall_app_id,
         assay_config.cnvcalling_fixed_inputs["gatk_docker"],
         assay_config.cnvcalling_fixed_inputs["interval_list"],
         assay_config.cnvcalling_fixed_inputs["annotation_tsv"],
         file_ids,
-        project_name, applet_out_dir
+        project_name, app_out_dir
     )
 
     if dry_run is True:
@@ -96,4 +96,4 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     else:
         subprocess.call(command, shell=True)
 
-    return applet_out_dir
+    return app_out_dir
