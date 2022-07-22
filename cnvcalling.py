@@ -48,7 +48,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     app_name = get_object_attribute_from_object_id_or_path(
         assay_config.cnvcall_app_id, "Name"
     )
-    appl_out_dir = "".join([ss_workflow_out_dir, app_name])
+    app_out_dir = "".join([ss_workflow_out_dir, app_name])
     dx_make_workflow_dir(app_out_dir)
 
     # Find bam and bai files from sentieon folder
