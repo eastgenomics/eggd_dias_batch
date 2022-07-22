@@ -79,7 +79,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     command = (
         "dx run {} --yes --ignore-reuse -iGATK_docker='{}' "
         "-iinterval_list='{}' -iannotation_tsv='{}' {} "
-        "-idebug_fail_start=False -idebug_fail_end=False"
+        "-idebug_fail_start=False -idebug_fail_end=False "
         "-irun_name='{}' "
         "--destination='{}'"
     ).format(
