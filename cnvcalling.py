@@ -59,11 +59,14 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         bambi_files.extend(find_files(folder_path, ext))
 
     # Read in list of samples that did NOT PASS QC
-    sample_names = []
-    # parse sample exclusion file
-    with open(sample_list) as fh:
-        for line in fh:  # line can be a sample name or sample tab panel name
-            sample_names.append(line.strip().split("\t")[0])
+    if sample_list is None:
+        sample_names = []
+    else:
+        sample_names = []
+        # parse sample exclusion file
+        with open(sample_list) as fh:
+            for line in fh:  # line can be a sample name or sample tab panel name
+                sample_names.append(line.strip().split("\t")[0])
 
     # Remove bam/bai files of QC faild samples
     sample_bambis = [x for x in bambi_files if x.split('_')[0] not in sample_names]

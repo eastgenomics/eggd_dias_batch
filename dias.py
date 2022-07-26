@@ -62,7 +62,7 @@ def main():
         help='A single sample workflow output directory path'
     )
     parser_n.add_argument(
-        'sample_list', type=str,
+        'sample_list', type=str, required=False,
         help=(
             'File containing samples that should be EXCLUDED from CNV analysis'
             '. One sample name per line'
