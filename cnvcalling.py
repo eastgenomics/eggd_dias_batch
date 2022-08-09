@@ -12,6 +12,18 @@ from general_functions import (
 
 
 def find_files(app_dir, pattern="."):
+    """Searches for files ending in provided pattern (bam/bai) in a
+    given path (single).
+
+    Args:
+        app_dir (str): single path including directory to output app.
+        pattern (str): searchs for files ending in given pattern.
+        Defaults to ".".
+
+    Returns:
+        search_result: list containing files ending in given pattern
+        of every sample processed in single.
+    """
     command = "dx ls {app_dir} | grep {pattern}".format(
         app_dir=app_dir, pattern=pattern
     )
