@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import sys
 import subprocess
+import dxpy
 
 from general_functions import (
     get_dx_cwd_project_name,
@@ -11,7 +12,7 @@ from general_functions import (
 )
 
 
-def find_files(app_dir, pattern="."):
+def find_files(project_name, app_dir, pattern="."):
     """Searches for files ending in provided pattern (bam/bai) in a
     given path (single).
 
@@ -19,21 +20,20 @@ def find_files(app_dir, pattern="."):
         app_dir (str): single path including directory to output app.
         pattern (str): searchs for files ending in given pattern.
         Defaults to ".".
+        project_name (str): The project name on DNAnexus
 
     Returns:
         search_result: list containing files ending in given pattern
         of every sample processed in single.
     """
-    command = "dx ls {app_dir} | grep {pattern}".format(
-        app_dir=app_dir, pattern=pattern
-    )
+    projectID  = list(dxpy.bindings.search.find_projects(name=project_name))[0]['id']
+    search_result = []
 
-    try:
-        search_result = subprocess.check_output(
-            command, shell=True
-        ).strip().split("\n")
-    except subprocess.CalledProcessError:
-        search_result = []
+    for file in dxpy.bindings.search.find_data_objects(
+        project=projectID, folder=app_dir,classname="file",
+        name=pattern, name_mode="glob", describe=True
+        ):
+        search_result.append(file["describe"]["name"])
 
     return search_result
 
@@ -69,7 +69,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     folder_path = find_app_dir(ss_workflow_out_dir, assay_config.cnvcalling_input_dict["app"])
     extensions = assay_config.cnvcalling_input_dict["patterns"]
     for ext in extensions:
-        bambi_files.extend(find_files(folder_path, ext))
+        bambi_files.extend(find_files(project_name, folder_path, ext))
 
     # Read in list of samples that did NOT PASS QC
     if sample_list is None:
