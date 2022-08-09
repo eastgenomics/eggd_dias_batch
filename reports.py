@@ -90,10 +90,7 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
             for sample_id, panels in job_dict["symbols"]:
                 f.write("{}\t{}\n".format(sample_id, panels))
 
-    cmd = "dx upload {} --path {}".format(job_report, rpt_out_dir)
-    subprocess.check_output(cmd, shell=True)
-
-    return "{}{}".format(rpt_out_dir, job_report)
+    return job_report
 
 
 # reanalysis
@@ -298,8 +295,6 @@ def run_reports(
             rpt_workflow_out_dir, all_samples, job_dict
         )
 
-        print("Created and uploaded job report file: {}".format(report_file))
-
     rpt_batch_file = create_batch_file(headers, values)
 
     args = ""
@@ -323,6 +318,13 @@ def run_reports(
     destination = " --destination={} ".format(rpt_workflow_out_dir)
 
     command = " ".join([command, app_relative_paths, destination])
+
+    if reanalysis_dict:
+        cmd = "dx upload {} --path {}".format(
+            report_file, rpt_workflow_out_dir
+        )
+        subprocess.check_output(cmd, shell=True)
+        print("Created and uploaded job report file: {}".format(report_file))
 
     if dry_run:
         print("Created workflow dir: {}".format(rpt_workflow_out_dir))
