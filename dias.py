@@ -7,6 +7,7 @@ import os
 from single_workflow import run_ss_workflow
 from multi_workflow import run_ms_workflow
 from multiqc import run_multiqc_app
+from cnvcalling import run_cnvcall_app
 from reports import run_reports, run_reanalysis
 from general_functions import get_latest_config
 
@@ -54,6 +55,20 @@ def main():
         help='A single/multi sample workflow output directory path'
     )
     parser_q.set_defaults(which='qc')
+
+    parser_n = subparsers.add_parser('cnvcall', help='cnvcall help')
+    parser_n.add_argument(
+        'input_dir', type=str,
+        help='A single sample workflow output directory path'
+    )
+    parser_n.add_argument(
+        'sample_list', type=str, nargs="?",
+        help=(
+            'File containing samples that should be EXCLUDED from CNV analysis'
+            '. One sample name per line'
+        )
+    )
+    parser_n.set_defaults(which='cnvcall')
 
     parser_r = subparsers.add_parser('reports', help='reports help')
     parser_r.add_argument(
@@ -130,6 +145,11 @@ def main():
     elif workflow == "qc":
         mqc_applet_out_dir = run_multiqc_app(
             args.input_dir, args.dry_run, config, assay_id
+        )
+    elif workflow == "cnvcall":
+        cnvcall_applet_out_dir = run_cnvcall_app(
+            args.input_dir, args.dry_run, config, assay_id,
+            args.sample_list
         )
     elif workflow == "reports":
         reports_out_dir = run_reports(

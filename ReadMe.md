@@ -18,5 +18,7 @@ Run the Dias pipeline stored in DNAnexus
   - Generates the batch tsv and runs the dx cmd to start the multi workflow
 - multiqc.py
   - Runs the multiqc
+- cnvcalling.py
+  - Generate batch files for CNVcalling
 - reports.py
   - Generate batch files for reports and reanalysis
