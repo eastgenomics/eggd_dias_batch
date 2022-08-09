@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from ast import excepthandler
 import sys
 import subprocess
 import dxpy
@@ -27,13 +28,20 @@ def find_files(project_name, app_dir, pattern="."):
         of every sample processed in single.
     """
     projectID  = list(dxpy.bindings.search.find_projects(name=project_name))[0]['id']
+    # the pattern is usually "-E 'pattern'" and we dont want the -E part
+    pattern = pattern.split('-E ')[1].replace("'", "")
     search_result = []
 
-    for file in dxpy.bindings.search.find_data_objects(
-        project=projectID, folder=app_dir,classname="file",
-        name=pattern, name_mode="glob", describe=True
-        ):
-        search_result.append(file["describe"]["name"])
+    try:
+        for file in dxpy.bindings.search.find_data_objects(
+            project=projectID, folder=app_dir,classname="file",
+            name=pattern, name_mode="glob", describe=True
+            ):
+            search_result.append(file["describe"]["name"])
+    except ValueError:
+        print('Could not files {} in {}'.format(
+              pattern,app_dir
+            ))
 
     return search_result
 
