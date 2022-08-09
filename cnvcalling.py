@@ -42,6 +42,17 @@ def find_files(project_name, app_dir, pattern="."):
 
 
 def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, sample_list):
+    """Sets off the CNV calling app.
+
+    Args:
+        ss_workflow_out_dir (str): path to single output
+        dry_run (str): optional boolean whether this is a dry/test run
+        assay_config (variable): assay config file containing all variables
+        sample_list (file): optional file containg list of samples to exclude
+
+    Returns:
+        app_out_dir: path to where the CNV calling output will be
+    """
     # Find project to create jobs and outdirs in
     project_name = get_dx_cwd_project_name()
 
