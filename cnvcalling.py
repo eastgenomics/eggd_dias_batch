@@ -41,7 +41,7 @@ def find_files(project_name, app_dir, pattern="."):
 # Run-level CNV calling of samples that passed QC
 
 
-def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample_list):
+def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, sample_list):
     # Find project to create jobs and outdirs in
     project_name = get_dx_cwd_project_name()
 
