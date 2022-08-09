@@ -35,7 +35,7 @@ def find_files(project_name, app_dir, pattern="."):
     try:
         for file in dxpy.bindings.search.find_data_objects(
             project=projectID, folder=app_dir,classname="file",
-            name=pattern, name_mode="glob", describe=True
+            name=pattern, name_mode="regexp", describe=True
             ):
             search_result.append(file["describe"]["name"])
     except ValueError:
