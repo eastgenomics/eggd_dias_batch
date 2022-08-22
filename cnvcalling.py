@@ -60,10 +60,10 @@ def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
         None: folder created in function dx_make_workflow_dir
     """
     # remove any forward dash in ss_workflow
-    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
+    #ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
     app_version = str(dxpy.describe(cnvcall_app_id)['version'])
 
-    app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
+    app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}_v{version}-{assay}-{date}-{index}/"
     date = get_date()
 
     # when creating the new folder, check if the folder already exists
