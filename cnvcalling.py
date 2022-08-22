@@ -81,7 +81,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcall_app_id, "Name"
     )
 
-    app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}-{assay}-{date}-{index}/"
+    app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}-{assay}-{date}-{index}/"
     date = get_date()
 
     # when creating the new folder, check if the folder already exists
