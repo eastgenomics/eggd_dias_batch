@@ -81,8 +81,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcall_app_id, "Name"
     )
 
-    # app_out_dir = "".join([ss_workflow_out_dir, app_name])
-    app_output_dir_pattern = "{app_name}-{assay}-{date}-{index}/"
+    app_output_dir_pattern = "{ss_workflow_out_dir}-{app_name}-{assay}-{date}-{index}/"
     date = get_date()
 
     # when creating the new folder, check if the folder already exists
@@ -90,6 +89,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     i = 1
     while i < 100:  # < 100 runs = sanity check
         app_output_dir = app_output_dir_pattern.format(
+            ss_workflow_out_dir=ss_workflow_out_dir,
             app_name=app_name, assay=assay_id, date=date, index=i
         )
 
@@ -101,6 +101,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
 
         i += 1
 
+    # app_out_dir = "".join([ss_workflow_out_dir, app_name])
     # dx_make_workflow_dir(app_out_dir)
 
     # Find bam and bai files from sentieon folder
@@ -143,7 +144,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcalling_fixed_inputs["interval_list"],
         assay_config.cnvcalling_fixed_inputs["annotation_tsv"],
         file_ids,
-        project_name, app_out_dir
+        project_name, app_output_dir
     )
 
     if dry_run is True:
@@ -151,4 +152,4 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     else:
         subprocess.call(command, shell=True)
 
-    return app_out_dir
+    return app_output_dir
