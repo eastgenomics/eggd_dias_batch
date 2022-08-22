@@ -49,7 +49,6 @@ def find_files(project_name, app_dir, pattern="."):
 
 def make_app_out_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id):
     app_version = str(dxpy.describe(cnvcall_app_id)['version'])
-    print(app_version)
 
     app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}_v{version}-{assay}-{date}-{index}/"
     date = get_date()
@@ -108,7 +107,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcall_app_id, "Name"
     )
 
-    app_output_dir = make_app_out_dir(ss_workflow_out_dir, app_name, assay_id)
+    app_output_dir = make_app_out_dir(assay_config.cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
     # app_out_dir = "".join([ss_workflow_out_dir, app_name])
     # dx_make_workflow_dir(app_out_dir)
 
