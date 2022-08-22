@@ -59,9 +59,11 @@ def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
     Returns:
         None: folder created in function dx_make_workflow_dir
     """
+    # remove any forward dash in ss_workflow
+    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
     app_version = str(dxpy.describe(cnvcall_app_id)['version'])
 
-    app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}_v{version}-{assay}-{date}-{index}/"
+    app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
     date = get_date()
 
     # when creating the new folder, check if the folder already exists
@@ -102,8 +104,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     # Find project to create jobs and outdirs in
     project_name = get_dx_cwd_project_name()
 
-    # remove any forward dash in ss_workflow
-    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
+
 
     # Make sure path provided is an actual ss workflow output folder
     assert ss_workflow_out_dir.startswith("/"), (
@@ -120,6 +121,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     app_name = get_object_attribute_from_object_id_or_path(
         assay_config.cnvcall_app_id, "Name"
     )
+
 
     app_output_dir = make_app_output_dir(assay_config.cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
 
