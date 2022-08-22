@@ -47,8 +47,8 @@ def find_files(project_name, app_dir, pattern="."):
     return search_result
 
 
-def make_app_out_dir(ss_workflow_out_dir, app_name,assay_id):
-    app_version = str(dxpy.describe(app_name)['version'])
+def make_app_out_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id):
+    app_version = str(dxpy.describe(cnvcall_app_id)['version'])
     print(app_version)
 
     app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}_v{version}-{assay}-{date}-{index}/"
