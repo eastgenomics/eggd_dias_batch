@@ -76,7 +76,7 @@ def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
             assay=assay_id, date=date, index=i
         )
 
-        if (app_output_dir):
+        if dx_make_workflow_dir(app_output_dir):
             print("Using\t\t%s" % app_output_dir)
             return app_output_dir
         else:
