@@ -47,6 +47,29 @@ def find_files(project_name, app_dir, pattern="."):
     return search_result
 
 
+def make_app_out_dir(ss_workflow_out_dir, app_name,assay_id):
+    app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}-{assay}-{date}-{index}/"
+    date = get_date()
+
+    # when creating the new folder, check if the folder already exists
+    # increment index until it works or reaches 100
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        app_output_dir = app_output_dir_pattern.format(
+            ss_workflow_out_dir=ss_workflow_out_dir,
+            app_name=app_name, assay=assay_id, date=date, index=i
+        )
+
+        if dx_make_workflow_dir(app_output_dir):
+            print("Using\t\t%s" % app_output_dir)
+            return app_output_dir
+        else:
+            print("Skipping\t%s" % app_output_dir)
+
+        i += 1
+
+    return None
+
 # Run-level CNV calling of samples that passed QC
 
 
@@ -81,26 +104,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcall_app_id, "Name"
     )
 
-    app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}-{assay}-{date}-{index}/"
-    date = get_date()
-
-    # when creating the new folder, check if the folder already exists
-    # increment index until it works or reaches 100
-    i = 1
-    while i < 100:  # < 100 runs = sanity check
-        app_output_dir = app_output_dir_pattern.format(
-            ss_workflow_out_dir=ss_workflow_out_dir,
-            app_name=app_name, assay=assay_id, date=date, index=i
-        )
-
-        if dx_make_workflow_dir(app_output_dir):
-            print("Using\t\t%s" % app_output_dir)
-            return app_output_dir
-        else:
-            print("Skipping\t%s" % app_output_dir)
-
-        i += 1
-
+    app_output_dir = make_app_out_dir(ss_workflow_out_dir, app_name, assay_id)
     # app_out_dir = "".join([ss_workflow_out_dir, app_name])
     # dx_make_workflow_dir(app_out_dir)
 
