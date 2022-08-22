@@ -9,7 +9,8 @@ from general_functions import (
     get_object_attribute_from_object_id_or_path,
     dx_make_workflow_dir,
     find_app_dir,
-    get_stage_input_file_list
+    get_stage_input_file_list,
+    get_date
 )
 
 
@@ -80,8 +81,27 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcall_app_id, "Name"
     )
 
-    app_out_dir = "".join([ss_workflow_out_dir, app_name])
-    dx_make_workflow_dir(app_out_dir)
+    # app_out_dir = "".join([ss_workflow_out_dir, app_name])
+    app_output_dir_pattern = "{app_name}-{assay}-{date}-{index}/"
+    date = get_date()
+
+    # when creating the new folder, check if the folder already exists
+    # increment index until it works or reaches 100
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        app_output_dir = app_output_dir_pattern.format(
+            workflow_dir=app_name, assay=assay_id, date=date, index=i
+        )
+
+        if dx_make_workflow_dir(app_output_dir):
+            print("Using\t\t%s" % app_output_dir)
+            return app_output_dir
+        else:
+            print("Skipping\t%s" % app_output_dir)
+
+        i += 1
+
+    # dx_make_workflow_dir(app_out_dir)
 
     # Find bam and bai files from sentieon folder
     bambi_files = []
