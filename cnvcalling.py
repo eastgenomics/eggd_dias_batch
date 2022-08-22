@@ -102,6 +102,9 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     # Find project to create jobs and outdirs in
     project_name = get_dx_cwd_project_name()
 
+    # remove any forward dash in ss_workflow
+    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
+
     # Make sure path provided is an actual ss workflow output folder
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
