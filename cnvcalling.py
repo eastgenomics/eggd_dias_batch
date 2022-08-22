@@ -48,7 +48,9 @@ def find_files(project_name, app_dir, pattern="."):
 
 
 def make_app_out_dir(ss_workflow_out_dir, app_name,assay_id):
-    app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}-{assay}-{date}-{index}/"
+    app_version = dxpy.describe(app_name)['version']
+
+    app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}_v{version}-{assay}-{date}-{index}/"
     date = get_date()
 
     # when creating the new folder, check if the folder already exists
@@ -57,7 +59,8 @@ def make_app_out_dir(ss_workflow_out_dir, app_name,assay_id):
     while i < 100:  # < 100 runs = sanity check
         app_output_dir = app_output_dir_pattern.format(
             ss_workflow_out_dir=ss_workflow_out_dir,
-            app_name=app_name, assay=assay_id, date=date, index=i
+            app_name=app_name,version=app_version,
+            assay=assay_id, date=date, index=i
         )
 
         if dx_make_workflow_dir(app_output_dir):
