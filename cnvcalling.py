@@ -146,6 +146,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         file_ids,
         project_name, app_output_dir
     )
+    print(command)
 
     if dry_run is True:
         print("Final cmd ran: {}".format(command))
