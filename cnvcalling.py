@@ -90,7 +90,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     i = 1
     while i < 100:  # < 100 runs = sanity check
         app_output_dir = app_output_dir_pattern.format(
-            workflow_dir=app_name, assay=assay_id, date=date, index=i
+            app_name=app_name, assay=assay_id, date=date, index=i
         )
 
         if dx_make_workflow_dir(app_output_dir):
