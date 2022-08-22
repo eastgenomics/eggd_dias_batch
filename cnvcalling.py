@@ -50,6 +50,7 @@ def find_files(project_name, app_dir, pattern="."):
 def make_app_out_dir(ss_workflow_out_dir, app_name,assay_id):
     print(app_name)
     app_version = dxpy.describe(app_name)['version']
+    print(app_version)
 
     app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}_v{version}-{assay}-{date}-{index}/"
     date = get_date()
