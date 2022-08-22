@@ -47,7 +47,18 @@ def find_files(project_name, app_dir, pattern="."):
     return search_result
 
 
-def make_app_out_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id):
+def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id):
+    """Creates directory for single app with version, date and attempt
+
+    Args:
+        cnvcall_app_id (str): CNV app ID
+        ss_workflow_out_dir (str): single workflow string
+        app_name (str): App name
+        assay_id (str): assay ID with the version
+
+    Returns:
+        _type_: _description_
+    """
     app_version = str(dxpy.describe(cnvcall_app_id)['version'])
 
     app_output_dir_pattern = "{ss_workflow_out_dir}{app_name}_v{version}-{assay}-{date}-{index}/"
@@ -62,6 +73,8 @@ def make_app_out_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id):
             app_name=app_name,version=app_version,
             assay=assay_id, date=date, index=i
         )
+
+        print(app_output_dir)
 
         if dx_make_workflow_dir(app_output_dir):
             print("Using\t\t%s" % app_output_dir)
@@ -107,7 +120,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcall_app_id, "Name"
     )
 
-    app_output_dir = make_app_out_dir(assay_config.cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
+    app_output_dir = make_app_output_dir(assay_config.cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
 
     # Find bam and bai files from sentieon folder
     bambi_files = []
