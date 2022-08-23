@@ -99,7 +99,7 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
 # reanalysis
 
 
-def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
+def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
     reanalysis_dict = {}
 
     # parse reanalysis file
@@ -118,13 +118,13 @@ def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
                 # get a dict of sample2panels
                 reanalysis_dict.setdefault(sample, set()).add(panel)
 
-    run_reports(
+    run_cnvreports(
         input_dir, dry_run, assay_config, assay_id,
         reanalysis_dict=reanalysis_dict
     )
 
 
-def run_reports(
+def run_cnvreports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
 ):
     assert ss_workflow_out_dir.startswith("/"), (
