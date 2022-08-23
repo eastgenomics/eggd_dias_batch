@@ -130,11 +130,11 @@ def run_reports(
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
     rpt_workflow_out_dir = make_workflow_out_dir(
-        assay_config.rpt_workflow_id, assay_id, ss_workflow_out_dir
+        assay_config.cnv_rpt_workflow_id, assay_id, ss_workflow_out_dir
     )
 
     rpt_workflow_stage_info = get_workflow_stage_info(
-        assay_config.rpt_workflow_id
+        assay_config.cnv_rpt_workflow_id
     )
     rpt_output_dirs = make_app_out_dirs(
         rpt_workflow_stage_info, rpt_workflow_out_dir
@@ -143,12 +143,12 @@ def run_reports(
     sample2stage_input_dict = {}
 
     if reanalysis_dict:
-        stage_input_dict = assay_config.rea_stage_input_dict
+        stage_input_dict = assay_config.cnv_rea_stage_input_dict
         sample_id_list = reanalysis_dict
     else:
         sample_sheet_path = gather_sample_sheet()
         all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
-        stage_input_dict = assay_config.rpt_stage_input_dict
+        stage_input_dict = assay_config.cnv_rpt_stage_input_dict
         sample_id_list = all_samples
 
     # put the sample id in a dictionary so that the stage inputs can be
@@ -173,7 +173,7 @@ def run_reports(
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
             staging_dict, "reports", assay_config,
-            assay_config.rea_dynamic_files
+            assay_config.cnv_rea_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
@@ -182,19 +182,19 @@ def run_reports(
             new_headers = [field for field in header]
             new_headers.append(
                 "{}.clinical_indication".format(
-                    assay_config.generate_workbook_stage_id
+                    assay_config.cnv_generate_workbook_stage_id
                 )
             )
             new_headers.append(
                 "{}.panel".format(
-                    assay_config.generate_workbook_stage_id
+                    assay_config.cnv_generate_workbook_stage_id
                 )
             )
             new_headers.append(
-                "{}.panel".format(assay_config.generate_bed_vep_stage_id)
+                "{}.panel".format(assay_config.cnv_generate_workbook_stage_id)
             )
             new_headers.append(
-                "{}.panel".format(assay_config.generate_bed_athena_stage_id)
+                "{}.panel".format(assay_config.cnv_generate_workbook_stage_id)
             )
             headers.append(tuple(new_headers))
 
@@ -241,7 +241,7 @@ def run_reports(
 
         # get the headers and values from the staging inputs
         rpt_headers, rpt_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config, assay_config.rpt_dynamic_files
+            staging_dict, "reports", assay_config, assay_config.cnv_rpt_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
@@ -249,10 +249,10 @@ def run_reports(
         for header in rpt_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "{}.clinical_indication".format(assay_config.generate_workbook_stage_id)
+                "{}.clinical_indication".format(assay_config.cnv_generate_workbook_stage_id)
             )
             new_headers.append(
-                "{}.panel".format(assay_config.generate_workbook_stage_id)
+                "{}.panel".format(assay_config.cnv_generate_workbook_stage_id)
             )
             headers.append(tuple(new_headers))
 
@@ -304,18 +304,18 @@ def run_reports(
 
     args = ""
     args += "-i{}.flank={} ".format(
-        assay_config.generate_bed_vep_stage_id, assay_config.xlsx_flanks
+        assay_config.cnv_generate_vep_stage_id, assay_config.xlsx_flanks
     )
 
     args += "-i{}.config_file={} ".format(
-        assay_config.vep_stage_id, assay_config.vep_config
+        assay_config.cnv_vep_stage_id, assay_config.cnv_vep_config
     )
 
     if assay_config.assay_name == "TWE":
         args += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
 
     command = "dx run -y --rerun-stage '*' {} {} --batch-tsv={}".format(
-        assay_config.rpt_workflow_id, args, rpt_batch_file
+        assay_config.cnv_rpt_workflow_id, args, rpt_batch_file
     )
 
     # assign stage out folders
