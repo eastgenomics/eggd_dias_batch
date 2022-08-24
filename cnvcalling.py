@@ -9,7 +9,8 @@ from general_functions import (
     get_object_attribute_from_object_id_or_path,
     dx_make_workflow_dir,
     find_app_dir,
-    get_stage_input_file_list
+    get_stage_input_file_list,
+    get_date
 )
 
 
@@ -46,6 +47,45 @@ def find_files(project_name, app_dir, pattern="."):
     return search_result
 
 
+def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id):
+    """Creates directory for single app with version, date and attempt
+
+    Args:
+        cnvcall_app_id (str): CNV app ID
+        ss_workflow_out_dir (str): single workflow string
+        app_name (str): App name
+        assay_id (str): assay ID with the version
+
+    Returns:
+        None: folder created in function dx_make_workflow_dir
+    """
+    # remove any forward dash in ss_workflow
+    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
+    app_version = str(dxpy.describe(cnvcall_app_id)['version'])
+
+    app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
+    date = get_date()
+
+    # when creating the new folder, check if the folder already exists
+    # increment index until it works or reaches 100
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        app_output_dir = app_output_dir_pattern.format(
+            ss_workflow_out_dir=ss_workflow_out_dir,
+            app_name=app_name,version=app_version,
+            assay=assay_id, date=date, index=i
+        )
+
+        if dx_make_workflow_dir(app_output_dir):
+            print("Using\t\t%s" % app_output_dir)
+            return app_output_dir
+        else:
+            print("Skipping\t%s" % app_output_dir)
+
+        i += 1
+
+    return None
+
 # Run-level CNV calling of samples that passed QC
 
 
@@ -80,8 +120,8 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcall_app_id, "Name"
     )
 
-    app_out_dir = "".join([ss_workflow_out_dir, app_name])
-    dx_make_workflow_dir(app_out_dir)
+
+    app_output_dir = make_app_output_dir(assay_config.cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
 
     # Find bam and bai files from sentieon folder
     bambi_files = []
@@ -100,8 +140,10 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
             for line in fh:  # line can be a sample name or sample tab panel name
                 sample_names.append(line.strip().split("\t")[0])
 
+    # Get the first part of sample_names
+    sample_names = [x.split('-')[0] for x in sample_names]
     # Remove bam/bai files of QC faild samples
-    sample_bambis = [x for x in bambi_files if x.split('_')[0] not in sample_names]
+    sample_bambis = [x for x in bambi_files if x.split('-')[0] not in sample_names]
 
     # Find the file-IDs of the passed bam/bai samples
     file_ids = ""
@@ -123,7 +165,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         assay_config.cnvcalling_fixed_inputs["interval_list"],
         assay_config.cnvcalling_fixed_inputs["annotation_tsv"],
         file_ids,
-        project_name, app_out_dir
+        project_name, app_output_dir
     )
 
     if dry_run is True:
@@ -131,4 +173,4 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
     else:
         subprocess.call(command, shell=True)
 
-    return app_out_dir
+    return app_output_dir
