@@ -8,7 +8,7 @@ from single_workflow import run_ss_workflow
 from multi_workflow import run_ms_workflow
 from multiqc import run_multiqc_app
 from cnvcalling import run_cnvcall_app
-from cnvreports import run_reports, run_reanalysis
+from cnvreports import run_cnvreports, run_cnvreanalysis
 from reports import run_reports, run_reanalysis
 from general_functions import get_latest_config
 
@@ -160,7 +160,11 @@ def main():
             args.sample_list
         )
     elif workflow == "cnvreports":
-        reports_out_dir = run_reports(
+        cnv_reports_out_dir = run_cnvreports(
+            args.input_dir, args.dry_run, config, assay_id
+        )
+    elif workflow == "cnvreanalysis":
+        cnv_reports_out_dir = run_cnvreanalysis(
             args.input_dir, args.dry_run, config, assay_id
         )
     elif workflow == "reports":
