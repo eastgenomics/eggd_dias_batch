@@ -99,7 +99,7 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
 # reanalysis
 
 
-def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
+def cnv_run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
     reanalysis_dict = {}
 
     # parse reanalysis file
@@ -124,7 +124,7 @@ def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_lis
     )
 
 
-def run_cnvreports(
+def cnv_run_cnvreports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
 ):
     assert ss_workflow_out_dir.startswith("/"), (
