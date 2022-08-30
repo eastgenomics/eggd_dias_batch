@@ -42,7 +42,7 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
     name_file = [
         ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_reports")
     ]
-
+    print(name_file)
     # there should only be one ele in name_file
     job_report = "{}.txt".format(name_file[0])
 
@@ -293,7 +293,9 @@ def run_cnvreports(
                 values.append(line)
             else:
                 job_dict["missing_from_manifest"].append(sample_id)
-
+        print(rpt_workflow_out_dir)
+        print(all_samples)
+        print(job_dict)
         report_file = create_job_reports(
             rpt_workflow_out_dir, all_samples, job_dict
         )
