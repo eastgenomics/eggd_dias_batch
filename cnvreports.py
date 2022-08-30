@@ -40,9 +40,8 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
     # rpt_out_dir should always be /output/dias_single/dias_reports but in case
     # someone adds a "/" at the end, which i do sometimes
     name_file = [
-        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_reports")
+        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_cnvreports")
     ]
-    print(name_file)
     # there should only be one ele in name_file
     job_report = "{}.txt".format(name_file[0])
 
@@ -293,9 +292,7 @@ def run_cnvreports(
                 values.append(line)
             else:
                 job_dict["missing_from_manifest"].append(sample_id)
-        print(rpt_workflow_out_dir)
-        print(all_samples)
-        print(job_dict)
+                
         report_file = create_job_reports(
             rpt_workflow_out_dir, all_samples, job_dict
         )
@@ -306,7 +303,7 @@ def run_cnvreports(
 
     args = ""
     args += "-i{}.flank={} ".format(
-        assay_config.cnv_generate_vep_stage_id, assay_config.xlsx_flanks
+        assay_config.cnv_generate_bed_vep_stage_id, assay_config.xlsx_flanks
     )
 
     args += "-i{}.config_file={} ".format(
