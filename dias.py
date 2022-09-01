@@ -179,7 +179,8 @@ def main():
         )
     elif workflow == "cnvreanalysis":
         cnv_reports_out_dir = run_cnvreanalysis(
-            args.input_dir, args.dry_run, config, assay_id
+            args.input_dir, args.dry_run, config, assay_id,
+            args.cnvreanalysis_list
         )
     elif workflow == "reports":
         reports_out_dir = run_reports(
