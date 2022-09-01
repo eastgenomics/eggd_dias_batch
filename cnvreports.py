@@ -190,10 +190,10 @@ def run_cnvreports(
                 )
             )
             new_headers.append(
-                "{}.panel".format(assay_config.cnv_generate_workbook_stage_id)
+                "{}.panel".format(assay_config.cnv_generate_bed_vep_stage_id)
             )
             new_headers.append(
-                "{}.panel".format(assay_config.cnv_generate_workbook_stage_id)
+                "{}.panel".format(assay_config.cnv_generate_bed_excluded_stage_id)
             )
             headers.append(tuple(new_headers))
 
@@ -240,7 +240,7 @@ def run_cnvreports(
 
         # get the headers and values from the staging inputs
         rpt_headers, rpt_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config, assay_config.cnv_rpt_dynamic_files
+            staging_dict, "cnvreports", assay_config, assay_config.cnv_rpt_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
