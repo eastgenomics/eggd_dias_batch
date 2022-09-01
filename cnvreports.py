@@ -247,7 +247,7 @@ def run_cnvreports(
             assay_config.somalier_relate_stage_id,
             "",
             assay_config.cnv_generate_workbook_stage_id,
-            assay_config.cnv_rea_dynamic_files
+            assay_config.cnv_rpt_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
