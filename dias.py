@@ -78,6 +78,20 @@ def main():
     )
     parser_r.set_defaults(which='cnvreports')
 
+    parser_r = subparsers.add_parser('cnvreanalysis', help='cnvreanalysis help')
+    parser_r.add_argument(
+        'input_dir', type=str,
+        help='A single/multi sample workflow output directory path'
+    )
+    parser_r.add_argument(
+        'cnvreanalysis_list', type=str,
+        help=(
+            'Tab delimited file containing sample and panel for cnvreanalysis'
+            '. One sample/panel combination per line'
+        )
+    )
+    parser_r.set_defaults(which='cnvreanalysis')
+
     parser_r = subparsers.add_parser('reports', help='reports help')
     parser_r.add_argument(
         'input_dir', type=str,
