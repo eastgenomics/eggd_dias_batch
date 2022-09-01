@@ -391,6 +391,10 @@ def prepare_batch_writing(
     Args:
         stage_input_dict (dict): Dict of sample2stage2file_list
         type_workflow (str): String equal to either multi or reports
+        assay_config_happy_stage_prefix (str): Hap.py stage id from the assay config
+        assay_config_somalier_relate_stage_id (str): Somalier relate stage id from the assay config
+        assay_config_athena_stage_id (str): Athena stage id from the assay config
+        assay_config_generate_workbook_stage_id (str): workbooks stage id from the assay config
         workflow_specificity (dict, optional): For the reports, add the dynamic files to headers + values. Defaults to {}.
 
     Returns:
