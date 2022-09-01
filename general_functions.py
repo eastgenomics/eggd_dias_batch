@@ -441,6 +441,34 @@ def prepare_batch_writing(
             # add the value of output prefix to generate workbooks
             values.append("{}_{}".format(sample_id, index_to_use))
 
+        elif type_workflow == "cnvreports":
+            # renaming type_input for comprehension in this elif
+            sample_id = type_input
+
+            if sample_id.startswith("NA"):
+                continue
+
+            values.append(sample_id)
+
+            # get the index for the coverage report that needs to be created
+            coverage_reports = find_previous_reports(
+                sample_id, "coverage_report.html"
+            )
+            # get the index for the xls report that needs to be created
+            xls_reports = find_previous_reports(sample_id, ".xls")
+            xls_index = get_next_index(xls_reports)
+            coverage_index = get_next_index(coverage_reports)
+
+            index_to_use = max([xls_index, coverage_index])
+
+            # add the name output_prefix to generate_workbooks
+            headers.append("{}.output_prefix".format(
+                    assay_config.cnv_generate_workbook_stage_id
+                )
+            )
+            # add the value of output prefix to generate workbooks
+            values.append("{}_{}".format(sample_id, index_to_use))
+
         # add the dynamic files to the headers and values
         for stage, file_id in workflow_specificity.items():
             headers.append(stage)  # col for file name
