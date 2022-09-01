@@ -173,7 +173,7 @@ def run_cnvreports(
         rea_headers, rea_values = prepare_batch_writing(
             staging_dict, "cnvreports", assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
-            assay_config.cnv_athena_stage_id,
+            "",
             assay_config.cnv_generate_workbook_stage_id,
             assay_config.cnv_rea_dynamic_files
         )
@@ -245,7 +245,7 @@ def run_cnvreports(
         rpt_headers, rpt_values = prepare_batch_writing(
             staging_dict, "cnvreports", assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
-            assay_config.cnv_athena_stage_id,
+            "",
             assay_config.cnv_generate_workbook_stage_id,
             assay_config.cnv_rea_dynamic_files
         )
