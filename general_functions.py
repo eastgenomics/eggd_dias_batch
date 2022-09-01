@@ -382,7 +382,9 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
 
 
 def prepare_batch_writing(
-    stage_input_dict, type_workflow, assay_config, workflow_specificity={}
+    stage_input_dict, type_workflow, assay_config_happy_stage_prefix,
+    assay_config_somalier_relate_stage_id, workflow_specificity={},
+    assay_config_athena_stage_id, assay_config_generate_workbook_stage_id
 ):
     """ Return headers and values for the batch file writing
 
@@ -406,10 +408,10 @@ def prepare_batch_writing(
         if type_workflow == "multi":
             values.append("multi")
             # Hap.py - static values
-            headers.append(assay_config.happy_stage_prefix)
+            headers.append(assay_config_happy_stage_prefix)
             values.append("NA12878")
 
-        elif type_workflow == "reports":
+        elif type_workflow == "reports" or type_workflow == "cnvreports":
             # renaming type_input for comprehension in this elif
             sample_id = type_input
 
@@ -430,42 +432,14 @@ def prepare_batch_writing(
             index_to_use = max([xls_index, coverage_index])
 
             # add the name param to athena
-            headers.append("{}.name".format(assay_config.athena_stage_id))
+            headers.append("{}.name".format(assay_config_athena_stage_id))
             # add the name output_prefix to generate_workbooks
             headers.append("{}.output_prefix".format(
-                    assay_config.generate_workbook_stage_id
+                    assay_config_generate_workbook_stage_id
                 )
             )
             # add the value of name to athena
             values.append("{}_{}".format(sample_id, index_to_use))
-            # add the value of output prefix to generate workbooks
-            values.append("{}_{}".format(sample_id, index_to_use))
-
-        elif type_workflow == "cnvreports":
-            # renaming type_input for comprehension in this elif
-            sample_id = type_input
-
-            if sample_id.startswith("NA"):
-                continue
-
-            values.append(sample_id)
-
-            # get the index for the coverage report that needs to be created
-            coverage_reports = find_previous_reports(
-                sample_id, "coverage_report.html"
-            )
-            # get the index for the xls report that needs to be created
-            xls_reports = find_previous_reports(sample_id, ".xls")
-            xls_index = get_next_index(xls_reports)
-            coverage_index = get_next_index(coverage_reports)
-
-            index_to_use = max([xls_index, coverage_index])
-
-            # add the name output_prefix to generate_workbooks
-            headers.append("{}.output_prefix".format(
-                    assay_config.cnv_generate_workbook_stage_id
-                )
-            )
             # add the value of output prefix to generate workbooks
             values.append("{}_{}".format(sample_id, index_to_use))
 
@@ -484,7 +458,7 @@ def prepare_batch_writing(
 
             # One file in file list - no need to merge into array
             if len(stage_data[stage_input]["file_list"]) == 1:
-                if "{}".format(assay_config.somalier_relate_stage_id) in stage_input:
+                if "{}".format(assay_config_somalier_relate_stage_id) in stage_input:
                     file_ids = stage_data[stage_input]["file_list"]
                 else:
                     file_ids = stage_data[stage_input]["file_list"][0]
