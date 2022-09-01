@@ -431,15 +431,22 @@ def prepare_batch_writing(
 
             index_to_use = max([xls_index, coverage_index])
 
-            # add the name param to athena
-            headers.append("{}.name".format(assay_config_athena_stage_id))
+            # CNV reports currently does not have athena so we skip adding
+            # athena headers if its cnvreports
+            if type_workflow != "cnvreports":
+                # add the name param to athena
+                headers.append("{}.name".format(assay_config_athena_stage_id))
+
             # add the name output_prefix to generate_workbooks
             headers.append("{}.output_prefix".format(
                     assay_config_generate_workbook_stage_id
                 )
             )
-            # add the value of name to athena
-            values.append("{}_{}".format(sample_id, index_to_use))
+
+            if type_workflow != "cnvreports":
+                # add the value of name to athena
+                values.append("{}_{}".format(sample_id, index_to_use))
+
             # add the value of output prefix to generate workbooks
             values.append("{}_{}".format(sample_id, index_to_use))
 
