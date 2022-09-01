@@ -383,8 +383,8 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
 
 def prepare_batch_writing(
     stage_input_dict, type_workflow, assay_config_happy_stage_prefix,
-    assay_config_somalier_relate_stage_id, workflow_specificity={},
-    assay_config_athena_stage_id, assay_config_generate_workbook_stage_id
+    assay_config_somalier_relate_stage_id,assay_config_athena_stage_id,
+    assay_config_generate_workbook_stage_id, workflow_specificity={}
 ):
     """ Return headers and values for the batch file writing
 
