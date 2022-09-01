@@ -22,3 +22,5 @@ Run the Dias pipeline stored in DNAnexus
   - Generate batch files for CNVcalling
 - reports.py
   - Generate batch files for reports and reanalysis
+- cnvreports.py
+  - Generate batch files for CNV reports and CNV reanalysis
