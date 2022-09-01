@@ -171,7 +171,10 @@ def run_cnvreports(
 
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config,
+            staging_dict, "cnvreports", assay_config.happy_stage_prefix,
+            assay_config.somalier_relate_stage_id,
+            assay_config.cnv_athena_stage_id,
+            assay_config.cnv_generate_workbook_stage_id,
             assay_config.cnv_rea_dynamic_files
         )
 
@@ -292,7 +295,7 @@ def run_cnvreports(
                 values.append(line)
             else:
                 job_dict["missing_from_manifest"].append(sample_id)
-                
+
         report_file = create_job_reports(
             rpt_workflow_out_dir, all_samples, job_dict
         )
