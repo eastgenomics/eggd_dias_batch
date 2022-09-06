@@ -236,7 +236,7 @@ def run_cnvreports(
         sample2stage_input_dict[sample] = stage_input_dict
 
     # get the inputs for the given app-pattern
-    staging_dict = get_stage_inputs(
+    staging_dict = get_stage_inputs_inc_cnv_dir(
         ss_workflow_out_dir, sample2stage_input_dict, cnv_calling_dir
     )
 
