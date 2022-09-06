@@ -154,23 +154,23 @@ def run_cnvreports(
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
 
-    # # sometimes the backlash maybe provided and we don't want that
-    # if ss_workflow_out_dir.endswith("/"):
-    #     ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0]
+    # sometimes the backlash maybe provided and we don't want that
+    if ss_workflow_out_dir.endswith("/"):
+        ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0]
 
-    # # the directory provided on the path is full, up to the cnv calling app,
-    # # lets split the directory up to dias_single and keep the cnvcalling
-    # # app in another variable object
+    # the directory provided on the path is full, up to the cnv calling app,
+    # lets split the directory up to dias_single and keep the cnvcalling
+    # app in another variable object
 
-    # #get the cnv calling dir name
-    # cnv_calling_dir = ss_workflow_out_dir.rsplit("/",1)[1]
-    # # need to ensure that the cnv calling app dir is in the directory
-    # # given on the cmd line
-    # if 'GATKgCNV_call' not in cnv_calling_dir:
-    #     raise AssertionError("Directory path requires cnv calling app directory")
+    # get the cnv calling dir name
+    cnv_calling_dir = ss_workflow_out_dir.rsplit("/",1)[1]
+    # need to ensure that the cnv calling app dir is in the directory
+    # given on the cmd line
+    if 'GATKgCNV_call' not in cnv_calling_dir:
+        raise AssertionError("Directory path requires cnv calling app directory")
 
-    # # reset the ss_workflow_out_dir to not contain the cnv calling path
-    # ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0] + "/"
+    # reset the ss_workflow_out_dir to not contain the cnv calling path
+    ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0] + "/"
 
     rpt_workflow_out_dir = make_workflow_out_dir(
         assay_config.cnv_rpt_workflow_id, assay_id, ss_workflow_out_dir
