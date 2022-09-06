@@ -380,6 +380,39 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
 
     return dict_res
 
+def get_stage_inputs_inc_cnv_dir(ss_workflow_out_dir, stage_input_dict, cnv_calling_dir):
+    """ Return dict with sample2stage2files ffor CNV reports
+
+    Args:
+        ss_workflow_out_dir (str): Directory of single workflow
+        stage_input_dict (dict): Dict of stage2app
+        cnv_calling_dir (str): The CNV calling app output folder from cmd line
+
+    Returns:
+        dict: Dict of sample2stage2file_list
+    """
+
+    # Allows me to not have to check if a key exists before creating an entry in the dict
+    # Example: dict[entry][sub-entry][list-entry].append(ele)
+    dict_res = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    # type_input can be either "multi" or a sample id
+    for type_input in stage_input_dict:
+        # find the inputs for each stage using given app/pattern
+        for stage_input, stage_input_info in stage_input_dict[type_input].items():
+            if stage_input_info["app"] is "eggd_GATKgCNV_call":
+                stage_input_info["app"] = cnv_calling_dir
+            input_app_dir = find_app_dir(
+                ss_workflow_out_dir, stage_input_info["app"]
+            )
+            inputs = get_stage_input_file_list(
+                input_app_dir,
+                app_subdir=stage_input_info["subdir"],
+                filename_pattern=stage_input_info["pattern"].format(type_input)
+            )
+            dict_res[type_input][stage_input]["file_list"] = inputs
+
+    return dict_res
 
 def prepare_batch_writing(
     stage_input_dict, type_workflow, assay_config_happy_stage_prefix,
@@ -709,3 +742,42 @@ def gather_sample_sheet():
     assert len(sample_sheets) == 1, "Didn't gather only one sample sheet file"
 
     return sample_sheets[0]["id"]
+
+def make_app_output_dir(app_id, ss_workflow_out_dir, app_name, assay_id):
+    """Creates directory for single app with version, date and attempt
+
+    Args:
+        app_id (str): CNV app ID
+        ss_workflow_out_dir (str): single workflow string
+        app_name (str): App name
+        assay_id (str): assay ID with the version
+
+    Returns:
+        None: folder created in function dx_make_workflow_dir
+    """
+    # remove trailing forward dash in ss_workflow
+    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
+    app_version = str(dxpy.describe(app_id)['version'])
+
+    app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
+    date = get_date()
+
+    # when creating the new folder, check if the folder already exists
+    # increment index until it works or reaches 100
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        app_output_dir = app_output_dir_pattern.format(
+            ss_workflow_out_dir=ss_workflow_out_dir,
+            app_name=app_name,version=app_version,
+            assay=assay_id, date=date, index=i
+        )
+
+        if dx_make_workflow_dir(app_output_dir):
+            print("Using\t\t%s" % app_output_dir)
+            return app_output_dir
+        else:
+            print("Skipping\t%s" % app_output_dir)
+
+        i += 1
+
+    return None
