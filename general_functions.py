@@ -349,7 +349,7 @@ def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
     return None
 
 
-def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
+def get_stage_inputs(ss_workflow_out_dir, stage_input_dict, cnv_calling_dir=None):
     """ Return dict with sample2stage2files
 
     Args:
@@ -368,6 +368,8 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
     for type_input in stage_input_dict:
         # find the inputs for each stage using given app/pattern
         for stage_input, stage_input_info in stage_input_dict[type_input].items():
+            if stage_input_info["app"] is "eggd_GATKgCNV_call":
+                stage_input_info["app"] = cnv_calling_dir
             input_app_dir = find_app_dir(
                 ss_workflow_out_dir, stage_input_info["app"]
             )
