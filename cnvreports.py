@@ -16,7 +16,8 @@ from general_functions import (
     parse_genepanels,
     get_sample_ids_from_sample_sheet,
     gather_sample_sheet,
-    get_stage_inputs_inc_cnv_dir
+    get_stage_inputs_inc_cnv_dir,
+    get_stage_inputs
 )
 
 def create_job_reports(rpt_out_dir, all_samples, job_dict):
