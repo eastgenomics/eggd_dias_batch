@@ -43,6 +43,9 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
         ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_cnvreports")
     ]
     # there should only be one ele in name_file
+    if len(name_file) != 1:
+        raise Exception("reports output directory '{}' contains two "
+                        "dias_cnvreports".format(rpt_out_dir))
     job_report = "{}.txt".format(name_file[0])
 
     # get samples for which a report is expected but the job will not started
