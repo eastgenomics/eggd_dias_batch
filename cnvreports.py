@@ -170,11 +170,7 @@ def run_cnvreports(
         raise AssertionError("Directory path requires cnv calling app directory")
 
     # reset the ss_workflow_out_dir to not contain the cnv calling path
-    ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0]
-
-    print(cnv_calling_dir)
-    print(ss_workflow_out_dir)
-
+    ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0] + "/"
 
     rpt_workflow_out_dir = make_workflow_out_dir(
         assay_config.cnv_rpt_workflow_id, assay_id, ss_workflow_out_dir
