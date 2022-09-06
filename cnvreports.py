@@ -153,6 +153,7 @@ def run_cnvreports(
     """
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
+        
     assert ss_workflow_out_dir.endswith("/"), (
         "Input directory must be full path (ends with /)")
 
