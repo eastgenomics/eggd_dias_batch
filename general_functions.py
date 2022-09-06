@@ -355,41 +355,9 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict, cnv_calling_dir=None
     Args:
         ss_workflow_out_dir (str): Directory of single workflow
         stage_input_dict (dict): Dict of stage2app
-
-    Returns:
-        dict: Dict of sample2stage2file_list
-    """
-
-    # Allows me to not have to check if a key exists before creating an entry in the dict
-    # Example: dict[entry][sub-entry][list-entry].append(ele)
-    dict_res = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-
-    # type_input can be either "multi" or a sample id
-    for type_input in stage_input_dict:
-        # find the inputs for each stage using given app/pattern
-        for stage_input, stage_input_info in stage_input_dict[type_input].items():
-            if stage_input_info["app"] is "eggd_GATKgCNV_call":
-                stage_input_info["app"] = cnv_calling_dir
-            input_app_dir = find_app_dir(
-                ss_workflow_out_dir, stage_input_info["app"]
-            )
-            inputs = get_stage_input_file_list(
-                input_app_dir,
-                app_subdir=stage_input_info["subdir"],
-                filename_pattern=stage_input_info["pattern"].format(type_input)
-            )
-            dict_res[type_input][stage_input]["file_list"] = inputs
-
-    return dict_res
-
-def get_stage_inputs_inc_cnv_dir(ss_workflow_out_dir, stage_input_dict, cnv_calling_dir):
-    """ Return dict with sample2stage2files ffor CNV reports
-
-    Args:
-        ss_workflow_out_dir (str): Directory of single workflow
-        stage_input_dict (dict): Dict of stage2app
         cnv_calling_dir (str): The CNV calling app output folder from cmd line
 
+
     Returns:
         dict: Dict of sample2stage2file_list
     """
@@ -415,6 +383,7 @@ def get_stage_inputs_inc_cnv_dir(ss_workflow_out_dir, stage_input_dict, cnv_call
             dict_res[type_input][stage_input]["file_list"] = inputs
 
     return dict_res
+
 
 def prepare_batch_writing(
     stage_input_dict, type_workflow, assay_config_happy_stage_prefix,
