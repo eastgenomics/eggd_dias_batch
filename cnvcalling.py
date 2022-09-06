@@ -10,7 +10,8 @@ from general_functions import (
     dx_make_workflow_dir,
     find_app_dir,
     get_stage_input_file_list,
-    get_date
+    get_date,
+    make_app_output_dir
 )
 
 
@@ -47,44 +48,6 @@ def find_files(project_name, app_dir, pattern="."):
     return search_result
 
 
-def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id):
-    """Creates directory for single app with version, date and attempt
-
-    Args:
-        cnvcall_app_id (str): CNV app ID
-        ss_workflow_out_dir (str): single workflow string
-        app_name (str): App name
-        assay_id (str): assay ID with the version
-
-    Returns:
-        None: folder created in function dx_make_workflow_dir
-    """
-    # remove trailing forward dash in ss_workflow
-    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
-    app_version = str(dxpy.describe(cnvcall_app_id)['version'])
-
-    app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
-    date = get_date()
-
-    # when creating the new folder, check if the folder already exists
-    # increment index until it works or reaches 100
-    i = 1
-    while i < 100:  # < 100 runs = sanity check
-        app_output_dir = app_output_dir_pattern.format(
-            ss_workflow_out_dir=ss_workflow_out_dir,
-            app_name=app_name,version=app_version,
-            assay=assay_id, date=date, index=i
-        )
-
-        if dx_make_workflow_dir(app_output_dir):
-            print("Using\t\t%s" % app_output_dir)
-            return app_output_dir
-        else:
-            print("Skipping\t%s" % app_output_dir)
-
-        i += 1
-
-    return None
 
 # Run-level CNV calling of samples that passed QC
 
