@@ -18,7 +18,8 @@ from general_functions import (
     parse_genepanels,
     get_sample_ids_from_sample_sheet,
     gather_sample_sheet,
-    get_stage_input_file_list
+    get_stage_input_file_list,
+    find_app_dir
 )
 
 
