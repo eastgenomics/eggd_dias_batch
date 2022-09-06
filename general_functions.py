@@ -743,6 +743,38 @@ def gather_sample_sheet():
 
     return sample_sheets[0]["id"]
 
+def find_files(project_name, app_dir, pattern="."):
+    """Searches for files ending in provided pattern (bam/bai) in a
+    given path (single).
+
+    Args:
+        app_dir (str): single path including directory to output app.
+        pattern (str): searchs for files ending in given pattern.
+        Defaults to ".".
+        project_name (str): The project name on DNAnexus
+
+    Returns:
+        search_result: list containing files ending in given pattern
+        of every sample processed in single.
+    """
+    projectID  = list(dxpy.bindings.search.find_projects(name=project_name))[0]['id']
+    # the pattern is usually "-E 'pattern'" and we dont want the -E part
+    pattern = pattern.split('-E ')[1].replace("'", "")
+    search_result = []
+
+    try:
+        for file in dxpy.bindings.search.find_data_objects(
+            project=projectID, folder=app_dir,classname="file",
+            name=pattern, name_mode="regexp", describe=True
+            ):
+            search_result.append(file["describe"]["name"])
+    except ValueError:
+        print('Could not files {} in {}'.format(
+              pattern,app_dir
+            ))
+
+    return search_result
+
 def make_app_output_dir(app_id, ss_workflow_out_dir, app_name, assay_id):
     """Creates directory for single app with version, date and attempt
 

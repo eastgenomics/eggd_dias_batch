@@ -7,47 +7,10 @@ import dxpy
 from general_functions import (
     get_dx_cwd_project_name,
     get_object_attribute_from_object_id_or_path,
-    dx_make_workflow_dir,
     find_app_dir,
-    get_stage_input_file_list,
-    get_date,
-    make_app_output_dir
+    make_app_output_dir,
+    find_files
 )
-
-
-def find_files(project_name, app_dir, pattern="."):
-    """Searches for files ending in provided pattern (bam/bai) in a
-    given path (single).
-
-    Args:
-        app_dir (str): single path including directory to output app.
-        pattern (str): searchs for files ending in given pattern.
-        Defaults to ".".
-        project_name (str): The project name on DNAnexus
-
-    Returns:
-        search_result: list containing files ending in given pattern
-        of every sample processed in single.
-    """
-    projectID  = list(dxpy.bindings.search.find_projects(name=project_name))[0]['id']
-    # the pattern is usually "-E 'pattern'" and we dont want the -E part
-    pattern = pattern.split('-E ')[1].replace("'", "")
-    search_result = []
-
-    try:
-        for file in dxpy.bindings.search.find_data_objects(
-            project=projectID, folder=app_dir,classname="file",
-            name=pattern, name_mode="regexp", describe=True
-            ):
-            search_result.append(file["describe"]["name"])
-    except ValueError:
-        print('Could not files {} in {}'.format(
-              pattern,app_dir
-            ))
-
-    return search_result
-
-
 
 # Run-level CNV calling of samples that passed QC
 
