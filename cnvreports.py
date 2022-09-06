@@ -153,6 +153,8 @@ def run_cnvreports(
     """
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
+    assert ss_workflow_out_dir.endswith("/"), (
+        "Input directory must be full path (ends with /)")   
 
     # the directory provided on the path is full, up to the cnv calling app,
     # lets split the directory up to dias_single and keep the cnvcalling
