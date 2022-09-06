@@ -59,7 +59,7 @@ def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
     Returns:
         None: folder created in function dx_make_workflow_dir
     """
-    # remove any forward dash in ss_workflow
+    # remove trailing forward dash in ss_workflow
     ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
     app_version = str(dxpy.describe(cnvcall_app_id)['version'])
 
@@ -89,14 +89,14 @@ def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
 # Run-level CNV calling of samples that passed QC
 
 
-def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample_list):
+def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, excluded_sample_list):
     """Sets off the CNV calling app.
 
     Args:
         ss_workflow_out_dir (str): path to single output
         dry_run (str): optional boolean whether this is a dry/test run
         assay_config (variable): assay config file containing all variables
-        sample_list (file): optional file containg list of samples to exclude
+        excluded_sample_list (file): optional file containg list of samples to exclude
 
     Returns:
         app_out_dir: path to where the CNV calling output will be
@@ -131,12 +131,12 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         bambi_files.extend(find_files(project_name, folder_path, ext))
 
     # Read in list of samples that did NOT PASS QC
-    if sample_list is None:
+    if excluded_sample_list is None:
         sample_names = []
     else:
         sample_names = []
         # parse sample exclusion file
-        with open(sample_list) as fh:
+        with open(excluded_sample_list) as fh:
             for line in fh:  # line can be a sample name or sample tab panel name
                 sample_names.append(line.strip().split("\t")[0])
 
