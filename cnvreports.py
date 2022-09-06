@@ -102,6 +102,18 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
 
 
 def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
+    """Reads in the reanalysis file given on the command line and runs the
+    CNV reports script.
+
+    Args:
+        input_dir: single output directory e.g /output/dias_single
+        dry_run: optional arg command from cmd line if its a dry run
+        assay_config: contains all the dynamic DNAnexus IDs
+        assay_id: optional arg command from cmd line for what assay this is
+        reanalysis_list: reanalysis file provided on the cmd line
+    """
+
+
     reanalysis_dict = {}
 
     # parse reanalysis file
@@ -129,6 +141,16 @@ def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_lis
 def run_cnvreports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
 ):
+    """Generates batch script with headers from the reports workflow and
+    values from the reports directory and then runs the command.
+
+    Args:
+        ss_workflow_out_dir: single output directory e.g /output/dias_single
+        dry_run: optional arg command from cmd line if its a dry run
+        assay_config: contains all the dynamic DNAnexus IDs
+        assay_id: optional arg command from cmd line for what assay this is
+        reanalysis_dict: reanalysis file IF provided on the cmd line
+    """
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
     rpt_workflow_out_dir = make_workflow_out_dir(
