@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from collections import defaultdict
 from collections import OrderedDict
 import json
 import subprocess
