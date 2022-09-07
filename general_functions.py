@@ -715,7 +715,7 @@ def gather_sample_sheet():
     return sample_sheets[0]["id"]
 
 def find_files(project_name, app_dir, pattern="."):
-    """Searches for files ending in provided pattern (bam/bai) in a
+    """Searches for files ending in provided pattern (e.g "*bam") in a
     given path (single).
 
     Args:
