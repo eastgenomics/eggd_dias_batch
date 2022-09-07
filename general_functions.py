@@ -716,7 +716,8 @@ def gather_sample_sheet():
 
 def find_files(project_name, app_dir, pattern="."):
     """Searches for files ending in provided pattern (e.g "*bam") in a
-    given path (single).
+    given path that contains the files that are being searched for
+   (e.g /output/single/sentieon_output).
 
     Args:
         app_dir (str): single path including directory to output app.
