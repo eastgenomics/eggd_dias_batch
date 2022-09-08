@@ -172,7 +172,10 @@ def run_reports(
 
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config,
+            staging_dict, "reports", assay_config.happy_stage_prefix,
+            assay_config.somalier_relate_stage_id,
+            assay_config.athena_stage_id,
+            assay_config.generate_workbook_stage_id,
             assay_config.rea_dynamic_files
         )
 
@@ -241,7 +244,11 @@ def run_reports(
 
         # get the headers and values from the staging inputs
         rpt_headers, rpt_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config, assay_config.rpt_dynamic_files
+            staging_dict, "reports", assay_config.happy_stage_prefix,
+            assay_config.somalier_relate_stage_id,
+            assay_config.athena_stage_id,
+            assay_config.generate_workbook_stage_id,
+            assay_config.rpt_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
