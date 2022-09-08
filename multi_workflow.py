@@ -40,7 +40,7 @@ def run_ms_workflow(ss_workflow_out_dir, dry_run, assay_config, assay_id):
     # get the header and values to write in the batch tsv
     ms_headers, ms_values = prepare_batch_writing(
         ms_stage_input_dict, "multi", assay_config.happy_stage_prefix,
-        "", assay_config.happy_stage_bed, "",""
+        "", "", "", assay_config.happy_stage_bed
     )
     ms_batch_file = create_batch_file(ms_headers, ms_values)
 
