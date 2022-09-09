@@ -172,7 +172,6 @@ def run_cnvreports(
     rpt_workflow_out_dir = make_workflow_out_dir(
         assay_config.cnv_rpt_workflow_id, assay_id, ss_workflow_out_dir
     )
-    print(rpt_workflow_out_dir)
 
     rpt_workflow_stage_info = get_workflow_stage_info(
         assay_config.cnv_rpt_workflow_id
