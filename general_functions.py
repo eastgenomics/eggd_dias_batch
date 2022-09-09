@@ -349,12 +349,14 @@ def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
     return None
 
 
-def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
+def get_stage_inputs(ss_workflow_out_dir, stage_input_dict, cnv_calling_dir=None):
     """ Return dict with sample2stage2files
 
     Args:
         ss_workflow_out_dir (str): Directory of single workflow
         stage_input_dict (dict): Dict of stage2app
+        cnv_calling_dir (str): The CNV calling app output folder from cmd line
+
 
     Returns:
         dict: Dict of sample2stage2file_list
@@ -368,6 +370,8 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
     for type_input in stage_input_dict:
         # find the inputs for each stage using given app/pattern
         for stage_input, stage_input_info in stage_input_dict[type_input].items():
+            if stage_input_info["app"] is "eggd_GATKgCNV_call":
+                stage_input_info["app"] = cnv_calling_dir
             input_app_dir = find_app_dir(
                 ss_workflow_out_dir, stage_input_info["app"]
             )
@@ -382,13 +386,19 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict):
 
 
 def prepare_batch_writing(
-    stage_input_dict, type_workflow, assay_config, workflow_specificity={}
+    stage_input_dict, type_workflow, assay_config_happy_stage_prefix,
+    assay_config_somalier_relate_stage_id,assay_config_athena_stage_id,
+    assay_config_generate_workbook_stage_id, workflow_specificity={}
 ):
     """ Return headers and values for the batch file writing
 
     Args:
         stage_input_dict (dict): Dict of sample2stage2file_list
         type_workflow (str): String equal to either multi or reports
+        assay_config_happy_stage_prefix (str): Hap.py stage id from the assay config
+        assay_config_somalier_relate_stage_id (str): Somalier relate stage id from the assay config
+        assay_config_athena_stage_id (str): Athena stage id from the assay config
+        assay_config_generate_workbook_stage_id (str): workbooks stage id from the assay config
         workflow_specificity (dict, optional): For the reports, add the dynamic files to headers + values. Defaults to {}.
 
     Returns:
@@ -406,10 +416,10 @@ def prepare_batch_writing(
         if type_workflow == "multi":
             values.append("multi")
             # Hap.py - static values
-            headers.append(assay_config.happy_stage_prefix)
+            headers.append(assay_config_happy_stage_prefix)
             values.append("NA12878")
 
-        elif type_workflow == "reports":
+        elif type_workflow == "reports" or type_workflow == "cnvreports":
             # renaming type_input for comprehension in this elif
             sample_id = type_input
 
@@ -429,15 +439,22 @@ def prepare_batch_writing(
 
             index_to_use = max([xls_index, coverage_index])
 
-            # add the name param to athena
-            headers.append("{}.name".format(assay_config.athena_stage_id))
+            # CNV reports currently does not have athena so we skip adding
+            # athena headers if its cnvreports
+            if type_workflow != "cnvreports":
+                # add the name param to athena
+                headers.append("{}.name".format(assay_config_athena_stage_id))
+
             # add the name output_prefix to generate_workbooks
             headers.append("{}.output_prefix".format(
-                    assay_config.generate_workbook_stage_id
+                    assay_config_generate_workbook_stage_id
                 )
             )
-            # add the value of name to athena
-            values.append("{}_{}".format(sample_id, index_to_use))
+
+            if type_workflow != "cnvreports":
+                # add the value of name to athena
+                values.append("{}_{}".format(sample_id, index_to_use))
+
             # add the value of output prefix to generate workbooks
             values.append("{}_{}".format(sample_id, index_to_use))
 
@@ -456,7 +473,7 @@ def prepare_batch_writing(
 
             # One file in file list - no need to merge into array
             if len(stage_data[stage_input]["file_list"]) == 1:
-                if "{}".format(assay_config.somalier_relate_stage_id) in stage_input:
+                if "{}".format(assay_config_somalier_relate_stage_id) in stage_input:
                     file_ids = stage_data[stage_input]["file_list"]
                 else:
                     file_ids = stage_data[stage_input]["file_list"][0]
@@ -696,3 +713,75 @@ def gather_sample_sheet():
     assert len(sample_sheets) == 1, "Didn't gather only one sample sheet file"
 
     return sample_sheets[0]["id"]
+
+def find_files(project_name, app_dir, pattern="."):
+    """Searches for files ending in provided pattern (e.g "*bam") in a
+    given path that contains the files that are being searched for
+   (e.g /output/single/sentieon_output).
+
+    Args:
+        app_dir (str): single path including directory to output app.
+        pattern (str): searchs for files ending in given pattern.
+        Defaults to ".".
+        project_name (str): The project name on DNAnexus
+
+    Returns:
+        search_result: list containing files ending in given pattern
+        of every sample processed in single.
+    """
+    projectID  = list(dxpy.bindings.search.find_projects(name=project_name))[0]['id']
+    # the pattern is usually "-E 'pattern'" and we dont want the -E part
+    pattern = pattern.split('-E ')[1].replace("'", "")
+    search_result = []
+
+    try:
+        for file in dxpy.bindings.search.find_data_objects(
+            project=projectID, folder=app_dir,classname="file",
+            name=pattern, name_mode="regexp", describe=True
+            ):
+            search_result.append(file["describe"]["name"])
+    except ValueError:
+        print('Could not files {} in {}'.format(
+              pattern,app_dir
+            ))
+
+    return search_result
+
+def make_app_output_dir(app_id, ss_workflow_out_dir, app_name, assay_id):
+    """Creates directory for single app with version, date and attempt
+
+    Args:
+        app_id (str): CNV app ID
+        ss_workflow_out_dir (str): single workflow string
+        app_name (str): App name
+        assay_id (str): assay ID with the version
+
+    Returns:
+        None: folder created in function dx_make_workflow_dir
+    """
+    # remove trailing forward dash in ss_workflow
+    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
+    app_version = str(dxpy.describe(app_id)['version'])
+
+    app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
+    date = get_date()
+
+    # when creating the new folder, check if the folder already exists
+    # increment index until it works or reaches 100
+    i = 1
+    while i < 100:  # < 100 runs = sanity check
+        app_output_dir = app_output_dir_pattern.format(
+            ss_workflow_out_dir=ss_workflow_out_dir,
+            app_name=app_name,version=app_version,
+            assay=assay_id, date=date, index=i
+        )
+
+        if dx_make_workflow_dir(app_output_dir):
+            print("Using\t\t%s" % app_output_dir)
+            return app_output_dir
+        else:
+            print("Skipping\t%s" % app_output_dir)
+
+        i += 1
+
+    return None

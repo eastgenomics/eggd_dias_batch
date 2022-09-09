@@ -7,96 +7,22 @@ import dxpy
 from general_functions import (
     get_dx_cwd_project_name,
     get_object_attribute_from_object_id_or_path,
-    dx_make_workflow_dir,
     find_app_dir,
-    get_stage_input_file_list,
-    get_date
+    make_app_output_dir,
+    find_files
 )
-
-
-def find_files(project_name, app_dir, pattern="."):
-    """Searches for files ending in provided pattern (bam/bai) in a
-    given path (single).
-
-    Args:
-        app_dir (str): single path including directory to output app.
-        pattern (str): searchs for files ending in given pattern.
-        Defaults to ".".
-        project_name (str): The project name on DNAnexus
-
-    Returns:
-        search_result: list containing files ending in given pattern
-        of every sample processed in single.
-    """
-    projectID  = list(dxpy.bindings.search.find_projects(name=project_name))[0]['id']
-    # the pattern is usually "-E 'pattern'" and we dont want the -E part
-    pattern = pattern.split('-E ')[1].replace("'", "")
-    search_result = []
-
-    try:
-        for file in dxpy.bindings.search.find_data_objects(
-            project=projectID, folder=app_dir,classname="file",
-            name=pattern, name_mode="regexp", describe=True
-            ):
-            search_result.append(file["describe"]["name"])
-    except ValueError:
-        print('Could not files {} in {}'.format(
-              pattern,app_dir
-            ))
-
-    return search_result
-
-
-def make_app_output_dir(cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id):
-    """Creates directory for single app with version, date and attempt
-
-    Args:
-        cnvcall_app_id (str): CNV app ID
-        ss_workflow_out_dir (str): single workflow string
-        app_name (str): App name
-        assay_id (str): assay ID with the version
-
-    Returns:
-        None: folder created in function dx_make_workflow_dir
-    """
-    # remove any forward dash in ss_workflow
-    ss_workflow_out_dir = ss_workflow_out_dir.rstrip('/')
-    app_version = str(dxpy.describe(cnvcall_app_id)['version'])
-
-    app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
-    date = get_date()
-
-    # when creating the new folder, check if the folder already exists
-    # increment index until it works or reaches 100
-    i = 1
-    while i < 100:  # < 100 runs = sanity check
-        app_output_dir = app_output_dir_pattern.format(
-            ss_workflow_out_dir=ss_workflow_out_dir,
-            app_name=app_name,version=app_version,
-            assay=assay_id, date=date, index=i
-        )
-
-        if dx_make_workflow_dir(app_output_dir):
-            print("Using\t\t%s" % app_output_dir)
-            return app_output_dir
-        else:
-            print("Skipping\t%s" % app_output_dir)
-
-        i += 1
-
-    return None
 
 # Run-level CNV calling of samples that passed QC
 
 
-def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample_list):
+def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, excluded_sample_list):
     """Sets off the CNV calling app.
 
     Args:
         ss_workflow_out_dir (str): path to single output
         dry_run (str): optional boolean whether this is a dry/test run
         assay_config (variable): assay config file containing all variables
-        sample_list (file): optional file containg list of samples to exclude
+        excluded_sample_list (file): optional file containg list of samples to exclude
 
     Returns:
         app_out_dir: path to where the CNV calling output will be
@@ -131,12 +57,12 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, sample
         bambi_files.extend(find_files(project_name, folder_path, ext))
 
     # Read in list of samples that did NOT PASS QC
-    if sample_list is None:
+    if excluded_sample_list is None:
         sample_names = []
     else:
         sample_names = []
         # parse sample exclusion file
-        with open(sample_list) as fh:
+        with open(excluded_sample_list) as fh:
             for line in fh:  # line can be a sample name or sample tab panel name
                 sample_names.append(line.strip().split("\t")[0])
 

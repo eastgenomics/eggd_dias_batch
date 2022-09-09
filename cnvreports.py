@@ -9,16 +9,15 @@ from general_functions import (
     get_workflow_stage_info,
     make_app_out_dirs,
     make_workflow_out_dir,
-    get_stage_inputs,
     prepare_batch_writing,
     create_batch_file,
     assess_batch_file,
     parse_manifest,
     parse_genepanels,
     get_sample_ids_from_sample_sheet,
-    gather_sample_sheet
+    gather_sample_sheet,
+    get_stage_inputs
 )
-
 
 def create_job_reports(rpt_out_dir, all_samples, job_dict):
     """ Create and upload a job report file where reports are categorised in:
@@ -40,10 +39,10 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
     # rpt_out_dir should always be /output/dias_single/dias_reports but in case
     # someone adds a "/" at the end, which i do sometimes
     name_file = [
-        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_reports")
+        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_cnvreports")
     ]
-
     # there should only be one ele in name_file
+    assert len(name_file) == 1, "reports output directory '{}' contains two dias_cnvreports".format(rpt_out_dir)
     job_report = "{}.txt".format(name_file[0])
 
     # get samples for which a report is expected but the job will not started
@@ -99,7 +98,19 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
 # reanalysis
 
 
-def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
+def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
+    """Reads in the reanalysis file given on the command line and runs the
+    CNV reports script.
+
+    Args:
+        input_dir: single output directory e.g /output/dias_single/cnvapp
+        dry_run: optional arg command from cmd line if its a dry run
+        assay_config: contains all the dynamic DNAnexus IDs
+        assay_id: optional arg command from cmd line for what assay this is
+        reanalysis_list: reanalysis file provided on the cmd line
+    """
+
+
     reanalysis_dict = {}
 
     # parse reanalysis file
@@ -118,23 +129,52 @@ def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
                 # get a dict of sample2panels
                 reanalysis_dict.setdefault(sample, set()).add(panel)
 
-    run_reports(
+    run_cnvreports(
         input_dir, dry_run, assay_config, assay_id,
         reanalysis_dict=reanalysis_dict
     )
 
 
-def run_reports(
+def run_cnvreports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
 ):
+    """Generates batch script with headers from the reports workflow and
+    values from the reports directory and then runs the command.
+
+    Args:
+        ss_workflow_out_dir: single output directory e.g /output/dias_single/cnvapp
+        dry_run: optional arg command from cmd line if its a dry run
+        assay_config: contains all the dynamic DNAnexus IDs
+        assay_id: optional arg command from cmd line for what assay this is
+        reanalysis_dict: reanalysis file IF provided on the cmd line
+    """
     assert ss_workflow_out_dir.startswith("/"), (
         "Input directory must be full path (starting at /)")
+
+    # sometimes the backlash maybe provided and we don't want that
+    if ss_workflow_out_dir.endswith("/"):
+        ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0]
+
+    # the directory provided on the path is full, up to the cnv calling app,
+    # lets split the directory up to dias_single and keep the cnvcalling
+    # app in another variable object
+
+    # get the cnv calling dir name
+    cnv_calling_dir = ss_workflow_out_dir.rsplit("/",1)[1]
+    # need to ensure that the cnv calling app dir is in the directory
+    # given on the cmd line
+    if 'GATKgCNV_call' not in cnv_calling_dir:
+        raise AssertionError("Directory path requires cnv calling app directory")
+
+    # reset the ss_workflow_out_dir to not contain the cnv calling path
+    ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0] + "/"
+
     rpt_workflow_out_dir = make_workflow_out_dir(
-        assay_config.rpt_workflow_id, assay_id, ss_workflow_out_dir
+        assay_config.cnv_rpt_workflow_id, assay_id, ss_workflow_out_dir
     )
 
     rpt_workflow_stage_info = get_workflow_stage_info(
-        assay_config.rpt_workflow_id
+        assay_config.cnv_rpt_workflow_id
     )
     rpt_output_dirs = make_app_out_dirs(
         rpt_workflow_stage_info, rpt_workflow_out_dir
@@ -143,12 +183,12 @@ def run_reports(
     sample2stage_input_dict = {}
 
     if reanalysis_dict:
-        stage_input_dict = assay_config.rea_stage_input_dict
+        stage_input_dict = assay_config.cnv_rea_stage_input_dict
         sample_id_list = reanalysis_dict
     else:
         sample_sheet_path = gather_sample_sheet()
         all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
-        stage_input_dict = assay_config.rpt_stage_input_dict
+        stage_input_dict = assay_config.cnv_rpt_stage_input_dict
         sample_id_list = all_samples
 
     # put the sample id in a dictionary so that the stage inputs can be
@@ -158,7 +198,7 @@ def run_reports(
 
     # get the inputs for the given app-pattern
     staging_dict = get_stage_inputs(
-        ss_workflow_out_dir, sample2stage_input_dict
+        ss_workflow_out_dir, sample2stage_input_dict, cnv_calling_dir
     )
 
     # list that is going to represent the header in the batch tsv file
@@ -172,11 +212,11 @@ def run_reports(
 
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config.happy_stage_prefix,
+            staging_dict, "cnvreports", assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
-            assay_config.athena_stage_id,
-            assay_config.generate_workbook_stage_id,
-            assay_config.rea_dynamic_files
+            "",
+            assay_config.cnv_generate_workbook_stage_id,
+            assay_config.cnv_rea_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
@@ -185,19 +225,19 @@ def run_reports(
             new_headers = [field for field in header]
             new_headers.append(
                 "{}.clinical_indication".format(
-                    assay_config.generate_workbook_stage_id
+                    assay_config.cnv_generate_workbook_stage_id
                 )
             )
             new_headers.append(
                 "{}.panel".format(
-                    assay_config.generate_workbook_stage_id
+                    assay_config.cnv_generate_workbook_stage_id
                 )
             )
             new_headers.append(
-                "{}.panel".format(assay_config.generate_bed_vep_stage_id)
+                "{}.panel".format(assay_config.cnv_generate_bed_vep_stage_id)
             )
             new_headers.append(
-                "{}.panel".format(assay_config.generate_bed_athena_stage_id)
+                "{}.panel".format(assay_config.cnv_generate_bed_excluded_stage_id)
             )
             headers.append(tuple(new_headers))
 
@@ -244,11 +284,11 @@ def run_reports(
 
         # get the headers and values from the staging inputs
         rpt_headers, rpt_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config.happy_stage_prefix,
+            staging_dict, "cnvreports", assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
-            assay_config.athena_stage_id,
-            assay_config.generate_workbook_stage_id,
-            assay_config.rpt_dynamic_files
+            "",
+            assay_config.cnv_generate_workbook_stage_id,
+            assay_config.cnv_rpt_dynamic_files
         )
 
         # manually add the headers for reanalysis vcf2xls/generate_bed
@@ -256,10 +296,10 @@ def run_reports(
         for header in rpt_headers:
             new_headers = [field for field in header]
             new_headers.append(
-                "{}.clinical_indication".format(assay_config.generate_workbook_stage_id)
+                "{}.clinical_indication".format(assay_config.cnv_generate_workbook_stage_id)
             )
             new_headers.append(
-                "{}.panel".format(assay_config.generate_workbook_stage_id)
+                "{}.panel".format(assay_config.cnv_generate_workbook_stage_id)
             )
             headers.append(tuple(new_headers))
 
@@ -311,18 +351,18 @@ def run_reports(
 
     args = ""
     args += "-i{}.flank={} ".format(
-        assay_config.generate_bed_vep_stage_id, assay_config.xlsx_flanks
+        assay_config.cnv_generate_bed_vep_stage_id, assay_config.xlsx_flanks
     )
 
     args += "-i{}.config_file={} ".format(
-        assay_config.vep_stage_id, assay_config.vep_config
+        assay_config.cnv_vep_stage_id, assay_config.cnv_vep_config
     )
 
     if assay_config.assay_name == "TWE":
         args += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
 
     command = "dx run -y --rerun-stage '*' {} {} --batch-tsv={}".format(
-        assay_config.rpt_workflow_id, args, rpt_batch_file
+        assay_config.cnv_rpt_workflow_id, args, rpt_batch_file
     )
 
     # assign stage out folders
