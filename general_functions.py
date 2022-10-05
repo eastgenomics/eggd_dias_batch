@@ -433,7 +433,7 @@ def prepare_batch_writing(
                 sample_id, "coverage_report.html"
             )
             # get the index for the xls report that needs to be created
-            xls_reports = find_previous_reports(sample_id, ".xls")
+            xls_reports = find_previous_reports(sample_id, ".xls*")
             xls_index = get_next_index(xls_reports)
             coverage_index = get_next_index(coverage_reports)
 
