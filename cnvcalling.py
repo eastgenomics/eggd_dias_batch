@@ -65,7 +65,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         with open(excluded_sample_list) as fh:
             for line in fh:  # line can be a sample name or sample tab panel name
                 sample_names.append(line.strip().split("\t")[0])
-
+    print(sample_names)
     if any(sample in "EGG" for sample in sample_names):
         print("Contains egg")
     else:
