@@ -67,7 +67,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
                 sample_names.append(line.strip().split("\t")[0])
 
     # Get the first part of sample_names
-    sample_names = [x.split('-')[0] for x in sample_names]
+    sample_names = [x.split('_')[0] for x in sample_names]
     # Remove bam/bai files of QC faild samples
     sample_bambis = [x for x in bambi_files if x.split('_')[0] not in sample_names]
 
