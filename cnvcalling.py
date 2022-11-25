@@ -3,6 +3,7 @@ from ast import excepthandler
 import sys
 import subprocess
 import dxpy
+import re
 
 from general_functions import (
     get_dx_cwd_project_name,
@@ -65,24 +66,20 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         with open(excluded_sample_list) as fh:
             for line in fh:  # line can be a sample name or sample tab panel name
                 sample_names.append(line.strip().split("\t")[0])
-    print(sample_names)
-    if any(sample in "EGG" for sample in sample_names):
-        print("Contains egg")
-    else:
-        print("Does not contain egg")
-    # Get the first part of sample_names
-    sample_names = [x.split('_')[0] for x in sample_names]
+
     # Check that the sample list is not just the first field but it
     # is until EGG
-    tested = [sample for sample in sample_names if "EGG" in sample ]
-
-    #try:
-    if any(sample in "EGG" for sample in sample_names):
-        print("Contains egg")
-    else:
-        print("Does not contain egg")
-    #except (ValueError, IndexError):
-    #    exit('Could not complete request.')
+    last_field = re.compile("-EGG[0-9]")
+    for sample in sample_names:
+        print(sample)
+        match = re.search(last_field, sample)
+        if match is None:
+            raise Exception("sample '{}' is not full sample name "
+                            "up to EGG code".format(
+                                sample
+                                ))
+    # Get the first part of sample_names
+    sample_names = [x.split('_')[0] for x in sample_names]
     # Remove bam/bai files of QC faild samples
     sample_bambis = [x for x in bambi_files if x.split('_')[0] not in sample_names]
 
