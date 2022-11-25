@@ -94,6 +94,10 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         project_name, app_output_dir
     )
 
+    # upload excluded regions file
+    cmd = "dx upload {} --path {}".format(excluded_sample_list, app_output_dir)
+    subprocess.check_output(cmd, shell=True)
+
     if dry_run is True:
         print("Final cmd ran: {}".format(command))
     else:
