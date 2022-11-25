@@ -71,7 +71,6 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
     # is until EGG
     last_field = re.compile("-EGG[0-9]")
     for sample in sample_names:
-        print(sample)
         match = re.search(last_field, sample)
         if match is None:
             raise Exception("sample '{}' is not full sample name "
