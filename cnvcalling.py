@@ -66,6 +66,10 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
             for line in fh:  # line can be a sample name or sample tab panel name
                 sample_names.append(line.strip().split("\t")[0])
 
+    if any(sample in "EGG" for sample in sample_names):
+        print("Contains egg")
+    else:
+        print("Does not contain egg")
     # Get the first part of sample_names
     sample_names = [x.split('_')[0] for x in sample_names]
     # Check that the sample list is not just the first field but it
