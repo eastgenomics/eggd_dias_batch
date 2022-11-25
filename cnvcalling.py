@@ -76,9 +76,11 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
                             "up to EGG code".format(
                                 sample
                                 ))
-    # Get the first part of sample_names
+    # Keep the excluded sample name up to EGG and remove anything after 
+    # that which would be after "_". This is if the excluded list
+    # contains up full filenames up to .bam
     sample_names = [x.split('_')[0] for x in sample_names]
-    # Remove bam/bai files of QC faild samples
+    # Remove bam/bai files of QC failed samples
     sample_bambis = [x for x in bambi_files if x.split('_')[0] not in sample_names]
 
     # Find the file-IDs of the passed bam/bai samples
