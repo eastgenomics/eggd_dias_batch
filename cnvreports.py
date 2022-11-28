@@ -192,7 +192,7 @@ def run_cnvreports(
         samplesheet_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
         # Find project to create jobs and outdirs in
         project_name = get_dx_cwd_project_name()
-        cnv_samples = find_files(project_name, ss_workflow_out_dir+cnv_calling_dir, pattern=".vcf")
+        cnv_samples = find_files(project_name, ss_workflow_out_dir+cnv_calling_dir, pattern="-E '(.*).vcf$'")
         print(samplesheet_samples)
         print(cnv_samples)
         all_samples = samplesheet_samples - cnv_samples
