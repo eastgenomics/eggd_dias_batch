@@ -192,13 +192,13 @@ def run_cnvreports(
         samplesheet_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
         # Find project to create jobs and outdirs in
         project_name = get_dx_cwd_project_name()
+        # gather sample names that have a CNV VCF generated
         cnv_samples = find_files(project_name, ss_workflow_out_dir+cnv_calling_dir, pattern="-E '(.*).vcf$'")
         cnv_samples = [str(x) for x in cnv_samples]
         cnv_samples = set([x.split('-')[0] for x in cnv_samples])
-        #print(samplesheet_samples)
-        print(cnv_samples)
-        #all_samples =set(samplesheet_samples).intersection(cnv_samples)
-        #print(all_samples)
+        # Keep the samplesheet samples that have a CNV reports
+        all_samples =set(samplesheet_samples).intersection(cnv_samples)
+        print(all_samples)
         all_samples = cnv_samples
         stage_input_dict = assay_config.cnv_rpt_stage_input_dict
         sample_id_list = all_samples
