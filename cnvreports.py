@@ -188,6 +188,7 @@ def run_cnvreports(
     else:
         sample_sheet_path = gather_sample_sheet()
         all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
+        print(all_samples)
         stage_input_dict = assay_config.cnv_rpt_stage_input_dict
         sample_id_list = all_samples
 
