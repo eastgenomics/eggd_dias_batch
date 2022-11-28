@@ -198,7 +198,6 @@ def run_cnvreports(
         cnv_samples = set([x.split('-')[0] for x in cnv_samples])
         # Keep the samplesheet samples that have a CNV reports
         all_samples =set(samplesheet_samples).intersection(cnv_samples)
-        all_samples = cnv_samples
         stage_input_dict = assay_config.cnv_rpt_stage_input_dict
         sample_id_list = all_samples
 
