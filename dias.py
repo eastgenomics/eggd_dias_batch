@@ -60,8 +60,14 @@ def load_assay_config(assay):
 
 
 
-
-def main():
+def parse_CLI_args(): # -> argparse.Namespace:
+    """
+    Parse command line arguments
+    -------
+    Returns
+    args : Namespace
+        Namespace of passed command line argument inputs
+    """
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
@@ -69,6 +75,19 @@ def main():
         "-d", "--dry_run", action="store_true",
         default=False, help="Make a dry run"
     )
+
+    # parser.add_argument(
+    #     '--dx_project_id', required=False,
+    #     help=(
+    #         'DNAnexus project ID to use to run analysis in, '
+    #         'if not specified will create one based off run ID and assay name'
+    #     )
+    # )
+
+    # parser.add_argument(
+    #     '--assay_config',
+    #     help='assay specific config file that defines all executables to run'
+    # )
 
     parser.add_argument(
         "-a", "--assay", choices=ASSAY_OPTIONS.keys(), help=(
@@ -164,19 +183,30 @@ def main():
     parser_r.set_defaults(which='cnvreanalysis')
 
     args = parser.parse_args()
-    workflow = args.which
+    return args
 
-    assert workflow, "Please specify a subcommand"
 
+def main():
+    """Main entry point to set off app/workflow based on subcommand
+    with specified config
+    """
+    args = parse_CLI_args()
+
+    # Locate and load correct config file
+    # config file may be specified as custom or as the latest for valid assays
+    assert args.assay or args.config, ("Please specify either a valid assay name " \
+        "with -a, or path to a custom config file with -c")
     if args.config:
         config_filename = os.path.splitext(args.config)[0]
         config = imp.load_source(config_filename, args.config)
         assay_id = "_".join(["CUSTOM_CONFIG", config.assay_name, config.assay_version])
-
     else:
         config = load_assay_config(args.assay)
-        assay_id = "{}_{}".format(config.assay_name, config.assay_version)
+        assay_id = "_".join([config.assay_name, config.assay_version])
 
+    # Prepare to run appropriate workflow as specified by the valid subcommand
+    workflow = args.which
+    assert workflow, "Please specify a subcommand"
     if args.input_dir and not args.input_dir.endswith("/"):
         args.input_dir = args.input_dir + "/"
 
