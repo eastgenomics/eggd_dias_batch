@@ -31,6 +31,18 @@ ASSAY_OPTIONS = {
 }
 
 
+SUBCOMMAND_OPTIONS = {
+    "single": run_ss_workflow,
+    "multi": run_ms_workflow,
+    "qc": run_multiqc_app,
+    "cnvcall": run_cnvcall_app,
+    "reports": run_reports,
+    "reanalysis": run_reanalysis,
+    "cnvreports": run_cnvreports,
+    "cnvreanalysis": run_cnvreanalysis
+}
+
+
 def parse_CLI_args(): # -> argparse.Namespace:
     """
     Parse command line arguments
@@ -185,7 +197,6 @@ def load_assay_config(assay):
     return config
 
 
-
 def main():
     """Main entry point to set off app/workflow based on subcommand
     with specified config
@@ -205,46 +216,38 @@ def main():
         assay_id = "_".join([config.assay_name, config.assay_version])
 
     # Prepare to run appropriate workflow as specified by the valid subcommand
-    workflow = args.which
-    assert workflow, "Please specify a subcommand"
-    if args.input_dir and not args.input_dir.endswith("/"):
+    subcommand = args.which
+    assert subcommand, "Please specify a valid subcommand {}".format(
+        SUBCOMMAND_OPTIONS.keys()
+    )
+    # Ensure that a DNAnexus path to collect input files from is specified
+    assert args.input_dir, "Please specify a DNAnexus input directory"
+    # Ensure that DNAnexus path has trailing forward slash
+    if not args.input_dir.endswith("/"):
         args.input_dir = args.input_dir + "/"
 
-    if workflow == "single":
-        ss_workflow_out_dir = run_ss_workflow(
-            args.input_dir, args.dry_run, config, assay_id
-        )
-    elif workflow == "multi":
-        ms_workflow_out_dir = run_ms_workflow(
-            args.input_dir, args.dry_run, config, assay_id
-        )
-    elif workflow == "qc":
-        mqc_applet_out_dir = run_multiqc_app(
-            args.input_dir, args.dry_run, config, assay_id
-        )
-    elif workflow == "cnvcall":
+    # Set off relevant workflow based on subcommand
+    # with applicable inputs
+    if subcommand == "cnvcall":
         cnvcall_applet_out_dir = run_cnvcall_app(
             args.input_dir, args.dry_run, config, assay_id,
             args.sample_list
         )
-    elif workflow == "cnvreports":
-        cnv_reports_out_dir = run_cnvreports(
-            args.input_dir, args.dry_run, config, assay_id
-        )
-    elif workflow == "cnvreanalysis":
+    elif subcommand == "cnvreanalysis":
         cnv_reports_out_dir = run_cnvreanalysis(
             args.input_dir, args.dry_run, config, assay_id,
             args.cnvreanalysis_list
         )
-    elif workflow == "reports":
-        reports_out_dir = run_reports(
-            args.input_dir, args.dry_run, config, assay_id
-        )
-    elif workflow == "reanalysis":
+    elif subcommand == "reanalysis":
         reports_out_dir = run_reanalysis(
             args.input_dir, args.dry_run, config, assay_id,
             args.reanalysis_list
         )
+    else:
+        SUBCOMMAND_OPTIONS[subcommand](
+            args.input_dir, args.dry_run, config, assay_id
+        )
+
 
 
 if __name__ == "__main__":
