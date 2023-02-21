@@ -4,13 +4,13 @@ import argparse
 import imp
 import os
 
+from general_functions import get_latest_config
 from single_workflow import run_ss_workflow
 from multi_workflow import run_ms_workflow
 from multiqc import run_multiqc_app
 from cnvcalling import run_cnvcall_app
-from cnvreports import run_cnvreports, run_cnvreanalysis
 from reports import run_reports, run_reanalysis
-from general_functions import get_latest_config
+from cnvreports import run_cnvreports, run_cnvreanalysis
 
 
 TSOE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg1_dias_TSO_config"
@@ -34,12 +34,12 @@ def main():
         )
     )
     parser.add_argument(
-        "-c", "--config", help="Config file to overwrite the config assay setup"
+        "-c", "--config", help="Config file to overwrite the assay setup"
     )
 
     parser_s = subparsers.add_parser('single', help='single help')
     parser_s.add_argument(
-        'input_dir', type=str, help='Input data directory path'
+        'input_dir', type=str, help='Sequencing data (FASTQ) directory path'
     )
     parser_s.set_defaults(which='single')
 
@@ -71,27 +71,6 @@ def main():
     )
     parser_n.set_defaults(which='cnvcall')
 
-    parser_r = subparsers.add_parser('cnvreports', help='cnvreports help')
-    parser_r.add_argument(
-        'input_dir', type=str,
-        help='A single/multi sample workflow output directory path'
-    )
-    parser_r.set_defaults(which='cnvreports')
-
-    parser_r = subparsers.add_parser('cnvreanalysis', help='cnvreanalysis help')
-    parser_r.add_argument(
-        'input_dir', type=str,
-        help='A single/multi sample workflow output directory path'
-    )
-    parser_r.add_argument(
-        'cnvreanalysis_list', type=str,
-        help=(
-            'Tab delimited file containing sample and panel for cnvreanalysis'
-            '. One sample/panel combination per line'
-        )
-    )
-    parser_r.set_defaults(which='cnvreanalysis')
-
     parser_r = subparsers.add_parser('reports', help='reports help')
     parser_r.add_argument(
         'input_dir', type=str,
@@ -112,6 +91,27 @@ def main():
         )
     )
     parser_r.set_defaults(which='reanalysis')
+
+    parser_r = subparsers.add_parser('cnvreports', help='cnvreports help')
+    parser_r.add_argument(
+        'input_dir', type=str,
+        help='A single/multi sample workflow output directory path'
+    )
+    parser_r.set_defaults(which='cnvreports')
+
+    parser_r = subparsers.add_parser('cnvreanalysis', help='cnvreanalysis help')
+    parser_r.add_argument(
+        'input_dir', type=str,
+        help='A single/multi sample workflow output directory path'
+    )
+    parser_r.add_argument(
+        'cnvreanalysis_list', type=str,
+        help=(
+            'Tab delimited file containing sample and panel for cnvreanalysis'
+            '. One sample/panel combination per line'
+        )
+    )
+    parser_r.set_defaults(which='cnvreanalysis')
 
     args = parser.parse_args()
     workflow = args.which
