@@ -169,9 +169,10 @@ def main():
     assert workflow, "Please specify a subcommand"
 
     if args.config:
-        assay_id = "CUSTOM_CONFIG"
-        name_config = os.path.splitext(args.config)[0]
-        config = imp.load_source(name_config, args.config)
+        config_filename = os.path.splitext(args.config)[0]
+        config = imp.load_source(config_filename, args.config)
+        assay_id = "_".join(["CUSTOM_CONFIG", config.assay_name, config.assay_version])
+
     else:
         config = load_assay_config(args.assay)
         assay_id = "{}_{}".format(config.assay_name, config.assay_version)
