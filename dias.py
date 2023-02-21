@@ -1,5 +1,14 @@
 #!/usr/bin/python
 
+"""
+Using an assay config (in Python), predefined commands call the relevant
+workflows / apps defined in the config for specified samples.
+Handles correctly interpreting and parsing inputs, defining output projects
+and directory structures.
+See READme for full documentation of how to structure the config file and what
+inputs are valid.
+"""
+
 import argparse
 import imp
 import os
@@ -37,12 +46,14 @@ def main():
         "-c", "--config", help="Config file to overwrite the assay setup"
     )
 
+    # Parsing command line args for single sample workflow
     parser_s = subparsers.add_parser('single', help='single help')
     parser_s.add_argument(
-        'input_dir', type=str, help='Sequencing data (FASTQ) directory path'
+        'input_dir', type=str, help='A sequencing data (FASTQ) directory path'
     )
     parser_s.set_defaults(which='single')
 
+    # Parsing command line args for multi sample workflow
     parser_m = subparsers.add_parser('multi', help='multi help')
     parser_m.add_argument(
         'input_dir', type=str,
@@ -50,13 +61,15 @@ def main():
     )
     parser_m.set_defaults(which='multi')
 
+    # Parsing command line args for run QC
     parser_q = subparsers.add_parser('qc', help='multiqc help')
     parser_q.add_argument(
         'input_dir', type=str,
-        help='A single/multi sample workflow output directory path'
+        help='A multi sample workflow output directory path'
     )
     parser_q.set_defaults(which='qc')
 
+    # Parsing command line args for run-level CNV calling
     parser_n = subparsers.add_parser('cnvcall', help='cnvcall help')
     parser_n.add_argument(
         'input_dir', type=str,
@@ -71,17 +84,19 @@ def main():
     )
     parser_n.set_defaults(which='cnvcall')
 
+    # Parsing command line args for SNV reports
     parser_r = subparsers.add_parser('reports', help='reports help')
     parser_r.add_argument(
         'input_dir', type=str,
-        help='A single/multi sample workflow output directory path'
+        help='A single sample workflow output directory path'
     )
     parser_r.set_defaults(which='reports')
 
+    # Parsing command line args for SNV reanalysis
     parser_r = subparsers.add_parser('reanalysis', help='reanalysis help')
     parser_r.add_argument(
         'input_dir', type=str,
-        help='A single/multi sample workflow output directory path'
+        help='A single sample workflow output directory path'
     )
     parser_r.add_argument(
         'reanalysis_list', type=str,
@@ -92,17 +107,19 @@ def main():
     )
     parser_r.set_defaults(which='reanalysis')
 
+    # Parsing command line args for CNV reports
     parser_r = subparsers.add_parser('cnvreports', help='cnvreports help')
     parser_r.add_argument(
         'input_dir', type=str,
-        help='A single/multi sample workflow output directory path'
+        help='A CNV calling output directory path'
     )
     parser_r.set_defaults(which='cnvreports')
 
+    # Parsing command line args for CNV reanalysis
     parser_r = subparsers.add_parser('cnvreanalysis', help='cnvreanalysis help')
     parser_r.add_argument(
         'input_dir', type=str,
-        help='A single/multi sample workflow output directory path'
+        help='A CNV calling output directory path'
     )
     parser_r.add_argument(
         'cnvreanalysis_list', type=str,
