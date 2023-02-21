@@ -31,35 +31,6 @@ ASSAY_OPTIONS = {
 }
 
 
-def load_assay_config(assay):
-    """Simple function to locate and load the latest version of assay config
-
-    Args:
-        assay (str): name of the assay to load latest version of config file
-
-    Returns:
-        config: info parsed from assay config file
-    """
-    # ilook up the config folder path for the selected assay
-    config_folder_path = ASSAY_OPTIONS[assay][1]
-    # identify the latest version available
-    latest_version = get_latest_config(config_folder_path)
-    # look up the EGG code of the assay
-    assay_code = ASSAY_OPTIONS[assay][0]
-    # locate the assay config file with or without version in the filename
-    try:
-        config_filename = "".join([assay_code + "_config_v" + latest_version + ".py"])
-        config_path = os.path.join(config_folder_path, latest_version, config_filename)
-        os.path.exists(config_path) is True
-    except:
-        config_filename = "".join([assay_code + "_config.py"])
-        config_path = os.path.join(config_folder_path, latest_version, config_filename)
-        
-    config = imp.load_source(config_filename, config_path)
-    return config
-
-
-
 def parse_CLI_args(): # -> argparse.Namespace:
     """
     Parse command line arguments
@@ -184,6 +155,35 @@ def parse_CLI_args(): # -> argparse.Namespace:
 
     args = parser.parse_args()
     return args
+
+
+def load_assay_config(assay):
+    """Simple function to locate and load the latest version of assay config
+
+    Args:
+        assay (str): name of the assay to load latest version of config file
+
+    Returns:
+        config: info parsed from assay config file
+    """
+    # ilook up the config folder path for the selected assay
+    config_folder_path = ASSAY_OPTIONS[assay][1]
+    # identify the latest version available
+    latest_version = get_latest_config(config_folder_path)
+    # look up the EGG code of the assay
+    assay_code = ASSAY_OPTIONS[assay][0]
+    # locate the assay config file with or without version in the filename
+    try:
+        config_filename = "".join([assay_code + "_config_v" + latest_version + ".py"])
+        config_path = os.path.join(config_folder_path, latest_version, config_filename)
+        os.path.exists(config_path) is True
+    except:
+        config_filename = "".join([assay_code + "_config.py"])
+        config_path = os.path.join(config_folder_path, latest_version, config_filename)
+        
+    config = imp.load_source(config_filename, config_path)
+    return config
+
 
 
 def main():
