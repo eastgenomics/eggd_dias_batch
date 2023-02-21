@@ -22,10 +22,43 @@ from reports import run_reports, run_reanalysis
 from cnvreports import run_cnvreports, run_cnvreanalysis
 
 
-TSOE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg1_dias_TSO_config"
-FH_CONFIG_LOCATION = "/mnt/storage/apps/software/egg3_dias_FH_config"
-TWE_CONFIG_LOCATION = "/mnt/storage/apps/software/egg4_dias_TWE_config"
-CEN_CONFIG_LOCATION = "/mnt/storage/apps/software/egg5_dias_CEN_config"
+ASSAY_OPTIONS = {
+    "TSOE": ["egg1", "/mnt/storage/apps/software/egg1_dias_TSO_config"],
+    "FH": ["egg", "/mnt/storage/apps/software/egg3_dias_FH_config"],
+    "TWE": ["egg4", "/mnt/storage/apps/software/egg4_dias_TWE_config"],
+    # "CEN": ["egg5", "/mnt/storage/apps/software/egg5_dias_CEN_config"]
+    "CEN": ["egg5", "/home/sophier/Documents/work/prog/DNAnexus/egg5_dias_CEN_config"]
+}
+
+
+def load_assay_config(assay):
+    """Simple function to locate and load the latest version of assay config
+
+    Args:
+        assay (str): name of the assay to load latest version of config file
+
+    Returns:
+        config: info parsed from assay config file
+    """
+    # ilook up the config folder path for the selected assay
+    config_folder_path = ASSAY_OPTIONS[assay][1]
+    # identify the latest version available
+    latest_version = get_latest_config(config_folder_path)
+    # look up the EGG code of the assay
+    assay_code = ASSAY_OPTIONS[assay][0]
+    # locate the assay config file with or without version in the filename
+    try:
+        config_filename = "".join([assay_code + "_config_v" + latest_version + ".py"])
+        config_path = os.path.join(config_folder_path, latest_version, config_filename)
+        os.path.exists(config_path) is True
+    except:
+        config_filename = "".join([assay_code + "_config.py"])
+        config_path = os.path.join(config_folder_path, latest_version, config_filename)
+        
+    config = imp.load_source(config_filename, config_path)
+    return config
+
+
 
 
 def main():
@@ -38,7 +71,7 @@ def main():
     )
 
     parser.add_argument(
-        "-a", "--assay", choices=["TSOE", "FH", "TWE", "CEN"], help=(
+        "-a", "--assay", choices=ASSAY_OPTIONS.keys(), help=(
             "Type of assay needed for this run of samples"
         )
     )
@@ -140,34 +173,7 @@ def main():
         name_config = os.path.splitext(args.config)[0]
         config = imp.load_source(name_config, args.config)
     else:
-        if args.assay == "TSOE":
-            latest_version = get_latest_config(TSOE_CONFIG_LOCATION)
-            config = imp.load_source(
-                "egg1_config", "{}/{}/egg1_config.py".format(
-                    TSOE_CONFIG_LOCATION, latest_version
-                )
-            )
-        elif args.assay == "FH":
-            latest_version = get_latest_config(FH_CONFIG_LOCATION)
-            config = imp.load_source(
-                "egg3_config", "{}/{}/egg3_config.py".format(
-                    FH_CONFIG_LOCATION, latest_version
-                )
-            )
-        elif args.assay == "TWE":
-            latest_version = get_latest_config(TWE_CONFIG_LOCATION)
-            config = imp.load_source(
-                "egg4_config", "{}/{}/egg4_config.py".format(
-                    TWE_CONFIG_LOCATION, latest_version
-                )
-            )
-        elif args.assay == "CEN":
-            latest_version = get_latest_config(CEN_CONFIG_LOCATION)
-            config = imp.load_source(
-                "egg5_config", "{}/{}/egg5_config.py".format(
-                    CEN_CONFIG_LOCATION, latest_version
-                )
-            )
+        config = load_assay_config(args.assay)
         assay_id = "{}_{}".format(config.assay_name, config.assay_version)
 
     if args.input_dir and not args.input_dir.endswith("/"):
