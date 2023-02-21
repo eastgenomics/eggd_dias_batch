@@ -118,6 +118,7 @@ def main():
 
     assert workflow, "Please specify a subcommand"
 
+# could use yaml config files and then use yaml.safe_load()
     if args.config:
         assay_id = "CUSTOM_CONFIG"
         name_config = os.path.splitext(args.config)[0]
@@ -126,21 +127,21 @@ def main():
         if args.assay == "TSOE":
             latest_version = get_latest_config(TSOE_CONFIG_LOCATION)
             config = imp.load_source(
-                "egg1_config", "{}/{}/egg1_config.py".format(
+                "egg1_config", "{}/{}/egg1_config*.py".format(
                     TSOE_CONFIG_LOCATION, latest_version
                 )
             )
         elif args.assay == "FH":
             latest_version = get_latest_config(FH_CONFIG_LOCATION)
             config = imp.load_source(
-                "egg3_config", "{}/{}/egg3_config.py".format(
+                "egg3_config", "{}/{}/egg3_config*.py".format(
                     FH_CONFIG_LOCATION, latest_version
                 )
             )
         elif args.assay == "TWE":
             latest_version = get_latest_config(TWE_CONFIG_LOCATION)
             config = imp.load_source(
-                "egg4_config", "{}/{}/egg4_config.py".format(
+                "egg4_config", "{}/{}/egg4_config*.py".format(
                     TWE_CONFIG_LOCATION, latest_version
                 )
             )
