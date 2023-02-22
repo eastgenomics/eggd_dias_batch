@@ -26,8 +26,7 @@ ASSAY_OPTIONS = {
     "TSOE": ["egg1", "/mnt/storage/apps/software/egg1_dias_TSO_config"],
     "FH": ["egg3", "/mnt/storage/apps/software/egg3_dias_FH_config"],
     "TWE": ["egg4", "/mnt/storage/apps/software/egg4_dias_TWE_config"],
-    # "CEN": ["egg5", "/mnt/storage/apps/software/egg5_dias_CEN_config"]
-    "CEN": ["egg5", "/home/sophier/Documents/work/prog/DNAnexus/egg5_dias_CEN_config"]
+    "CEN": ["egg5", "/mnt/storage/apps/software/egg5_dias_CEN_config"]
 }
 
 
