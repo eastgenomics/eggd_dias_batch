@@ -153,7 +153,7 @@ def run_cnvreports(
         "Input directory must be full path (starting with /output)")
 
     # split the input directory path up to dias_single outdir path
-    ss_workflow_out_dir = cnv_calling_out_dir.rsplit("/",1)[0] + "/"
+    ss_workflow_out_dir = cnv_calling_out_dir.rsplit("/",2)[0] + "/"
     # need to ensure that the cnv calling app dir is in the dir name
     if 'GATKgCNV_call' not in cnv_calling_out_dir:
         raise AssertionError("Directory path requires cnv calling app directory")
@@ -194,7 +194,7 @@ def run_cnvreports(
 
     # get the inputs for the given app-pattern
     staging_dict = get_stage_inputs(
-        cnv_calling_out_dir, sample2stage_input_dict
+        ss_workflow_out_dir, sample2stage_input_dict
     )
 
     # list that is going to represent the header in the batch tsv file
