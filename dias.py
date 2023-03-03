@@ -66,11 +66,6 @@ def parse_CLI_args(): # -> argparse.Namespace:
     #     )
     # )
 
-    # parser.add_argument(
-    #     '--assay_config',
-    #     help='assay specific config file that defines all executables to run'
-    # )
-
     parser.add_argument(
         "-a", "--assay", choices=ASSAY_OPTIONS.keys(), help=(
             "Type of assay needed for this run of samples"
@@ -191,7 +186,7 @@ def load_assay_config(assay):
     except:
         config_filename = "".join([assay_code + "_config.py"])
         config_path = os.path.join(config_folder_path, latest_version, config_filename)
-        
+
     config = imp.load_source(config_filename, config_path)
     return config
 
