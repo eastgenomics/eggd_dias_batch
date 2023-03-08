@@ -58,14 +58,6 @@ def parse_CLI_args(): # -> argparse.Namespace:
         default=False, help="Make a dry run"
     )
 
-    # parser.add_argument(
-    #     '--dx_project_id', required=False,
-    #     help=(
-    #         'DNAnexus project ID to use to run analysis in, '
-    #         'if not specified will create one based off run ID and assay name'
-    #     )
-    # )
-
     parser.add_argument(
         "-a", "--assay", choices=ASSAY_OPTIONS.keys(), help=(
             "Type of assay needed for this run of samples"
@@ -172,7 +164,7 @@ def load_assay_config(assay):
     Returns:
         config: info parsed from assay config file
     """
-    # ilook up the config folder path for the selected assay
+    # look up the config folder path for the selected assay
     config_folder_path = ASSAY_OPTIONS[assay][1]
     # identify the latest version available
     latest_version = get_latest_config(config_folder_path)
