@@ -349,14 +349,12 @@ def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
     return None
 
 
-def get_stage_inputs(ss_workflow_out_dir, stage_input_dict, cnv_calling_dir=None):
+def get_stage_inputs(input_dir, stage_input_dict):
     """ Return dict with sample2stage2files
 
     Args:
-        ss_workflow_out_dir (str): Directory of single workflow
+        input_dir (str): Directory of single workflow
         stage_input_dict (dict): Dict of stage2app
-        cnv_calling_dir (str): The CNV calling app output folder from cmd line
-
 
     Returns:
         dict: Dict of sample2stage2file_list
@@ -370,10 +368,8 @@ def get_stage_inputs(ss_workflow_out_dir, stage_input_dict, cnv_calling_dir=None
     for type_input in stage_input_dict:
         # find the inputs for each stage using given app/pattern
         for stage_input, stage_input_info in stage_input_dict[type_input].items():
-            if stage_input_info["app"] is "eggd_GATKgCNV_call":
-                stage_input_info["app"] = cnv_calling_dir
             input_app_dir = find_app_dir(
-                ss_workflow_out_dir, stage_input_info["app"]
+                input_dir, stage_input_info["app"]
             )
             inputs = get_stage_input_file_list(
                 input_app_dir,

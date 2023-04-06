@@ -9,6 +9,7 @@ from general_functions import (
     get_workflow_stage_info,
     make_app_out_dirs,
     make_workflow_out_dir,
+    get_stage_inputs,
     prepare_batch_writing,
     create_batch_file,
     assess_batch_file,
@@ -16,10 +17,10 @@ from general_functions import (
     parse_genepanels,
     get_sample_ids_from_sample_sheet,
     gather_sample_sheet,
-    get_stage_inputs,
     find_files,
     get_dx_cwd_project_name
 )
+
 
 def create_job_reports(rpt_out_dir, all_samples, job_dict):
     """ Create and upload a job report file where reports are categorised in:
@@ -39,17 +40,17 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
     """
 
     # rpt_out_dir should always be /output/dias_single/dias_reports but in case
-    # someone adds a "/" at the end, which i do sometimes
+    # someone adds a "/" at the end, which I do sometimes
     name_file = [
         ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_cnvreports")
     ]
     # there should only be one ele in name_file
-    assert len(name_file) == 1, "reports output directory '{}' contains two dias_cnvreports".format(rpt_out_dir)
+    assert len(name_file) == 1, "cnvreports output directory '{}' contains nested dias_cnvreports".format(rpt_out_dir)
     job_report = "{}.txt".format(name_file[0])
 
-    # get samples for which a report is expected but the job will not started
+    # get samples for which a cnvreport is expected but the job will not start
     # for reasons other than absence from manifest
-    # i.e. present in sample sheet but fastqs were not provided
+    # eg. present in SampleSheet but CNV calling output files are not available
     difference_expected_starting = set(all_samples).difference(
         set(job_dict["starting"])
     )
@@ -97,30 +98,27 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
     return "{}{}".format(rpt_out_dir, job_report)
 
 
-# reanalysis
-
-
-def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
+# cnvreanalysis
+def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, cnvreanalysis_list):
     """Reads in the reanalysis file given on the command line and runs the
-    CNV reports script.
+    CNV reports function/workflow.
 
     Args:
-        input_dir: single output directory e.g /output/dias_single/cnvapp
-        dry_run: optional arg command from cmd line if its a dry run
-        assay_config: contains all the dynamic DNAnexus IDs
-        assay_id: optional arg command from cmd line for what assay this is
-        reanalysis_list: reanalysis file provided on the cmd line
+        input_dir: cnvcall output directory e.g /output/dias_single/cnvapp
+        dry_run: optional arg from cmd line if its a dry run
+        assay_config: contains all the dynamic input file DNAnexus IDs
+        assay_id: arg from cmd line what assay this is for
+        cnvreanalysis_list: reanalysis file provided on the cmd line
     """
-
 
     reanalysis_dict = {}
 
     # parse reanalysis file
-    with open(reanalysis_list) as r_fh:
+    with open(cnvreanalysis_list) as r_fh:
         for line in r_fh:
             fields = line.strip().split("\t")
             assert len(fields) == 2, (
-                "Unexpected number of fields in reanalysis_list. "
+                "Unexpected number of fields in cnvreanalysis_list. "
                 "File must contain one tab separated "
                 "sample/panel combination per line"
             )
@@ -137,39 +135,28 @@ def run_cnvreanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_lis
     )
 
 
+# cnvreports
 def run_cnvreports(
-    ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
+    cnv_calling_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
 ):
     """Generates batch script with headers from the reports workflow and
     values from the reports directory and then runs the command.
 
     Args:
-        ss_workflow_out_dir: single output directory e.g /output/dias_single/cnvapp
-        dry_run: optional arg command from cmd line if its a dry run
-        assay_config: contains all the dynamic DNAnexus IDs
-        assay_id: optional arg command from cmd line for what assay this is
-        reanalysis_dict: reanalysis file IF provided on the cmd line
+        cnv_calling_out_dir: cnvcall output directory e.g /output/dias_single/cnvapp
+        dry_run: optional arg from cmd line if its a dry run
+        assay_config: contains all the dynamic input file DNAnexus IDs
+        assay_id: arg from cmd line what assay this is for
+        cnvreanalysis_list: reanalysis file provided on the cmd line
     """
-    assert ss_workflow_out_dir.startswith("/"), (
-        "Input directory must be full path (starting at /)")
+    assert cnv_calling_out_dir.startswith("/output"), (
+        "Input directory must be full path (starting with /output)")
 
-    # sometimes the backlash maybe provided and we don't want that
-    if ss_workflow_out_dir.endswith("/"):
-        ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0]
-
-    # the directory provided on the path is full, up to the cnv calling app,
-    # lets split the directory up to dias_single and keep the cnvcalling
-    # app in another variable object
-
-    # get the cnv calling dir name
-    cnv_calling_dir = ss_workflow_out_dir.rsplit("/",1)[1]
-    # need to ensure that the cnv calling app dir is in the directory
-    # given on the cmd line
-    if 'GATKgCNV_call' not in cnv_calling_dir:
+    # split the input directory path up to dias_single outdir path
+    ss_workflow_out_dir = cnv_calling_out_dir.rsplit("/",2)[0] + "/"
+    # need to ensure that the cnv calling app dir is in the dir name
+    if 'GATKgCNV_call' not in cnv_calling_out_dir:
         raise AssertionError("Directory path requires cnv calling app directory")
-
-    # reset the ss_workflow_out_dir to not contain the cnv calling path
-    ss_workflow_out_dir = ss_workflow_out_dir.rsplit("/",1)[0] + "/"
 
     rpt_workflow_out_dir = make_workflow_out_dir(
         assay_config.cnv_rpt_workflow_id, assay_id, ss_workflow_out_dir
@@ -193,13 +180,12 @@ def run_cnvreports(
         # Find project to create jobs and outdirs in
         project_name = get_dx_cwd_project_name()
         # gather sample names that have a CNV VCF generated
-        cnv_samples = find_files(project_name, ss_workflow_out_dir+cnv_calling_dir, pattern="-E '(.*).vcf$'")
+        cnv_samples = find_files(project_name, cnv_calling_out_dir, pattern="-E '(.*)_segments.vcf$'")
         cnv_samples = [str(x) for x in cnv_samples]
         cnv_samples = set([x.split('-')[0] for x in cnv_samples])
-        # Keep the samplesheet samples that have a CNV report
-        all_samples = set(samplesheet_samples).intersection(cnv_samples)
+        # Keep the samplesheet samples that have a CNV VCF
+        sample_id_list = set(samplesheet_samples).intersection(cnv_samples)
         stage_input_dict = assay_config.cnv_rpt_stage_input_dict
-        sample_id_list = all_samples
 
     # put the sample id in a dictionary so that the stage inputs can be
     # assigned to a sample id
@@ -208,7 +194,7 @@ def run_cnvreports(
 
     # get the inputs for the given app-pattern
     staging_dict = get_stage_inputs(
-        ss_workflow_out_dir, sample2stage_input_dict, cnv_calling_dir
+        ss_workflow_out_dir, sample2stage_input_dict
     )
 
     # list that is going to represent the header in the batch tsv file
@@ -222,7 +208,8 @@ def run_cnvreports(
 
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "cnvreports", assay_config.happy_stage_prefix,
+            staging_dict, "cnvreports",
+            assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
             "",
             assay_config.cnv_generate_workbook_stage_id,
@@ -283,7 +270,7 @@ def run_cnvreports(
             line.append(";".join(display_panel_list))
 
             # add clinical_indications for generate_bed_vep and
-            # generate_bed_athena
+            # generate_bed_excluded
             line.extend(clinical_indications)
             line.extend(clinical_indications)
             values.append(line)
@@ -294,7 +281,8 @@ def run_cnvreports(
 
         # get the headers and values from the staging inputs
         rpt_headers, rpt_values = prepare_batch_writing(
-            staging_dict, "cnvreports", assay_config.happy_stage_prefix,
+            staging_dict, "cnvreports",
+            assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
             "",
             assay_config.cnv_generate_workbook_stage_id,
@@ -352,7 +340,7 @@ def run_cnvreports(
                 job_dict["missing_from_manifest"].append(sample_id)
 
         report_file = create_job_reports(
-            rpt_workflow_out_dir, all_samples, job_dict
+            rpt_workflow_out_dir, sample_id_list, job_dict
         )
 
         print("Created and uploaded job report file: {}".format(report_file))
@@ -379,7 +367,7 @@ def run_cnvreports(
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
     destination = " --destination={} ".format(rpt_workflow_out_dir)
 
-    command = " ".join([command, app_relative_paths, destination])
+    final_command = " ".join([command, app_relative_paths, destination])
 
     if dry_run:
         print("Created workflow dir: {}".format(rpt_workflow_out_dir))
@@ -408,11 +396,11 @@ def run_cnvreports(
             ))
 
         print("Format of stage output dirs: {}".format(app_relative_paths))
-        print("Final cmd ran: {}".format(command))
+        print("Final cmd ran: {}".format(final_command))
         print("Deleting '{}' as part of the dry-run".format(rpt_workflow_out_dir))
         delete_folders_cmd = "dx rm -r {}".format(rpt_workflow_out_dir)
         subprocess.call(delete_folders_cmd, shell=True)
     else:
-        subprocess.call(command, shell=True)
+        subprocess.call(final_command, shell=True)
 
     return rpt_workflow_out_dir

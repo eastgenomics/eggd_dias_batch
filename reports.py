@@ -16,7 +16,9 @@ from general_functions import (
     parse_manifest,
     parse_genepanels,
     get_sample_ids_from_sample_sheet,
-    gather_sample_sheet
+    gather_sample_sheet,
+    find_files,
+    get_dx_cwd_project_name
 )
 
 
@@ -38,17 +40,17 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
     """
 
     # rpt_out_dir should always be /output/dias_single/dias_reports but in case
-    # someone adds a "/" at the end, which i do sometimes
+    # someone adds a "/" at the end, which I do sometimes
     name_file = [
         ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_reports")
     ]
-
     # there should only be one ele in name_file
+    assert len(name_file) == 1, "reports output directory '{}' contains nested dias_reports".format(rpt_out_dir)
     job_report = "{}.txt".format(name_file[0])
 
-    # get samples for which a report is expected but the job will not started
+    # get samples for which a report is expected but the job will not start
     # for reasons other than absence from manifest
-    # i.e. present in sample sheet but fastqs were not provided
+    # eg. present in SampleSheet but Dias single output files are not available
     difference_expected_starting = set(all_samples).difference(
         set(job_dict["starting"])
     )
@@ -100,6 +102,17 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
 
 
 def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
+    """Reads in the reanalysis file given on the command line and runs the
+    SNV reports function/workflow.
+
+    Args:
+        input_dir: single output directory e.g /output/dias_single
+        dry_run: optional arg from cmd line if its a dry run
+        assay_config: contains all the dynamic input file DNAnexus IDs
+        assay_id: arg from cmd line what assay this is for
+        reanalysis_list: reanalysis file provided on the cmd line
+    """
+
     reanalysis_dict = {}
 
     # parse reanalysis file
@@ -127,8 +140,19 @@ def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
 def run_reports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
 ):
-    assert ss_workflow_out_dir.startswith("/"), (
-        "Input directory must be full path (starting at /)")
+    """Generates batch script with headers from the reports workflow and
+    values from the reports directory and then runs the command.
+
+    Args:
+        ss_workflow_out_dir: single output directory e.g /output/dias_single
+        dry_run: optional arg from cmd line if its a dry run
+        assay_config: contains all the dynamic input file DNAnexus IDs
+        assay_id: arg from cmd line what assay this is for
+        reanalysis_list: reanalysis file provided on the cmd line
+    """
+
+    assert ss_workflow_out_dir.startswith("/output"), (
+        "Input directory must be full path (starting with /output)")
     rpt_workflow_out_dir = make_workflow_out_dir(
         assay_config.rpt_workflow_id, assay_id, ss_workflow_out_dir
     )
@@ -147,9 +171,16 @@ def run_reports(
         sample_id_list = reanalysis_dict
     else:
         sample_sheet_path = gather_sample_sheet()
-        all_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
+        samplesheet_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
+        # Find project to create jobs and outdirs in
+        project_name = get_dx_cwd_project_name()
+        # gather sample names that have a Sentieon VCF generated
+        single_samples = find_files(project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'")
+        single_samples = [str(x) for x in single_samples]
+        single_samples = set([x.split('-')[0] for x in single_samples])
+        # Keep the samplesheet samples that have a CNV VCF
+        sample_id_list = set(samplesheet_samples).intersection(single_samples)
         stage_input_dict = assay_config.rpt_stage_input_dict
-        sample_id_list = all_samples
 
     # put the sample id in a dictionary so that the stage inputs can be
     # assigned to a sample id
@@ -172,7 +203,8 @@ def run_reports(
 
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config.happy_stage_prefix,
+            staging_dict, "reports",
+            assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
             assay_config.athena_stage_id,
             assay_config.generate_workbook_stage_id,
@@ -244,7 +276,8 @@ def run_reports(
 
         # get the headers and values from the staging inputs
         rpt_headers, rpt_values = prepare_batch_writing(
-            staging_dict, "reports", assay_config.happy_stage_prefix,
+            staging_dict, "reports",
+            assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
             assay_config.athena_stage_id,
             assay_config.generate_workbook_stage_id,
@@ -302,7 +335,7 @@ def run_reports(
                 job_dict["missing_from_manifest"].append(sample_id)
 
         report_file = create_job_reports(
-            rpt_workflow_out_dir, all_samples, job_dict
+            rpt_workflow_out_dir, sample_id_list, job_dict
         )
 
         print("Created and uploaded job report file: {}".format(report_file))
@@ -329,7 +362,7 @@ def run_reports(
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
     destination = " --destination={} ".format(rpt_workflow_out_dir)
 
-    command = " ".join([command, app_relative_paths, destination])
+    final_command = " ".join([command, app_relative_paths, destination])
 
     if dry_run:
         print("Created workflow dir: {}".format(rpt_workflow_out_dir))
@@ -358,11 +391,11 @@ def run_reports(
             ))
 
         print("Format of stage output dirs: {}".format(app_relative_paths))
-        print("Final cmd ran: {}".format(command))
+        print("Final cmd ran: {}".format(final_command))
         print("Deleting '{}' as part of the dry-run".format(rpt_workflow_out_dir))
         delete_folders_cmd = "dx rm -r {}".format(rpt_workflow_out_dir)
         subprocess.call(delete_folders_cmd, shell=True)
     else:
-        subprocess.call(command, shell=True)
+        subprocess.call(final_command, shell=True)
 
     return rpt_workflow_out_dir
