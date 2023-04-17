@@ -91,14 +91,20 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         file_ids,
         project_name, app_output_dir
     )
+
     # upload excluded regions file
     excluded_list_path = app_output_dir + "/" + "excluded_list.tsv"
     cmd = "dx upload {} --path {}".format(excluded_sample_list, excluded_list_path)
-    subprocess.check_output(cmd, shell=True)
 
     if dry_run is True:
+        print("Created output dir: {}".format(app_output_dir))
         print("Final cmd ran: {}".format(command))
+        print("Deleting '{}' as part of the dry-run".format(app_output_dir))
+        delete_folders_cmd = "dx rm -r {}".format(app_output_dir)
+        subprocess.call(delete_folders_cmd, shell=True)
+
     else:
         subprocess.call(command, shell=True)
+        subprocess.check_output(cmd, shell=True)
 
     return app_output_dir
