@@ -1,9 +1,5 @@
 #!/usr/bin/python
-from ast import excepthandler
-import sys
 import subprocess
-import dxpy
-import re
 
 from general_functions import (
     get_dx_cwd_project_name,
@@ -39,8 +35,6 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
     app_name = get_object_attribute_from_object_id_or_path(
         assay_config.cnvcall_app_id, "Name"
     )
-
-
     app_output_dir = make_app_output_dir(assay_config.cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
 
     # Find bam and bai files from sentieon folder
