@@ -32,14 +32,8 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
     project_name = get_dx_cwd_project_name()
 
     # Make sure path provided is an actual ss workflow output folder
-    assert ss_workflow_out_dir.startswith("/"), (
-        "Input directory must be full path (starting at /)")
-    path_dirs = [x for x in ss_workflow_out_dir.split("/") if x]
-    is_path_single = [ele for ele in path_dirs if "single" in ele]
-    assert is_path_single != [], (
-        "Path '{}' is not an accepted directory, "
-        "must contain 'single'".format(ss_workflow_out_dir)
-    )
+    assert ss_workflow_out_dir.startswith("/output/"), (
+        "Input directory must be full path (starting with /output/)")
 
     # Find the app name and create an output folder for it under ss
     app_name = get_object_attribute_from_object_id_or_path(
