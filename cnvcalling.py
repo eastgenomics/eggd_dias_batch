@@ -51,31 +51,23 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         bambi_files.extend(find_files(project_name, folder_path, ext))
 
     # Read in list of samples that did NOT PASS QC
-    if excluded_sample_list is None:
-        sample_names = []
-    else:
-        sample_names = []
-        # parse sample exclusion file
-        with open(excluded_sample_list) as fh:
-            for line in fh:  # line can be a sample name or sample tab panel name
-                sample_names.append(line.strip().split("\t")[0])
+    excluded_sample_names = []
+    # parse sample exclusion file
+    with open(excluded_sample_list) as fh:
+        for line in fh:  
+            # line can be a sample name or sample tab panel name
+            # remove file extensions after first "_"
+            excluded_sample_names.append(line.strip().split("\t")[0].split('_')[0])
 
-    # Check that the sample list is not just the first field but it
-    # is until EGG
-    last_field = re.compile("-EGG[0-9]")
-    for sample in sample_names:
-        match = re.search(last_field, sample)
-        if match is None:
-            raise Exception("sample '{}' is not full sample name "
-                            "up to EGG code".format(
-                                sample
-                                ))
-    # Keep the excluded sample name up to EGG and remove anything after 
-    # that which would be after "_". This is if the excluded list
-    # contains up full filenames up to .bam
-    sample_names = [x.split('_')[0] for x in sample_names]
-    # Remove bam/bai files of QC failed samples
-    sample_bambis = [x for x in bambi_files if x.split('_')[0] not in sample_names]
+    # Remove bam/bai files of excluded (QC failed) samples
+    sample_bambis = [x for x in bambi_files if x.split('_')[0] not in excluded_sample_names]
+    print(
+        "{} out of {} samples were excluded from CNV calling".format(
+            (len(bambi_files) - len(sample_bambis)) / 2, len(bambi_files) / 2)
+        )
+    if len(sample_bambis) < 60:
+        print("Less than 30 samples suitable for CNV calling, \n \
+        which is below the threshold for optimal performance")
 
     # Find the file-IDs of the passed bam/bai samples
     file_ids = ""
