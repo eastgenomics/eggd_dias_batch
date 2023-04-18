@@ -1,9 +1,5 @@
 #!/usr/bin/python
-from ast import excepthandler
-import sys
 import subprocess
-import dxpy
-import re
 
 from general_functions import (
     get_dx_cwd_project_name,
@@ -32,21 +28,13 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
     project_name = get_dx_cwd_project_name()
 
     # Make sure path provided is an actual ss workflow output folder
-    assert ss_workflow_out_dir.startswith("/"), (
-        "Input directory must be full path (starting at /)")
-    path_dirs = [x for x in ss_workflow_out_dir.split("/") if x]
-    is_path_single = [ele for ele in path_dirs if "single" in ele]
-    assert is_path_single != [], (
-        "Path '{}' is not an accepted directory, "
-        "must contain 'single'".format(ss_workflow_out_dir)
-    )
+    assert ss_workflow_out_dir.startswith("/output/"), (
+        "Input directory must be full path (starting with /output/)")
 
     # Find the app name and create an output folder for it under ss
     app_name = get_object_attribute_from_object_id_or_path(
         assay_config.cnvcall_app_id, "Name"
     )
-
-
     app_output_dir = make_app_output_dir(assay_config.cnvcall_app_id, ss_workflow_out_dir, app_name, assay_id)
 
     # Find bam and bai files from sentieon folder
@@ -57,31 +45,23 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         bambi_files.extend(find_files(project_name, folder_path, ext))
 
     # Read in list of samples that did NOT PASS QC
-    if excluded_sample_list is None:
-        sample_names = []
-    else:
-        sample_names = []
-        # parse sample exclusion file
-        with open(excluded_sample_list) as fh:
-            for line in fh:  # line can be a sample name or sample tab panel name
-                sample_names.append(line.strip().split("\t")[0])
+    excluded_sample_names = []
+    # parse sample exclusion file
+    with open(excluded_sample_list) as fh:
+        for line in fh:  
+            # line can be a sample name or sample tab panel name
+            # remove file extensions after first "_"
+            excluded_sample_names.append(line.strip().split("\t")[0].split('_')[0])
 
-    # Check that the sample list is not just the first field but it
-    # is until EGG
-    last_field = re.compile("-EGG[0-9]")
-    for sample in sample_names:
-        match = re.search(last_field, sample)
-        if match is None:
-            raise Exception("sample '{}' is not full sample name "
-                            "up to EGG code".format(
-                                sample
-                                ))
-    # Keep the excluded sample name up to EGG and remove anything after 
-    # that which would be after "_". This is if the excluded list
-    # contains up full filenames up to .bam
-    sample_names = [x.split('_')[0] for x in sample_names]
-    # Remove bam/bai files of QC failed samples
-    sample_bambis = [x for x in bambi_files if x.split('_')[0] not in sample_names]
+    # Remove bam/bai files of excluded (QC failed) samples
+    sample_bambis = [x for x in bambi_files if x.split('_')[0] not in excluded_sample_names]
+    print(
+        "{} out of {} samples were excluded from CNV calling".format(
+            (len(bambi_files) - len(sample_bambis)) / 2, len(bambi_files) / 2)
+        )
+    if len(sample_bambis) < 60:
+        print("Less than 30 samples suitable for CNV calling, \n \
+        which is below the threshold for optimal performance")
 
     # Find the file-IDs of the passed bam/bai samples
     file_ids = ""
@@ -105,14 +85,20 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         file_ids,
         project_name, app_output_dir
     )
+
     # upload excluded regions file
     excluded_list_path = app_output_dir + "/" + "excluded_list.tsv"
     cmd = "dx upload {} --path {}".format(excluded_sample_list, excluded_list_path)
-    subprocess.check_output(cmd, shell=True)
 
     if dry_run is True:
+        print("Created output dir: {}".format(app_output_dir))
         print("Final cmd ran: {}".format(command))
+        print("Deleting '{}' as part of the dry-run".format(app_output_dir))
+        delete_folders_cmd = "dx rm -r {}".format(app_output_dir)
+        subprocess.call(delete_folders_cmd, shell=True)
+
     else:
         subprocess.call(command, shell=True)
+        subprocess.check_output(cmd, shell=True)
 
     return app_output_dir

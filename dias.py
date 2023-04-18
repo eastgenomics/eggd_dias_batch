@@ -215,6 +215,7 @@ def main():
     # Set off relevant workflow based on subcommand
     # with applicable inputs
     if subcommand == "cnvcall":
+        assert args.sample_list, "Please specify a sample exclusion list, including at least the control sample"
         cnvcall_applet_out_dir = run_cnvcall_app(
             args.input_dir, args.dry_run, config, assay_id,
             args.sample_list
