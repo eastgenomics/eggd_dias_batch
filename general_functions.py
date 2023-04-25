@@ -679,22 +679,22 @@ def parse_genepanels(genepanels_file_id):
     return data
 
 
-def gather_samplesheet():
-    """ Get sample sheet id
+def gather_samplesheet(): # reports
+    """ Get file-ID of SampleSheet within given project
 
     Returns:
-        str: Sample sheet DNAnexus id
+        str: DNAnexus file-ID of the Sample sheet
     """
 
     # get the project id from the environment variable
     current_project = os.environ.get('DX_PROJECT_CONTEXT_ID')
-    result = dxpy.find_data_objects(
+    results = dxpy.find_data_objects(
         classname="file", name="SampleSheet.csv", project=current_project
     )
 
     sample_sheets = []
 
-    for sample_sheet in result:
+    for sample_sheet in results:
         sample_sheets.append(sample_sheet)
 
     # quick check to see if we get none or multiple
