@@ -135,18 +135,36 @@ def run_reports(
         rpt_workflow_stage_info, rpt_workflow_out_dir
     )
 
-    sample_sheet_path = gather_samplesheet()
-    samplesheet_samples = parse_samplesheet(sample_sheet_path)
-    # gather sample names that have a Sentieon VCF generated
-    single_samples = find_files(project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'")
-    single_samples = [str(x) for x in single_samples]
-    single_samples = set([x.split('-')[0] for x in single_samples])
-    # Keep the samplesheet samples that have a CNV VCF
-    sample_id_list = set(samplesheet_samples).intersection(single_samples)
+    # Gather samples from SampleSheet.csv
+    sample_sheet_ID = gather_samplesheet()
+    samplesheet_sample_names = parse_samplesheet(sample_sheet_ID)
+
+    # Gather sample names that have a Sentieon VCF generated
+    ## current pattern picks up both "normal" and "genomic" VCFs
+    single_sample_vfcs = find_files(project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'")
+    single_sample_names = [str(x).split('_')[0] for x in single_sample_vfcs]
+
+    # Gather samples from the manifest file (command line input file-ID)
+    ## manifest_data is a {sample: [R, codes]} dict
+    manifest_data = parse_manifest(project_id, sample_panel)
+    manifest_samples = manifest_data.keys() # list of tuples
+
+    # Collate list of sample names that are available in all 3 lists:
+    sample_name_list = []
+    # Keep the samplesheet samples that have a VCF
+    available_samples = set(single_sample_names).intersection(samplesheet_sample_names)
+    # manifest list only has partial sample names/identifiers
+    for sample in available_samples:
+        Instrument_ID = sample.split('-')[0]
+        Specimen_ID = sample.split('-')[1]
+        partial_identifier = "-".join([Instrument_ID, Specimen_ID])
+        if partial_identifier in manifest_samples:
+                sample_name_list.append(sample)
+                manifest_data[partial_identifier]["sample"] = sample
 
     # Gather sample-specific input file IDs based on the given app-pattern
     sample2stage_input2files_dict = get_stage_inputs(
-        ss_workflow_out_dir, sample_id_list, assay_config.rpt_stage_input_dict
+        ss_workflow_out_dir, sample_name_list, assay_config.rpt_stage_input_dict
     )
 
     # list that is going to represent the header in the batch tsv file
@@ -220,7 +238,7 @@ def run_reports(
             job_dict["missing_from_manifest"].append(sample_id)
 
     report_file = create_job_reports(
-        rpt_workflow_out_dir, sample_id_list, job_dict
+        rpt_workflow_out_dir, sample_name_list, job_dict
     )
 
     print("Created and uploaded job report file: {}".format(report_file))
