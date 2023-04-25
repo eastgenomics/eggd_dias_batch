@@ -341,12 +341,13 @@ def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"): #
     return None
 
 
-def get_stage_inputs(input_dir, stage_input_dict):
+def get_stage_inputs(input_dir, sample_name_list, stage_input_pattern_dict): # reports
     """ Return dict with sample2stage2files
 
     Args:
         input_dir (str): Directory of single workflow
-        stage_input_dict (dict): Dict of stage2app
+        sample_name_list (list): list of sample names
+        stage_input_pattern_dict (dict): Dict of stage input search patterns
 
     Returns:
         dict: Dict of sample2stage2file_list
@@ -354,23 +355,26 @@ def get_stage_inputs(input_dir, stage_input_dict):
 
     # Allows me to not have to check if a key exists before creating an entry in the dict
     # Example: dict[entry][sub-entry][list-entry].append(ele)
-    dict_res = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    sample2stage_input2files_dict = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
+    )
 
-    # type_input can be either "multi" or a sample id
-    for type_input in stage_input_dict:
+    for sample in sample_name_list:
+        # make a placeholder for the sample
+        sample2stage_input2files_dict[sample] = {}
         # find the inputs for each stage using given app/pattern
-        for stage_input, stage_input_info in stage_input_dict[type_input].items():
+        for stage_input, stage_input_info in stage_input_pattern_dict.items():
             input_app_dir = find_app_dir(
                 input_dir, stage_input_info["app"]
             )
             inputs = get_stage_input_file_list(
                 input_app_dir,
                 app_subdir=stage_input_info["subdir"],
-                filename_pattern=stage_input_info["pattern"].format(type_input)
+                filename_pattern=stage_input_info["pattern"].format(sample)
             )
-            dict_res[type_input][stage_input]["file_list"] = inputs
+            sample2stage_input2files_dict[sample][stage_input] = inputs
 
-    return dict_res
+    return sample2stage_input2files_dict
 
 
 def prepare_batch_writing(
@@ -705,7 +709,7 @@ def gather_samplesheet(): # reports
 def find_files(project_name, app_dir, pattern="."):
     """Searches for files ending in provided pattern (e.g "*bam") in a
     given path that contains the files that are being searched for
-   (e.g /output/single/sentieon_output).
+    (e.g /output/single/sentieon_output).
 
     Args:
         app_dir (str): single path including directory to output app.
@@ -730,7 +734,7 @@ def find_files(project_name, app_dir, pattern="."):
             search_result.append(file["describe"]["name"])
     except ValueError:
         print('Could not files {} in {}'.format(
-              pattern,app_dir
+                pattern, app_dir
             ))
 
     return search_result

@@ -177,8 +177,6 @@ def run_cnvreports(
         rpt_workflow_stage_info, rpt_workflow_out_dir
     )
 
-    sample2stage_input_dict = {}
-
     if reanalysis_dict:
         stage_input_dict = assay_config.cnv_rea_stage_input_dict
         sample_id_list = reanalysis_dict
@@ -194,14 +192,9 @@ def run_cnvreports(
         sample_id_list = set(samplesheet_samples).intersection(cnv_samples)
         stage_input_dict = assay_config.cnv_rpt_stage_input_dict
 
-    # put the sample id in a dictionary so that the stage inputs can be
-    # assigned to a sample id
-    for sample in sample_id_list:
-        sample2stage_input_dict[sample] = stage_input_dict
-
-    # get the inputs for the given app-pattern
-    staging_dict = get_stage_inputs(
-        ss_workflow_out_dir, sample2stage_input_dict
+    # Gather sample-specific input file IDs based on the given app-pattern
+    sample2stage_input2files_dict = get_stage_inputs(
+        ss_workflow_out_dir, sample_id_list, assay_config.cnv_rpt_stage_input_dict
     )
 
     # list that is going to represent the header in the batch tsv file
@@ -215,7 +208,7 @@ def run_cnvreports(
 
         # get the headers and values from the staging inputs
         rea_headers, rea_values = prepare_batch_writing(
-            staging_dict, "cnvreports",
+            sample2stage_input2files_dict, "cnvreports",
             assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
             "",
@@ -288,7 +281,7 @@ def run_cnvreports(
 
         # get the headers and values from the staging inputs
         rpt_headers, rpt_values = prepare_batch_writing(
-            staging_dict, "cnvreports",
+            sample2stage_input2files_dict, "cnvreports",
             assay_config.happy_stage_prefix,
             assay_config.somalier_relate_stage_id,
             "",
@@ -383,7 +376,7 @@ def run_cnvreports(
             OrderedDict(sorted(rpt_workflow_stage_info.iteritems())), indent=2)
         )
         print("Inputs gathered:")
-        print(json.dumps(staging_dict, indent=4))
+        print(json.dumps(sample2stage_input2files_dict, indent=4))
         print("Created apps out dir: {}")
         print(json.dumps(
             OrderedDict(sorted(rpt_output_dirs.iteritems())), indent=4)
