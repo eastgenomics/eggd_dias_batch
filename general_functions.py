@@ -91,7 +91,7 @@ def get_object_attribute_from_object_id_or_path(object_id_or_path, attribute):
     return None
 
 
-def get_workflow_stage_info(workflow_id):
+def get_workflow_stage_info(workflow_id): # reports
     """ Get the workflow stage info i.e. stage id, app id and app name
 
     Args:
@@ -118,7 +118,7 @@ def get_workflow_stage_info(workflow_id):
     return stages
 
 
-def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
+def make_app_out_dirs(workflow_stage_info, workflow_output_dir): # reports
     """ Create directories for the apps
 
     Args:
@@ -147,7 +147,7 @@ def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
     return out_dirs
 
 
-def format_relative_paths(workflow_stage_info):
+def format_relative_paths(workflow_stage_info): # reports
     """ Add specific app output directory to final command line
 
     Args:
@@ -166,7 +166,7 @@ def format_relative_paths(workflow_stage_info):
     return result
 
 
-def find_app_dir(workflow_output_dir, app_basename):
+def find_app_dir(workflow_output_dir, app_basename): # reports
     """ Find app directory
 
     Args:
@@ -199,7 +199,7 @@ def find_app_dir(workflow_output_dir, app_basename):
     return "".join([workflow_output_dir, search_result[0]])
 
 
-def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."):
+def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."): # reports
     """ Get the file ids for a given app directory
 
     Args:
@@ -233,35 +233,39 @@ def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."):
     return file_ids
 
 
-def get_dx_cwd_project_id():
+def dx_get_project_id():
     """ Return project id using dx env
 
     Returns:
         str: DNAnexus project id
     """
 
-    command = (
-        'dx env | grep -P "Current workspace\t" | '
-        'awk -F "\t" \'{print $NF}\' | sed s/\'"\'//g'
-    )
-    project_id = subprocess.check_output(command, shell=True).strip()
+    project_id = os.environ.get('DX_PROJECT_CONTEXT_ID')
+
     return project_id
 
 
-def get_dx_cwd_project_name():
-    """ Return project name using dx env
+def dx_get_object_name(object_id):
+    """ Get specific attribute from DNAnexus description of object
+
+    Args:
+        object_id (str): DNAnexus object ID
 
     Returns:
-        str: DNAnexus project name
+        str: Name of DNAnexus object
     """
 
-    command = (
-        'dx env | grep -P "Current workspace name" | '
-        'awk -F "\t" \'{print $NF}\' | sed s/\'"\'//g'
-    )
-
-    project_name = subprocess.check_output(command, shell=True).strip()
-    return project_name
+    # This try except is used to handle permission errors generated when
+    # dx describe tries to get info about files we do not have permission
+    # to access.
+    # In these cases the description is returned but the command has non-0
+    # exit status so errors out
+    try:
+        object_name = dxpy.describe(object_id)['name']
+        return object_name
+    except dxpy.exceptions.DXError:
+        print("Object ID was not provided in the correct format")
+        return None
 
 
 def get_sample_ids_from_sample_sheet(sample_sheet_path):

@@ -5,6 +5,8 @@ import json
 import subprocess
 
 from general_functions import (
+    dx_get_project_id,
+    dx_get_object_name,
     format_relative_paths,
     get_workflow_stage_info,
     make_app_out_dirs,
@@ -17,8 +19,7 @@ from general_functions import (
     parse_genepanels,
     get_sample_ids_from_sample_sheet,
     gather_sample_sheet,
-    find_files,
-    get_dx_cwd_project_name
+    find_files
 )
 
 
@@ -140,26 +141,35 @@ def run_reanalysis(input_dir, dry_run, assay_config, assay_id, reanalysis_list):
 def run_reports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id, reanalysis_dict=None
 ):
-    """Generates batch script with headers from the reports workflow and
-    values from the reports directory and then runs the command.
+    """Collects input files for the reports workflow and sets off jobs
 
     Args:
-        ss_workflow_out_dir: single output directory e.g /output/dias_single
-        dry_run: optional arg from cmd line if its a dry run
+        ss_workflow_out_dir: DNAnexus path to single output directory e.g /output/dias_single or /output/CEN-YYMMDD-HHMM
+        dry_run: optional flag to set up but not run jobs
         assay_config: contains all the dynamic input file DNAnexus IDs
         assay_id: arg from cmd line what assay this is for
-        reanalysis_list: reanalysis file provided on the cmd line
+        sample_panel: DNAnexus file-ID specifying panels for samples
     """
 
-    assert ss_workflow_out_dir.startswith("/output"), (
-        "Input directory must be full path (starting with /output)")
+    # Find project to create jobs and outdirs in
+    project_id = dx_get_project_id()
+    project_name = dx_get_object_name(project_id)
+    print("Jobs will be set off in project {}".format(project_name))
+
+    # Check that provided input directory is an absolute path
+    assert ss_workflow_out_dir.startswith("/output/"), (
+        "Input directory must be full path (starting with /output/)")
+
+    # Create workflow output folder named after workflow and config used
     rpt_workflow_out_dir = make_workflow_out_dir(
         assay_config.rpt_workflow_id, assay_id, ss_workflow_out_dir
     )
-
+    # Identify executables for each stage within the workflow
+    # stages[stage['id']] = {"app_id": app_id, "app_name": app_name}
     rpt_workflow_stage_info = get_workflow_stage_info(
         assay_config.rpt_workflow_id
     )
+    # Create output folders for each executable within the workflow
     rpt_output_dirs = make_app_out_dirs(
         rpt_workflow_stage_info, rpt_workflow_out_dir
     )

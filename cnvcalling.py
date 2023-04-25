@@ -2,7 +2,8 @@
 import subprocess
 
 from general_functions import (
-    get_dx_cwd_project_name,
+    dx_get_project_id,
+    dx_get_object_name,
     get_object_attribute_from_object_id_or_path,
     find_app_dir,
     make_app_output_dir,
@@ -25,9 +26,11 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         app_out_dir: path to where the CNV calling output will be
     """
     # Find project to create jobs and outdirs in
-    project_name = get_dx_cwd_project_name()
+    project_id = dx_get_project_id()
+    project_name = dx_get_object_name(project_id)
+    print("Jobs will be set off in project {}".format(project_name))
 
-    # Make sure path provided is an actual ss workflow output folder
+    # Check that provided input directory is an absolute path
     assert ss_workflow_out_dir.startswith("/output/"), (
         "Input directory must be full path (starting with /output/)")
 

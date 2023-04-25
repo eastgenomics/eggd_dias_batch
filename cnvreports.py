@@ -18,7 +18,8 @@ from general_functions import (
     get_sample_ids_from_sample_sheet,
     gather_sample_sheet,
     find_files,
-    get_dx_cwd_project_name
+    dx_get_project_id,
+    dx_get_object_name
 )
 
 
@@ -149,6 +150,13 @@ def run_cnvreports(
         assay_id: arg from cmd line what assay this is for
         cnvreanalysis_list: reanalysis file provided on the cmd line
     """
+
+    # Find project to create jobs and outdirs in
+    project_id = dx_get_project_id()
+    project_name = dx_get_object_name(project_id)
+    print("Jobs will be set off in project {}".format(project_name))
+
+    # Check that provided input directory is an absolute path
     assert cnv_calling_out_dir.startswith("/output"), (
         "Input directory must be full path (starting with /output)")
 
@@ -177,8 +185,6 @@ def run_cnvreports(
     else:
         sample_sheet_path = gather_sample_sheet()
         samplesheet_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
-        # Find project to create jobs and outdirs in
-        project_name = get_dx_cwd_project_name()
         # gather sample names that have a CNV VCF generated
         cnv_samples = find_files(project_name, cnv_calling_out_dir, pattern="-E '(.*)_segments.vcf$'")
         cnv_samples = [str(x) for x in cnv_samples]
