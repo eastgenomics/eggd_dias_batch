@@ -121,20 +121,20 @@ def parse_CLI_args(): # -> argparse.Namespace:
     )
     parser_r.set_defaults(which='reports')
 
-    # Parsing command line args for SNV reanalysis
-    parser_r = subparsers.add_parser('reanalysis', help='reanalysis help')
-    parser_r.add_argument(
-        'input_dir', type=str,
-        help='A single sample workflow output directory path'
-    )
-    parser_r.add_argument(
-        'reanalysis_list', type=str,
-        help=(
-            'Tab delimited file containing sample and panel for reanalysis'
-            '. One sample/panel combination per line'
-        )
-    )
-    parser_r.set_defaults(which='reanalysis')
+    # # Parsing command line args for SNV reanalysis
+    # parser_r = subparsers.add_parser('reanalysis', help='reanalysis help')
+    # parser_r.add_argument(
+    #     'input_dir', type=str,
+    #     help='A single sample workflow output directory path'
+    # )
+    # parser_r.add_argument(
+    #     'reanalysis_list', type=str,
+    #     help=(
+    #         'Tab delimited file containing sample and panel for reanalysis'
+    #         '. One sample/panel combination per line'
+    #     )
+    # )
+    # parser_r.set_defaults(which='reanalysis')
 
     # Parsing command line args for CNV reports
     parser_cr = subparsers.add_parser('cnvreports', help='cnvreports help')
@@ -152,20 +152,20 @@ def parse_CLI_args(): # -> argparse.Namespace:
     )
     parser_cr.set_defaults(which='cnvreports')
 
-    # Parsing command line args for CNV reanalysis
-    parser_r = subparsers.add_parser('cnvreanalysis', help='cnvreanalysis help')
-    parser_r.add_argument(
-        'input_dir', type=str,
-        help='A CNV calling output directory path'
-    )
-    parser_r.add_argument(
-        'cnvreanalysis_list', type=str,
-        help=(
-            'Tab delimited file containing sample and panel for cnvreanalysis'
-            '. One sample/panel combination per line'
-        )
-    )
-    parser_r.set_defaults(which='cnvreanalysis')
+    # # Parsing command line args for CNV reanalysis
+    # parser_r = subparsers.add_parser('cnvreanalysis', help='cnvreanalysis help')
+    # parser_r.add_argument(
+    #     'input_dir', type=str,
+    #     help='A CNV calling output directory path'
+    # )
+    # parser_r.add_argument(
+    #     'cnvreanalysis_list', type=str,
+    #     help=(
+    #         'Tab delimited file containing sample and panel for cnvreanalysis'
+    #         '. One sample/panel combination per line'
+    #     )
+    # )
+    # parser_r.set_defaults(which='cnvreanalysis')
 
     args = parser.parse_args()
     return args
@@ -246,16 +246,16 @@ def main():
             args.input_dir, args.dry_run, config, assay_id,
             args.sample_panel
         )
-    elif subcommand == "cnvreanalysis":
-        cnv_reports_out_dir = run_cnvreanalysis(
-            args.input_dir, args.dry_run, config, assay_id,
-            args.cnvreanalysis_list
-        )
-    elif subcommand == "reanalysis":
-        reports_out_dir = run_reanalysis(
-            args.input_dir, args.dry_run, config, assay_id,
-            args.reanalysis_list
-        )
+    # elif subcommand == "cnvreanalysis":
+    #     cnv_reports_out_dir = run_cnvreanalysis(
+    #         args.input_dir, args.dry_run, config, assay_id,
+    #         args.cnvreanalysis_list
+    #     )
+    # elif subcommand == "reanalysis":
+    #     reports_out_dir = run_reanalysis(
+    #         args.input_dir, args.dry_run, config, assay_id,
+    #         args.reanalysis_list
+    #     )
     else:
         SUBCOMMAND_OPTIONS[subcommand](
             args.input_dir, args.dry_run, config, assay_id
