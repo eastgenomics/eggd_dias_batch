@@ -17,8 +17,8 @@ from general_functions import (
     assess_batch_file,
     parse_manifest,
     parse_genepanels,
-    get_sample_ids_from_sample_sheet,
-    gather_sample_sheet,
+    gather_samplesheet,
+    parse_samplesheet,
     find_files
 )
 
@@ -180,10 +180,8 @@ def run_reports(
         stage_input_dict = assay_config.rea_stage_input_dict
         sample_id_list = reanalysis_dict
     else:
-        sample_sheet_path = gather_sample_sheet()
-        samplesheet_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
-        # Find project to create jobs and outdirs in
-        project_name = get_dx_cwd_project_name()
+        sample_sheet_path = gather_samplesheet()
+        samplesheet_samples = parse_samplesheet(sample_sheet_path)
         # gather sample names that have a Sentieon VCF generated
         single_samples = find_files(project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'")
         single_samples = [str(x) for x in single_samples]

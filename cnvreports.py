@@ -15,8 +15,8 @@ from general_functions import (
     assess_batch_file,
     parse_manifest,
     parse_genepanels,
-    get_sample_ids_from_sample_sheet,
-    gather_sample_sheet,
+    gather_samplesheet,
+    parse_samplesheet,
     find_files,
     dx_get_project_id,
     dx_get_object_name
@@ -183,8 +183,9 @@ def run_cnvreports(
         stage_input_dict = assay_config.cnv_rea_stage_input_dict
         sample_id_list = reanalysis_dict
     else:
-        sample_sheet_path = gather_sample_sheet()
-        samplesheet_samples = get_sample_ids_from_sample_sheet(sample_sheet_path)
+        sample_sheet_path = gather_samplesheet()
+        samplesheet_samples = parse_samplesheet(sample_sheet_path)
+
         # gather sample names that have a CNV VCF generated
         cnv_samples = find_files(project_name, cnv_calling_out_dir, pattern="-E '(.*)_segments.vcf$'")
         cnv_samples = [str(x) for x in cnv_samples]

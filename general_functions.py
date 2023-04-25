@@ -268,52 +268,40 @@ def dx_get_object_name(object_id):
         return None
 
 
-def get_sample_ids_from_sample_sheet(sample_sheet_path):
+def parse_samplesheet(sample_sheet_ID): # reports
     """ Return list of samples from the sample sheet
 
     Args:
-        sample_sheet_path (str): Path to the sample sheet
+        sample_sheet_ID (str): DNAnexus file-ID of the SampleSheet
 
     Returns:
-        list: List of samples
+        list: List of sample names
     """
 
-    sample_ids = set()
-    cmd = "dx cat {}".format(sample_sheet_path)
-    sample_sheet_content = subprocess.check_output(cmd, shell=True).split("\n")
+    sample_names = []
+    cmd = "dx cat {}".format(sample_sheet_ID)
+    # Stream content of the SampleSheet from DNAnexus
+    sample_sheet_content = subprocess.check_output(cmd, shell=True)
+    # Split content into non-empty lines
+    lines = sample_sheet_content.split("\n")[:-1]
 
     data = False
-    index = 0
 
-    for line in sample_sheet_content:
-        if line:
-            if data is True:
-                line = line.split(",")
+    # Loop over lines and parse sample ID/names
+    for line in lines:
+        if data is False:
+            # skip lines until reaching [Data] section with "Sample_ID"
+            if line.startswith("Sample_ID"):
+                data = True
+        else:
+            # SampleSheet always has a comma separated [Data] section
+            Sample_ID = line.split(",")[0]
+            sample_names.append(Sample_ID)
 
-                if index == 0:
-                    # get column of sample_id programmatically
-                    sample_id_pos = [
-                        i
-                        for i, header in enumerate(line)
-                        if header == "Sample_ID"
-                    ][0]
-                else:
-                    # get the sample ids using the header position
-                    if not line[sample_id_pos].startswith("NA"):
-                        sample_ids.add(
-                            line[sample_id_pos].split("-")[0]
-                        )
-
-                index += 1
-            else:
-                # Use [Data] as a way to identify when we reached data
-                if line.startswith("[Data]"):
-                    data = True
-
-    return sample_ids
+    return sample_names
 
 
-def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
+def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"): # reports
     """ Return the workflow output dir so that it is not duplicated when run
 
     Args:
@@ -691,7 +679,7 @@ def parse_genepanels(genepanels_file_id):
     return data
 
 
-def gather_sample_sheet():
+def gather_samplesheet():
     """ Get sample sheet id
 
     Returns:
