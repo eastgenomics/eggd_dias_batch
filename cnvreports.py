@@ -147,10 +147,10 @@ def run_cnvreports(
     for header in rpt_headers:
         new_headers = [field for field in header]
         new_headers.extend([
-            "{}.clinical_indication".format(assay_config.generate_workbook_stage_id),
-            "{}.panel".format(assay_config.generate_bed_vep_stage_id),
-            "{}.panel".format(assay_config.generate_bed_athena_stage_id),
-            "{}.panel".format(assay_config.generate_workbook_stage_id)
+            "{}.clinical_indication".format(assay_config.cnv_generate_workbook_stage_id),
+            "{}.panel".format(assay_config.cnv_generate_bed_vep_stage_id),
+            "{}.panel".format(assay_config.cnv_generate_bed_excluded_stage_id),
+            "{}.panel".format(assay_config.cnv_generate_workbook_stage_id)
         ])
         headers.append(tuple(new_headers))
 
