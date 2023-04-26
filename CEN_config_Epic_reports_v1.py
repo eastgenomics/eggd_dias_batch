@@ -12,6 +12,7 @@ genepanels_file = "{}:file-GJJ7Vx8433Gz96yp8V98X74f".format(ref_project_id)
 genes2transcripts = "{}:file-GP7FY50433GZX7x0JqfgBB4q".format(ref_project_id)
 # GCF_000001405.25_GRCh37.p13_genomic.exon_5bp_v2.0.0.tsv
 exons_nirvana = "{}:file-GF611Z8433Gk7gZ47gypK7ZZ".format(ref_project_id)
+
 # for generate_bed_for_VEP
 vep_bed_flank = 495
 
@@ -20,8 +21,13 @@ vep_bed_flank = 495
 exons_file = "{}:file-GF611Z8433Gf99pBPbJkV7bq".format(ref_project_id)
 
 ## for eggd_VEP
-# VEP config file
+# VEP config file for SNV reports
 vep_config = "{}:file-GQ2yZ7j45fVVVBJ86XBfz4x6".format(ref_project_id)
+# VEP config file for CNV reports
+cnv_vep_config =  "{}:file-GGkJqk84GVVGqG6VFz60gkFF".format(ref_project_id)
+
+# additional regions TSV for CNV reports
+additional_regions = "{}:file-GJZQvg0433GkyFZg13K6VV6p".format(ref_project_id)
 
 
 ### Apps and workflows:
@@ -101,23 +107,6 @@ cnv_generate_bed_vep_stage_id = "stage-GG39Gq04qq8ZkfgV31yQy93v"
 cnv_vep_stage_id = "stage-GFYvJF04qq8VKgq34j30pZZ3"
 cnv_generate_workbook_stage_id = "stage-GFfYY9j4qq8ZxpFpP8zKG7G0"
 
-cnv_vep_config =  "{}:file-GGkJqk84GVVGqG6VFz60gkFF".format(ref_project_id)
-additional_regions = "{}:file-GJZQvg0433GkyFZg13K6VV6p".format(ref_project_id)
-
-cnv_rpt_stage_input_dict = {
-    # vep
-    # subdirectories always require the backward dash
-    "{}.vcf".format(cnv_vep_stage_id): {
-        "app": "eggd_GATKgCNV_call", "subdir": "CNV_vcfs/",
-        "pattern": "-E '{}(.*)_segments.vcf$'"
-    },
-    # excluded_annotate
-    # subdirectories always require the backward dash
-    "{}.excluded_regions".format(cnv_annotate_excluded_regions_stage_id): {
-        "app": "eggd_GATKgCNV_call", "subdir": "CNV_summary/",
-        "pattern": "-E '(.*)_excluded_intervals.bed$'"
-    },
-}
 
 cnv_rpt_dynamic_files = {
     # inputs for generate bed for vep
@@ -129,6 +118,9 @@ cnv_rpt_dynamic_files = {
     "{}.gene_panels".format(cnv_generate_bed_vep_stage_id): "",
     "{}.additional_regions ID".format(cnv_generate_bed_vep_stage_id): additional_regions,
     "{}.additional_regions".format(cnv_generate_bed_vep_stage_id): "",
+    # input for eggd_vep
+    "{}.config_file ID".format(cnv_vep_stage_id): cnv_vep_config,
+    "{}.config_file".format(cnv_vep_stage_id): "",
     # inputs for generate bed for excluded app
     "{}.exons_nirvana ID".format(cnv_generate_bed_excluded_stage_id): exons_nirvana,
     "{}.exons_nirvana".format(cnv_generate_bed_excluded_stage_id): "",
@@ -147,3 +139,18 @@ cnv_rpt_dynamic_files = {
     "{}.additional_regions".format(cnv_annotate_excluded_regions_stage_id): ""
 }
 
+# Sample-specific input files and their search patterns
+cnv_rpt_stage_input_dict = {
+    # vep
+    # subdirectories always require the backward dash
+    "{}.vcf".format(cnv_vep_stage_id): {
+        "app": "eggd_GATKgCNV_call", "subdir": "CNV_vcfs/",
+        "pattern": "-E '{}(.*)_segments.vcf$'"
+    },
+    # excluded_annotate
+    # subdirectories always require the backward dash
+    "{}.excluded_regions".format(cnv_annotate_excluded_regions_stage_id): {
+        "app": "eggd_GATKgCNV_call", "subdir": "CNV_summary/",
+        "pattern": "-E '(.*)_excluded_intervals.bed$'"
+    },
+}
