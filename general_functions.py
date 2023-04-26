@@ -628,8 +628,8 @@ def get_latest_config(folder):
     return config_latest_version
 
 
-def parse_manifest(project_id, manifest_file_id): # reports
-    """ Parse manifest
+def parse_Epic_manifest(project_id, manifest_file_id): # reports
+    """ Parse manifest from Epic
 
     Args:
         manifest_file_id (str): DNAnexus file id for manifest file
@@ -638,6 +638,7 @@ def parse_manifest(project_id, manifest_file_id): # reports
 
     Returns:
         dict: Dict of samples linked to list of clinical indications
+            partial sample identifiers and R_code or _HGNC ID
     """
     data = {}
     if manifest_file_id.startswith("project"):
@@ -648,19 +649,60 @@ def parse_manifest(project_id, manifest_file_id): # reports
         manifest_id = manifest_file_id
 
     with dxpy.open_dxfile(manifest_id, project=project_id, mode='r') as f:
-        for line in f:
-            if line.startswith("SP"):
-                record = line.strip().split(",")
-                Instrument_ID = record[1]
-                Specimen_ID = record[0].strip("SP-")
+        for line in f: # can't skip header, but will be filtered out later
+            record = line.strip().split(",") # assuming comma-separated values
+            Specimen_ID = record[0].strip("SP-")
+            Instrument_ID = record[1]
 
-                sample_identifier = "-".join([Instrument_ID, Specimen_ID])
-                clinical_indications = record[-1].split(";")
-                R_codes = list(set([CI for CI in clinical_indications if CI.startswith("R")]))
-                if sample_identifier in data.keys():
-                    data[sample_identifier]["CIs"].append(R_codes)
-                else:
-                    data[sample_identifier] = {"CIs": R_codes}
+            sample_identifier = "-".join([Instrument_ID, Specimen_ID])
+            clinical_indications = record[-1].split(";") # assuming semicolon-separated values
+            R_codes = list(set(
+                [CI for CI in clinical_indications if CI.startswith("R") or CI.startswith("_")]
+            ))
+            # if sample is already assigned to a list of CIs, extend the list
+            if sample_identifier in data.keys():
+                data[sample_identifier]["CIs"].append(R_codes)
+            # if sample has no CIs yet, save the list
+            else:
+                data[sample_identifier] = {"CIs": R_codes}
+
+    return data
+
+
+def parse_Gemini_manifest(manifest_file): # reports
+    """ Parse manifest from Gemini
+
+    Args:
+        manifest_file (str): filename from command arg for manifest file
+            should contain one sample per row, with
+            multiple clinical indications separated by tab
+
+    Returns:
+        dict: Dict of samples linked to list of clinical indications
+            partial sample identifiers (X number) and 
+            full clinical indication starting with R_code or _HGNC ID
+    """
+    data = {}
+
+    with open(manifest_file) as f:
+        for line in f:
+            record = line.strip().split("\t")
+            assert len(record) == 2, (
+                "Unexpected number of fields in reanalysis_list. "
+                "File must contain one tab separated "
+                "sample/panel combination per line"
+            )
+            sample_identifier = record[0] # X number
+            clinical_indications = record[1].split(";")
+            R_codes = list(set(
+                [CI for CI in clinical_indications if CI.startswith("R") or CI.startswith("_")]
+            ))
+            # if sample is already assigned to a list of CIs, extend the list
+            if sample_identifier in data.keys():
+                data[sample_identifier]["CIs"].append(R_codes)
+            # if sample has no CIs yet, save the list
+            else:
+                data[sample_identifier] = {"CIs": R_codes}
 
     return data
 
