@@ -169,6 +169,35 @@ def run_cnvreports(
                 sample_name_list.append(sample)
                 manifest_data[partial_identifier]["sample"] = sample
 
+    # With the relevant samples identified, parse the R codes they were booked
+    sample2Rcodes_dict = dict(
+        (sample_CI["sample"], sample_CI["CIs"]) for sample_CI 
+            in manifest_data.values() if "sample" in sample_CI.keys()
+    )
+
+    # Load genepanels information
+    genepanels_data = parse_genepanels(assay_config.genepanels_file)
+
+    # Get gene panels based on R code from manifest
+    sample2CIpanel_dict = {}
+    for sample, R_codes in sample2Rcodes_dict.items():
+        CIs = []
+        panels = []
+        for R_code in R_codes:
+            if R_code.startswith("_"):
+                CIs.append(R_code)
+                panels.append(R_code)
+            else:
+                clinical_indication = next(
+                    (key for key in genepanels_data if key.startswith(R_code)),
+                    None)
+                CIs.append(clinical_indication)
+                panels.extend(list(genepanels_data[clinical_indication]))
+        sample2CIpanel_dict[sample] = {
+            "clinical_indications": CIs,
+            "panels": panels
+        }
+
     # Gather sample-specific input file IDs based on the given app-pattern
     sample2stage_input2files_dict = get_stage_inputs(
         ss_workflow_out_dir, sample_name_list, assay_config.cnv_rpt_stage_input_dict
@@ -181,8 +210,6 @@ def run_cnvreports(
     values = []
 
     job_dict = {"starting": [], "missing_from_manifest": [], "symbols": []}
-
-    manifest_data = parse_manifest(assay_config.bioinformatic_manifest)
 
     # get the headers and values from the staging inputs
     rpt_headers, rpt_values = prepare_batch_writing(
