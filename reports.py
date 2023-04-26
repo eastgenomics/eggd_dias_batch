@@ -19,86 +19,12 @@ from general_functions import (
     prepare_batch_writing,
     create_batch_file,
     assess_batch_file,
-    format_relative_paths
+    format_relative_paths,
+    create_job_reports
 )
 
 
-def create_job_reports(rpt_out_dir, all_samples, job_dict):
-    """ Create and upload a job report file where reports are categorised in:
-        - expected samples
-        - running jobs for samples found
-        - missing samples from the manifest
-        - samples with gene symbols as panels causing them to fail later on
-
-    Args:
-        rpt_out_dir (str): Dias reports directory
-        all_samples (list): List with all samples in sample sheet minus NA
-        job_dict (dict): Dict with the lists of samples for the categories
-        listed at the top of the docstring
-
-    Returns:
-        str: Name and path of job report file
-    """
-
-    # rpt_out_dir should always be /output/dias_single/dias_reports but in case
-    # someone adds a "/" at the end, which I do sometimes
-    name_file = [
-        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_reports")
-    ]
-    # there should only be one ele in name_file
-    assert len(name_file) == 1, "reports output directory '{}' contains nested dias_reports".format(rpt_out_dir)
-    job_report = "{}.txt".format(name_file[0])
-
-    # get samples for which a report is expected but the job will not start
-    # for reasons other than absence from manifest
-    # eg. present in SampleSheet but Dias single output files are not available
-    difference_expected_starting = set(all_samples).difference(
-        set(job_dict["starting"])
-    )
-
-    with open(job_report, "w") as f:
-        f.write(
-            "Number of reports expected: {}\n\n".format(len(all_samples))
-        )
-
-        f.write(
-            "Number of samples for which a job started: {}\n".format(
-                len(job_dict["starting"])
-            )
-        )
-
-        f.write("Samples for which jobs didn't start:\n")
-
-        if difference_expected_starting:
-            for sample_id in difference_expected_starting:
-                f.write("{}\n".format(sample_id))
-
-        f.write(
-            "\nSamples not found in manifest: {}\n".format(
-                len(job_dict["missing_from_manifest"])
-            )
-        )
-
-        if job_dict["missing_from_manifest"]:
-            for sample_id in job_dict["missing_from_manifest"]:
-                f.write("{}\n".format(sample_id))
-
-        f.write(
-            "\nSamples booked with gene symbols: {}\n".format(
-                len(job_dict["symbols"])
-            )
-        )
-
-        if job_dict["symbols"]:
-            for sample_id, panels in job_dict["symbols"]:
-                f.write("{}\t{}\n".format(sample_id, panels))
-
-    cmd = "dx upload {} --path {}".format(job_report, rpt_out_dir)
-    subprocess.check_output(cmd, shell=True)
-
-    return "{}{}".format(rpt_out_dir, job_report)
-
-
+# reports
 def run_reports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id, sample_panel
 ):
