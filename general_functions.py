@@ -499,7 +499,7 @@ def prepare_batch_writing(
     return (batch_headers, batch_values)
 
 
-def create_batch_file(headers, values):
+def create_batch_file(headers, values): # reports
     """ Create batch file + return filename
 
     Args:
@@ -532,7 +532,7 @@ def create_batch_file(headers, values):
     return batch_filename
 
 
-def assess_batch_file(batch_file):
+def assess_batch_file(batch_file): # reports
     """ Check if the batch file has the same number of headers and values
 
     Args:
@@ -557,7 +557,7 @@ def assess_batch_file(batch_file):
     return True
 
 
-def find_previous_reports(sample, suffix):
+def find_previous_reports(sample, suffix): # reports
     """ Return the reports for given sample if they exist
 
     Args:
@@ -584,7 +584,7 @@ def find_previous_reports(sample, suffix):
     return reports
 
 
-def get_next_index(file_names):
+def get_next_index(file_names): # reports
     """ Return the index to assign to the new report
 
     Args:
@@ -638,30 +638,44 @@ def get_latest_config(folder):
     return config_latest_version
 
 
-def parse_manifest(manifest_file_id):
+def parse_manifest(project_id, manifest_file_id): # reports
     """ Parse manifest
 
     Args:
         manifest_file_id (str): DNAnexus file id for manifest file
+            should contain one sample per row, with
+            multiple clinical indications separated by semicolon
 
     Returns:
-        dict: Dict of samples linked to panels and clinical indications
+        dict: Dict of samples linked to list of clinical indications
     """
+    data = {}
+    if manifest_file_id.startswith("project"):
+        project_ID, manifest_id = manifest_file_id.split(":")[1]
+        if project_id != project_ID:
+            print("WARNING! Manifest file is provided from a different project!")
+    else:
+        manifest_id = manifest_file_id
 
-    data = defaultdict(lambda: defaultdict(set))
-
-    project_id, manifest_id = manifest_file_id.split(":")
-
-    with dxpy.open_dxfile(manifest_id, project=project_id) as f:
+    with dxpy.open_dxfile(manifest_id, project=project_id, mode='r') as f:
         for line in f:
-            sample, clinical_indication, panel, gene = line.strip().split("\t")
-            data[sample]["clinical_indications"].add(clinical_indication)
-            data[sample]["panels"].add(panel)
+            if line.startswith("SP"):
+                record = line.strip().split(",")
+                Instrument_ID = record[1]
+                Specimen_ID = record[0].strip("SP-")
+
+                sample_identifier = "-".join([Instrument_ID, Specimen_ID])
+                clinical_indications = record[-1].split(";")
+                R_codes = list(set([CI for CI in clinical_indications if CI.startswith("R")]))
+                if sample_identifier in data.keys():
+                    data[sample_identifier]["CIs"].append(R_codes)
+                else:
+                    data[sample_identifier] = {"CIs": R_codes}
 
     return data
 
 
-def parse_genepanels(genepanels_file_id):
+def parse_genepanels(genepanels_file_id): # reports
     """ Parse genepanels
 
     Args:
@@ -706,7 +720,7 @@ def gather_samplesheet(): # reports
 
     return sample_sheets[0]["id"]
 
-def find_files(project_name, app_dir, pattern="."):
+def find_files(project_name, app_dir, pattern="."): # reports
     """Searches for files ending in provided pattern (e.g "*bam") in a
     given path that contains the files that are being searched for
     (e.g /output/single/sentieon_output).
