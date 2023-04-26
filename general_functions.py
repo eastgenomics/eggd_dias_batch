@@ -846,7 +846,7 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
     # rpt_out_dir should always be /output/dias_single/dias_reports but in case
     # someone adds a "/" at the end, which I do sometimes
     date, time = get_datetime()
-    job_report = "".join(["report", date, time, ".txt"])
+    job_report = "report_{}_{}.txt".format(date, time)
 
     # get samples for which a cnvreport is expected but the job will not start
     # for reasons other than absence from manifest
