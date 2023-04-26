@@ -7,19 +7,19 @@ import subprocess
 from general_functions import (
     dx_get_project_id,
     dx_get_object_name,
-    format_relative_paths,
+    parse_manifest,
     get_workflow_stage_info,
-    make_app_out_dirs,
-    make_workflow_out_dir,
     get_stage_inputs,
+    make_workflow_out_dir,
+    make_app_out_dirs,
+    find_files,
+    gather_samplesheet,
+    parse_samplesheet,
+    parse_genepanels,
     prepare_batch_writing,
     create_batch_file,
     assess_batch_file,
-    parse_manifest,
-    parse_genepanels,
-    gather_samplesheet,
-    parse_samplesheet,
-    find_files
+    format_relative_paths
 )
 
 
@@ -207,11 +207,9 @@ def run_reports(
     # get the headers and values from the staging inputs
     rpt_headers, rpt_values = prepare_batch_writing(
         sample2stage_input2files_dict, "reports",
-        assay_config.happy_stage_prefix,
-        assay_config.somalier_relate_stage_id,
-        assay_config.athena_stage_id,
-        assay_config.generate_workbook_stage_id,
-        assay_config.rpt_dynamic_files
+        assay_config_athena_stage_id=assay_config.athena_stage_id,
+        assay_config_generate_workbook_stage_id=assay_config.generate_workbook_stage_id,
+        workflow_specificity=assay_config.rpt_dynamic_files
     )
 
     # manually add the headers for reanalysis vcf2xls/generate_bed

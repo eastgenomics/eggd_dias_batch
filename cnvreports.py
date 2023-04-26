@@ -214,11 +214,8 @@ def run_cnvreports(
     # get the headers and values from the staging inputs
     rpt_headers, rpt_values = prepare_batch_writing(
         sample2stage_input2files_dict, "cnvreports",
-        assay_config.happy_stage_prefix,
-        assay_config.somalier_relate_stage_id,
-        "",
-        assay_config.cnv_generate_workbook_stage_id,
-        assay_config.cnv_rpt_dynamic_files
+        assay_config_generate_workbook_stage_id=assay_config.cnv_generate_workbook_stage_id,
+        workflow_specificity=assay_config.cnv_rpt_dynamic_files
     )
 
     # manually add the headers for reanalysis vcf2xls/generate_bed

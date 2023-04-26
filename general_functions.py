@@ -378,10 +378,10 @@ def get_stage_inputs(input_dir, sample_name_list, stage_input_pattern_dict): # r
 
 
 def prepare_batch_writing(
-    stage_input_dict, type_workflow, assay_config_happy_stage_prefix,
-    assay_config_somalier_relate_stage_id,assay_config_athena_stage_id,
-    assay_config_generate_workbook_stage_id, workflow_specificity={}
-):
+    stage_input_dict, type_workflow, assay_config_happy_stage_prefix=None,
+    assay_config_somalier_relate_stage_id=None,assay_config_athena_stage_id=None,
+    assay_config_generate_workbook_stage_id=None, workflow_specificity={}
+): # reports
     """ Return headers and values for the batch file writing
 
     Args:
@@ -399,35 +399,23 @@ def prepare_batch_writing(
     batch_headers = []
     batch_values = []
 
-    for type_input in stage_input_dict:
-        stage_data = stage_input_dict[type_input]
+
+    for sample in stage_input_dict:
+        stage_data = stage_input_dict[sample]
         headers = ["batch ID"]
         values = []
 
-        # multi needs the happy static value
-        if type_workflow == "multi":
-            values.append("multi")
-            # Hap.py - static values
-            headers.append(assay_config_happy_stage_prefix)
-            values.append("NA12878")
-
-        elif type_workflow == "reports" or type_workflow == "cnvreports":
-            # renaming type_input for comprehension in this elif
-            sample_id = type_input
-
-            if sample_id.startswith("NA"):
-                continue
-
-            values.append(sample_id)
+        if type_workflow == "reports" or type_workflow == "cnvreports":
+            values.append(sample)
 
             # get the index for the coverage report that needs to be created
             coverage_reports = find_previous_reports(
-                sample_id, "coverage_report.html"
+                sample, "coverage_report.html"
             )
-            # get the index for the xls report that needs to be created
-            xls_reports = find_previous_reports(sample_id, ".xls*")
-            xls_index = get_next_index(xls_reports)
             coverage_index = get_next_index(coverage_reports)
+            # get the index for the xls report that needs to be created
+            xls_reports = find_previous_reports(sample, ".xls*")
+            xls_index = get_next_index(xls_reports)
 
             index_to_use = max([xls_index, coverage_index])
 
@@ -436,6 +424,8 @@ def prepare_batch_writing(
             if type_workflow != "cnvreports":
                 # add the name param to athena
                 headers.append("{}.name".format(assay_config_athena_stage_id))
+                # add the value of name to athena
+                values.append("{}_{}".format(sample, index_to_use))
 
             # add the name output_prefix to generate_workbooks
             headers.append("{}.output_prefix".format(
@@ -443,12 +433,8 @@ def prepare_batch_writing(
                 )
             )
 
-            if type_workflow != "cnvreports":
-                # add the value of name to athena
-                values.append("{}_{}".format(sample_id, index_to_use))
-
             # add the value of output prefix to generate workbooks
-            values.append("{}_{}".format(sample_id, index_to_use))
+            values.append("{}_{}".format(sample, index_to_use))
 
         # add the dynamic files to the headers and values
         for stage, file_id in workflow_specificity.items():
@@ -490,7 +476,7 @@ def prepare_batch_writing(
         assert len(set(map(len, batch_headers))) == 1, (
             "Sample {} doesn't have the same number of files gathered. "
             "Check if no single jobs failed/fastqs "
-            "for this sample were given".format(type_input)
+            "for this sample were given".format(sample)
         )
 
         # add values for every sample
