@@ -7,7 +7,8 @@ import subprocess
 from general_functions import (
     dx_get_project_id,
     dx_get_object_name,
-    parse_manifest,
+    parse_Epic_manifest,
+    parse_Gemini_manifest,
     get_workflow_stage_info,
     get_stage_inputs,
     make_workflow_out_dir,
@@ -26,18 +27,29 @@ from general_functions import (
 
 # reports
 def run_reports(
-    ss_workflow_out_dir, dry_run, assay_config, assay_id, sample_panel
+    ss_workflow_out_dir, dry_run, assay_config, assay_id,
+    sample_panel=None, reanalysis_file=None
 ):
-    """Collects input files for the reports workflow and sets off jobs
+    """Reads in the manifest file given on the command line and runs the
+    SNV reports workflow.
+
+    Collects input files for the reports workflow and sets off jobs
 
     Args:
-        ss_workflow_out_dir: DNAnexus path to single output directory e.g /output/dias_single or /output/CEN-YYMMDD-HHMM
+        ss_workflow_out_dir: DNAnexus path to single output directory
+            e.g /output/dias_single or /output/CEN-YYMMDD-HHMM
         dry_run: optional flag to set up but not run jobs
         assay_config: contains all the dynamic input file DNAnexus IDs
         assay_id: arg from cmd line what assay this is for
-        sample_panel: DNAnexus file-ID specifying panels for samples
+        sample_panel: DNAnexus file-ID of Epic manifest
+            specifying R_codes or _HGNC IDs
+            to analyse samples with (reports command)
+        reanalysis_file: filename of Gemini manifest
+            specifying clinical indications
+            to analyse samples with (reanalysis command)
     """
 
+    ### Set up environment: make output folders
     # Find project to create jobs and outdirs in
     project_id = dx_get_project_id()
     project_name = dx_get_object_name(project_id)
@@ -61,6 +73,7 @@ def run_reports(
         rpt_workflow_stage_info, rpt_workflow_out_dir
     )
 
+    ### Identify samples to run reports workflow for
     # Gather samples from SampleSheet.csv
     sample_sheet_ID = gather_samplesheet()
     samplesheet_sample_names = parse_samplesheet(sample_sheet_ID)
@@ -70,52 +83,108 @@ def run_reports(
     single_sample_vfcs = find_files(project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'")
     single_sample_names = [str(x).split('_')[0] for x in single_sample_vfcs]
 
-    # Gather samples from the manifest file (command line input file-ID)
-    ## manifest_data is a {sample: [R, codes]} dict
-    manifest_data = parse_manifest(project_id, sample_panel)
-    manifest_samples = manifest_data.keys() # list of tuples
-
-    # Collate list of sample names that are available in all 3 lists:
-    sample_name_list = []
     # Keep the samplesheet samples that have a VCF
     available_samples = set(single_sample_names).intersection(samplesheet_sample_names)
-    # manifest list only has partial sample names/identifiers
-    for sample in available_samples:
-        Instrument_ID = sample.split('-')[0]
-        Specimen_ID = sample.split('-')[1]
-        partial_identifier = "-".join([Instrument_ID, Specimen_ID])
-        if partial_identifier in manifest_samples:
-                sample_name_list.append(sample)
-                manifest_data[partial_identifier]["sample"] = sample
 
-    # With the relevant samples identified, parse the R codes they were booked
-    sample2Rcodes_dict = dict(
-        (sample_CI["sample"], sample_CI["CIs"]) for sample_CI 
-            in manifest_data.values() if "sample" in sample_CI.keys()
-    )
+    ### Identify panels and clinical indications for each sample
+    # Placeholder for list of sample names that are available in all 3 lists:
+    # ie SampleSheet, Sentieon VCF and present in manifest (see below)
+    sample_name_list = []
+    # Placeholder dict for gene_panels and clinical indications
+    # based on R code from manifest (see below)
+    sample2CIpanel_dict = {}
 
     # Load genepanels information
     genepanels_data = parse_genepanels(assay_config.genepanels_file)
 
-    # Get gene panels based on R code from manifest
-    sample2CIpanel_dict = {}
-    for sample, R_codes in sample2Rcodes_dict.items():
-        CIs = []
-        panels = []
-        for R_code in R_codes:
-            if R_code.startswith("_"):
-                CIs.append(R_code)
-                panels.append(R_code)
-            else:
-                clinical_indication = next(
-                    (key for key in genepanels_data if key.startswith(R_code)),
-                    None)
-                CIs.append(clinical_indication)
-                panels.extend(list(genepanels_data[clinical_indication]))
-        sample2CIpanel_dict[sample] = {
-            "clinical_indications": CIs,
-            "panels": panels
-        }
+    ## Based on the command arg input, identify samples and panels from the
+    ## Epic or Gemini-style manifest file
+    if sample_panel is not None:
+        print("reports with Epic")
+        # Gather samples from the Epic manifest file (command line input file-ID)
+        ## manifest_data is a {sample: {CIs: []}} dict
+        manifest_data = parse_Epic_manifest(project_id, sample_panel)
+        manifest_samples = manifest_data.keys() # list of tuples
+
+        # manifest file only has partial sample names/identifiers
+        for sample in available_samples:
+            Instrument_ID = sample.split('-')[0]
+            Specimen_ID = sample.split('-')[1]
+            partial_identifier = "-".join([Instrument_ID, Specimen_ID])
+            if partial_identifier in manifest_samples:
+                    sample_name_list.append(sample)
+                    manifest_data[partial_identifier]["sample"] = sample
+
+        # With the relevant samples identified,
+        # parse the clinical indications (R code or HGNC) they were booked for
+        sample2Rcodes_dict = dict(
+            (sample_CI["sample"], sample_CI["CIs"]) for sample_CI 
+                in manifest_data.values() if "sample" in sample_CI.keys()
+        )
+
+        # Get gene panels based on R code from manifest
+        for sample, R_codes in sample2Rcodes_dict.items():
+            CIs = []
+            panels = []
+            for R_code in R_codes:
+                if R_code.startswith("_"):
+                    CIs.append(R_code)
+                    panels.append(R_code)
+                else:
+                    clinical_indication = next(
+                        (key for key in genepanels_data if key.startswith(R_code)),
+                        None)
+                    CIs.append(clinical_indication)
+                    panels.extend(list(genepanels_data[clinical_indication]))
+            sample2CIpanel_dict[sample] = {
+                "clinical_indications": CIs,
+                "panels": panels
+            }
+        print(sample2CIpanel_dict)
+
+    elif reanalysis_file is not None:
+        print("reanalysis with Gemini")
+        # Gather samples from the Gemini manifest file (command line input filename)
+        ## manifest_data is a {sample: {CIs: []}} dict
+        # parse reanalysis file into 
+        manifest_data = parse_Gemini_manifest(reanalysis_file)
+        manifest_samples = manifest_data.keys() # list of tuples
+
+        # manifest file only has partial sample names/identifiers
+        for sample in available_samples:
+            partial_identifier = sample.split('-')[0] # X number
+            if partial_identifier in manifest_samples:
+                    sample_name_list.append(sample)
+                    manifest_data[partial_identifier]["sample"] = sample
+
+        # With the relevant samples identified, parse the R codes they were booked
+        sample2Rcodes_dict = dict(
+            (sample_CI["sample"], sample_CI["CIs"]) for sample_CI 
+                in manifest_data.values() if "sample" in sample_CI.keys()
+        )
+
+        # Get gene panels based on R code from manifest
+        for sample, R_codes in sample2Rcodes_dict.items():
+            CIs = []
+            panels = []
+            for R_code in R_codes:
+                if R_code.startswith("_"):
+                    CIs.append(R_code)
+                    panels.append(R_code)
+                else:
+                    clinical_indication = next(
+                        (key for key in genepanels_data if key.startswith(R_code)),
+                        None)
+                    CIs.append(clinical_indication)
+                    panels.extend(list(genepanels_data[clinical_indication]))
+            sample2CIpanel_dict[sample] = {
+                "clinical_indications": CIs,
+                "panels": panels
+            }
+        print(sample2CIpanel_dict)
+
+    else:
+        assert sample_panel or reanalysis_file, "No file was provided with sample & panel information"
 
     # Gather sample-specific input file IDs based on the given app-pattern
     sample2stage_input2files_dict = get_stage_inputs(
