@@ -14,12 +14,12 @@ import imp
 import os
 
 from general_functions import get_latest_config
-from single_workflow import run_ss_workflow
-from multi_workflow import run_ms_workflow
-from multiqc import run_multiqc_app
+# from single_workflow import run_ss_workflow
+# from multi_workflow import run_ms_workflow
+# from multiqc import run_multiqc_app
 from cnvcalling import run_cnvcall_app
-from reports import run_reports, run_reanalysis
-from cnvreports import run_cnvreports, run_cnvreanalysis
+from reports import run_reports
+from cnvreports import run_cnvreports
 
 
 ASSAY_OPTIONS = {
@@ -31,14 +31,14 @@ ASSAY_OPTIONS = {
 
 
 SUBCOMMAND_OPTIONS = {
-    "single": run_ss_workflow,
-    "multi": run_ms_workflow,
-    "qc": run_multiqc_app,
+    # "single": run_ss_workflow,
+    # "multi": run_ms_workflow,
+    # "qc": run_multiqc_app,
     "cnvcall": run_cnvcall_app,
     "reports": run_reports,
-    "reanalysis": run_reanalysis,
-    "cnvreports": run_cnvreports,
-    "cnvreanalysis": run_cnvreanalysis
+    # "reanalysis": run_reanalysis,
+    "cnvreports": run_cnvreports
+    # "cnvreanalysis": run_cnvreanalysis
 }
 
 
@@ -67,28 +67,28 @@ def parse_CLI_args(): # -> argparse.Namespace:
         "-c", "--config", help="Config file to overwrite the assay setup"
     )
 
-    # Parsing command line args for single sample workflow
-    parser_s = subparsers.add_parser('single', help='single help')
-    parser_s.add_argument(
-        'input_dir', type=str, help='A sequencing data (FASTQ) directory path'
-    )
-    parser_s.set_defaults(which='single')
+    # # Parsing command line args for single sample workflow
+    # parser_s = subparsers.add_parser('single', help='single help')
+    # parser_s.add_argument(
+    #     'input_dir', type=str, help='A sequencing data (FASTQ) directory path'
+    # )
+    # parser_s.set_defaults(which='single')
 
-    # Parsing command line args for multi sample workflow
-    parser_m = subparsers.add_parser('multi', help='multi help')
-    parser_m.add_argument(
-        'input_dir', type=str,
-        help='A single sample workflow output directory path'
-    )
-    parser_m.set_defaults(which='multi')
+    # # Parsing command line args for multi sample workflow
+    # parser_m = subparsers.add_parser('multi', help='multi help')
+    # parser_m.add_argument(
+    #     'input_dir', type=str,
+    #     help='A single sample workflow output directory path'
+    # )
+    # parser_m.set_defaults(which='multi')
 
-    # Parsing command line args for run QC
-    parser_q = subparsers.add_parser('qc', help='multiqc help')
-    parser_q.add_argument(
-        'input_dir', type=str,
-        help='A multi sample workflow output directory path'
-    )
-    parser_q.set_defaults(which='qc')
+    # # Parsing command line args for run QC
+    # parser_q = subparsers.add_parser('qc', help='multiqc help')
+    # parser_q.add_argument(
+    #     'input_dir', type=str,
+    #     help='A multi sample workflow output directory path'
+    # )
+    # parser_q.set_defaults(which='qc')
 
     # Parsing command line args for run-level CNV calling
     parser_n = subparsers.add_parser('cnvcall', help='cnvcall help')
