@@ -443,28 +443,28 @@ def prepare_batch_writing(
 
         # For each stage add the column header and the values in that column
         for stage_input in stage_data:
-            if len(stage_data[stage_input]["file_list"]) == 0:
+            if len(stage_data[stage_input]) == 0:
                 continue
 
             headers.append(stage_input)  # col for file name
             headers.append(" ".join([stage_input, "ID"]))  # col for file ID
 
             # One file in file list - no need to merge into array
-            if len(stage_data[stage_input]["file_list"]) == 1:
+            if len(stage_data[stage_input]) == 1:
                 if "{}".format(assay_config_somalier_relate_stage_id) in stage_input:
-                    file_ids = stage_data[stage_input]["file_list"]
+                    file_ids = stage_data[stage_input]
                 else:
-                    file_ids = stage_data[stage_input]["file_list"][0]
+                    file_ids = stage_data[stage_input][0]
 
                 values.append("")  # No need to provide file name in batch file
                 values.append(file_ids)
 
             # make a square bracketed comma separated list if multiple input files
-            elif len(stage_data[stage_input]["file_list"]) > 1:
+            elif len(stage_data[stage_input]) > 1:
                 # Square bracketed csv list
                 file_id_list = [
                     file_id
-                    for file_id in stage_data[stage_input]["file_list"]
+                    for file_id in stage_data[stage_input]
                 ]
                 file_ids = "[{file_ids}]".format(file_ids=",".join(file_id_list))
                 values.append("")  # No need to provide file name in batch file
