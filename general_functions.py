@@ -12,15 +12,16 @@ from packaging import version
 # Generic functions
 
 
-def get_date():
+def get_datetime():
     """ Get the date in YYMMDD format
 
     Returns:
         str: String of date in YYMMDD format
     """
 
-    date = datetime.datetime.now()
-    return date.strftime("%y%m%d")
+    date = datetime.datetime.now().strftime("%y%m%d")
+    time = datetime.datetime.now().strftime("%H%M")
+    return date, time
 
 
 def dx_make_workflow_dir(dx_dir_path):
@@ -320,7 +321,7 @@ def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"): #
     workflow_dir = "{}{}".format(workflow_out_dir, workflow_name)
 
     workflow_output_dir_pattern = "{workflow_dir}-{assay}-{date}-{index}/"
-    date = get_date()
+    date, time = get_datetime()
 
     # when creating the new folder, check if the folder already exists
     # increment index until it works or reaches 100
@@ -802,7 +803,7 @@ def make_app_output_dir(app_id, ss_workflow_out_dir, app_name, assay_id):
     app_version = str(dxpy.describe(app_id)['version'])
 
     app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
-    date = get_date()
+    date, time = get_datetime()
 
     # when creating the new folder, check if the folder already exists
     # increment index until it works or reaches 100
@@ -844,12 +845,8 @@ def create_job_reports(rpt_out_dir, all_samples, job_dict):
 
     # rpt_out_dir should always be /output/dias_single/dias_reports but in case
     # someone adds a "/" at the end, which I do sometimes
-    name_file = [
-        ele for ele in rpt_out_dir.split('/') if ele.startswith("dias_cnvreports")
-    ]
-    # there should only be one ele in name_file
-    assert len(name_file) == 1, "cnvreports output directory '{}' contains nested dias_cnvreports".format(rpt_out_dir)
-    job_report = "{}.txt".format(name_file[0])
+    date, time = get_datetime()
+    job_report = "".join(["report", date, time, ".txt"])
 
     # get samples for which a cnvreport is expected but the job will not start
     # for reasons other than absence from manifest
