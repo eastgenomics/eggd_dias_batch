@@ -364,9 +364,13 @@ def get_stage_inputs(input_dir, sample_name_list, stage_input_pattern_dict): # r
         sample2stage_input2files_dict[sample] = {}
         # find the inputs for each stage using given app/pattern
         for stage_input, stage_input_info in stage_input_pattern_dict.items():
-            input_app_dir = find_app_dir(
-                input_dir, stage_input_info["app"]
-            )
+            if len(input_dir.split("/")) < 3:
+                input_app_dir = find_app_dir(
+                    input_dir, stage_input_info["app"]
+                )
+            else:
+                input_app_dir = input_dir
+
             inputs = get_stage_input_file_list(
                 input_app_dir,
                 app_subdir=stage_input_info["subdir"],

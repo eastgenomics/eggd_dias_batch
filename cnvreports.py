@@ -126,7 +126,7 @@ def run_cnvreports(
     # split the input directory path up to dias_single outdir path
     ss_workflow_out_dir = cnv_calling_out_dir.rsplit("/",2)[0] + "/"
     # need to ensure that the cnv calling app dir is in the dir name
-    if 'GATKgCNV_call' not in cnv_calling_out_dir:
+    if 'CNV' not in cnv_calling_out_dir:
         raise AssertionError("Directory path requires cnv calling app directory")
 
     # Create workflow output folder named after workflow and config used
@@ -200,7 +200,7 @@ def run_cnvreports(
 
     # Gather sample-specific input file IDs based on the given app-pattern
     sample2stage_input2files_dict = get_stage_inputs(
-        ss_workflow_out_dir, sample_name_list, assay_config.cnv_rpt_stage_input_dict
+        cnv_calling_out_dir, sample_name_list, assay_config.cnv_rpt_stage_input_dict
     )
 
     # list that is going to represent the header in the batch tsv file
