@@ -212,16 +212,15 @@ def run_reports(
         workflow_specificity=assay_config.rpt_dynamic_files
     )
 
-    # manually add the headers for reanalysis vcf2xls/generate_bed
-    # rea_headers contains the headers for the batch file
+    # manually add the headers for panel/clinical_indication inputs
     for header in rpt_headers:
         new_headers = [field for field in header]
-        new_headers.append(
-            "{}.clinical_indication".format(assay_config.generate_workbook_stage_id)
-        )
-        new_headers.append(
+        new_headers.extend([
+            "{}.clinical_indication".format(assay_config.generate_workbook_stage_id),
+            "{}.panel".format(assay_config.generate_bed_vep_stage_id),
+            "{}.panel".format(assay_config.generate_bed_athena_stage_id),
             "{}.panel".format(assay_config.generate_workbook_stage_id)
-        )
+        ])
         headers.append(tuple(new_headers))
 
     for line in rpt_values:
@@ -229,9 +228,9 @@ def run_reports(
         # the prepare_batch_writing function
         sample_id = line[0]
 
-        if sample_id in manifest_data:
-            cis = manifest_data[sample_id]["clinical_indications"]
-            panels = manifest_data[sample_id]["panels"]
+        if sample_id in sample2CIpanel_dict:
+            CIs = sample2CIpanel_dict[sample_id]["clinical_indications"]
+            panels = sample2CIpanel_dict[sample_id]["panels"]
 
             # get single genes with the sample
             single_genes = [
@@ -247,17 +246,16 @@ def run_reports(
                 # something is going on and needs checking
                 if not all(symbols):
                     job_dict["symbols"].append(
-                        (sample_id, ";".join(cis))
+                        (sample_id, ";".join(CIs))
                     )
                     continue
 
             job_dict["starting"].append(sample_id)
-            # join up potential lists of cis and panels to align the batch
+            # join up potential lists of CIs and panels to align the batch
             # file properly
-            cis = ";".join(cis)
+            cis = ";".join(CIs)
             panels = ";".join(panels)
-            line.append(cis)
-            line.append(panels)
+            line.extend([cis, cis, cis, panels])
             values.append(line)
         else:
             job_dict["missing_from_manifest"].append(sample_id)
@@ -272,7 +270,7 @@ def run_reports(
 
     args = ""
     args += "-i{}.flank={} ".format(
-        assay_config.generate_bed_vep_stage_id, assay_config.xlsx_flanks
+        assay_config.generate_bed_vep_stage_id, assay_config.vep_bed_flank
     )
 
     args += "-i{}.config_file={} ".format(
@@ -324,6 +322,6 @@ def run_reports(
         delete_folders_cmd = "dx rm -r {}".format(rpt_workflow_out_dir)
         subprocess.call(delete_folders_cmd, shell=True)
     else:
-        subprocess.call(command, shell=True)
+        subprocess.call(final_command, shell=True)
 
     return rpt_workflow_out_dir
