@@ -1,5 +1,5 @@
 assay_name = "CEN" # Core Endo Neuro
-assay_version = "EPICreports_v2"
+assay_version = "EPICreports_v3"
 
 ref_project_id = "project-Fkb6Gkj433GVVvj73J7x8KbV"
 
@@ -73,3 +73,62 @@ rpt_stage_input_dict = {
         "pattern": "-E '{}(.*)(per-base.bed.gz$|reference)'"
     },
 }
+
+# CNV Reports
+
+# dias_cnvreports
+# vx.y.z
+cnv_rpt_workflow_id =  "{}:workflow-GJk5VXQ433GbPgPY4gGY262z".format(ref_project_id)
+
+cnv_generate_bed_excluded_stage_id = "stage-GFZQB7Q4qq8X6yjKG2pFQ58x"
+cnv_annotate_excluded_regions_stage_id = "stage-GG1qYz84qq8yKzF1J2X48q62"
+cnv_generate_bed_vep_stage_id = "stage-GG39Gq04qq8ZkfgV31yQy93v"
+cnv_vep_stage_id = "stage-GFYvJF04qq8VKgq34j30pZZ3"
+cnv_generate_workbook_stage_id = "stage-GFfYY9j4qq8ZxpFpP8zKG7G0"
+
+cnv_vep_config =  "{}:file-GGkJqk84GVVGqG6VFz60gkFF".format(ref_project_id)
+additional_regions = "{}:file-GJZQvg0433GkyFZg13K6VV6p".format(ref_project_id)
+
+cnv_rpt_stage_input_dict = {
+    # vep
+    # subdirectories always require the backward dash
+    "{}.vcf".format(cnv_vep_stage_id): {
+        "app": "eggd_GATKgCNV_call", "subdir": "CNV_vcfs/",
+        "pattern": "-E '{}(.*)_segments.vcf$'"
+    },
+    # excluded_annotate
+    # subdirectories always require the backward dash
+    "{}.excluded_regions".format(cnv_annotate_excluded_regions_stage_id): {
+        "app": "eggd_GATKgCNV_call", "subdir": "CNV_summary/",
+        "pattern": "-E '(.*)_excluded_intervals.bed$'"
+    },
+}
+
+cnv_rpt_dynamic_files = {
+    # inputs for generate bed for vep
+    "{}.exons_nirvana ID".format(cnv_generate_bed_vep_stage_id): exons_nirvana,
+    "{}.exons_nirvana".format(cnv_generate_bed_vep_stage_id): "",
+    "{}.nirvana_genes2transcripts ID".format(cnv_generate_bed_vep_stage_id): genes2transcripts,
+    "{}.nirvana_genes2transcripts".format(cnv_generate_bed_vep_stage_id): "",
+    "{}.gene_panels ID".format(cnv_generate_bed_vep_stage_id): genepanels_file,
+    "{}.gene_panels".format(cnv_generate_bed_vep_stage_id): "",
+    "{}.additional_regions ID".format(cnv_generate_bed_vep_stage_id): additional_regions,
+    "{}.additional_regions".format(cnv_generate_bed_vep_stage_id): "",
+    # inputs for generate bed for excluded app
+    "{}.exons_nirvana ID".format(cnv_generate_bed_excluded_stage_id): exons_nirvana,
+    "{}.exons_nirvana".format(cnv_generate_bed_excluded_stage_id): "",
+    "{}.nirvana_genes2transcripts ID".format(cnv_generate_bed_excluded_stage_id): genes2transcripts,
+    "{}.nirvana_genes2transcripts".format(cnv_generate_bed_excluded_stage_id): "",
+    "{}.gene_panels ID".format(cnv_generate_bed_excluded_stage_id): genepanels_file,
+    "{}.gene_panels".format(cnv_generate_bed_excluded_stage_id): "",
+    "{}.additional_regions ID".format(cnv_generate_bed_excluded_stage_id): additional_regions,
+    "{}.additional_regions".format(cnv_generate_bed_excluded_stage_id): "",
+    # inputs for excluded app
+    "{}.cds_hgnc ID".format(cnv_annotate_excluded_regions_stage_id): exons_nirvana,
+    "{}.cds_hgnc".format(cnv_annotate_excluded_regions_stage_id): "",
+    "{}.cds_gene ID".format(cnv_annotate_excluded_regions_stage_id): exons_file,
+    "{}.cds_gene".format(cnv_annotate_excluded_regions_stage_id): "",
+    "{}.additional_regions ID".format(cnv_annotate_excluded_regions_stage_id): additional_regions,
+    "{}.additional_regions".format(cnv_annotate_excluded_regions_stage_id): ""
+}
+
