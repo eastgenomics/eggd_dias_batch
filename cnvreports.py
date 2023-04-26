@@ -147,7 +147,6 @@ def run_cnvreports(
                 "clinical_indications": CIs,
                 "panels": panels
             }
-        print(sample2CIpanel_dict)
 
     elif reanalysis_file is not None:
         print("cnvreanalysis with Gemini")
@@ -188,7 +187,6 @@ def run_cnvreports(
                 "clinical_indications": CIs,
                 "panels": panels
             }
-        print(sample2CIpanel_dict)
 
     else:
         assert sample_panel or reanalysis_file, "No file was provided with sample & panel information"
@@ -267,8 +265,6 @@ def run_cnvreports(
 
     print("Created and uploaded job report file: {}".format(report_file))
 
-    print(headers)
-    print(values)
     rpt_batch_file = create_batch_file(headers, values)
 
     args = ""

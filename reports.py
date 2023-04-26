@@ -140,7 +140,6 @@ def run_reports(
                 "clinical_indications": CIs,
                 "panels": panels
             }
-        print(sample2CIpanel_dict)
 
     elif reanalysis_file is not None:
         print("reanalysis with Gemini")
@@ -181,7 +180,6 @@ def run_reports(
                 "clinical_indications": CIs,
                 "panels": panels
             }
-        print(sample2CIpanel_dict)
 
     else:
         assert sample_panel or reanalysis_file, "No file was provided with sample & panel information"
