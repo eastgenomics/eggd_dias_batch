@@ -204,10 +204,6 @@ def run_cnvreports(
         assay_config.cnv_generate_bed_vep_stage_id, assay_config.vep_bed_flank
     )
 
-    args += "-i{}.config_file={} ".format(
-        assay_config.cnv_vep_stage_id, assay_config.cnv_vep_config
-    )
-
     if assay_config.assay_name == "TWE":
         args += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
 
