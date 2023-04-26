@@ -18,8 +18,8 @@ from general_functions import get_latest_config
 # from multi_workflow import run_ms_workflow
 # from multiqc import run_multiqc_app
 from cnvcalling import run_cnvcall_app
-from reports import run_reports, run_reanalysis
-from cnvreports import run_cnvreports, run_cnvreanalysis
+from reports import run_reports
+from cnvreports import run_cnvreports
 
 
 ASSAY_OPTIONS = {
@@ -36,9 +36,9 @@ SUBCOMMAND_OPTIONS = {
     # "qc": run_multiqc_app,
     "cnvcall": run_cnvcall_app,
     "reports": run_reports,
-    "reanalysis": run_reanalysis,
+    "reanalysis": run_reports,
     "cnvreports": run_cnvreports,
-    "cnvreanalysis": run_cnvreanalysis
+    "cnvreanalysis": run_cnvreports
 }
 
 
@@ -239,22 +239,22 @@ def main():
     elif subcommand == "reports":
         reports_out_dir = run_reports(
             args.input_dir, args.dry_run, config, assay_id,
-            args.sample_panel
+            sample_panel = args.sample_panel
         )
     elif subcommand == "reanalysis":
-        reports_out_dir = run_reanalysis(
+        reports_out_dir = run_reports(
             args.input_dir, args.dry_run, config, assay_id,
-            args.reanalysis_list
+            reanalysis_file = args.reanalysis_list
         )
     elif subcommand == "cnvreports":
         cnvreports_out_dir = run_cnvreports(
             args.input_dir, args.dry_run, config, assay_id,
-            args.sample_panel
+            sample_panel = args.sample_panel
         )
     elif subcommand == "cnvreanalysis":
-        cnv_reports_out_dir = run_cnvreanalysis(
+        cnv_reports_out_dir = run_cnvreports(
             args.input_dir, args.dry_run, config, assay_id,
-            args.cnvreanalysis_list
+            reanalysis_file = args.cnvreanalysis_list
         )
     else:
         SUBCOMMAND_OPTIONS[subcommand](
