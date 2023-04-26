@@ -24,7 +24,24 @@ exons_file = "{}:file-GF611Z8433Gf99pBPbJkV7bq".format(ref_project_id)
 vep_config = "{}:file-GQ2yZ7j45fVVVBJ86XBfz4x6".format(ref_project_id)
 
 
-### Workflows
+### Apps and workflows:
+
+# GATKgCNV_call
+# v1.0.1
+cnvcall_app_id = "app-GJZVB2840KK0kxX998QjgXF0"
+
+cnvcalling_fixed_inputs = {
+    # GATK Docker image tar
+    "gatk_docker": "{}:file-GBBP9JQ433GxV97xBpQkzYZx".format(ref_project_id),
+    # CEN intervals for CNV calling and its annotation
+    "interval_list": "{}:file-GFPxzKj4V50pJX3F4vV58yyg".format(ref_project_id),
+    "annotation_tsv": "{}:file-GFPxzPQ4V50z4pv230p82G0q".format(ref_project_id),
+}
+
+cnvcalling_input_dict = {
+    "app": "sentieon-dnaseq",
+    "patterns": ["-E '(.*).bam$'", "-E '(.*).bai$'"]
+}
 
 # dias_reports
 # v2.0.4
@@ -73,8 +90,6 @@ rpt_stage_input_dict = {
         "pattern": "-E '{}(.*)(per-base.bed.gz$|reference)'"
     },
 }
-
-# CNV Reports
 
 # dias_cnvreports
 # vx.y.z
