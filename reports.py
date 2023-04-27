@@ -277,12 +277,12 @@ def run_reports(
     command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
         assay_config.rpt_workflow_id, rpt_batch_file
     )
-    command += "-i{}.flank={} ".format(
+    command += " -i{}.flank={} ".format(
         assay_config.generate_bed_vep_stage_id, assay_config.vep_bed_flank
     )
 
     if assay_config.assay_name == "TWE":
-        command += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
+        command += " -i{}.buffer_size=1000".format(assay_config.vep_stage_id)
 
     # assign stage out folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)

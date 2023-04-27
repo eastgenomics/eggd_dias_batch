@@ -281,12 +281,12 @@ def run_cnvreports(
     command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
         assay_config.cnv_rpt_workflow_id, rpt_batch_file
     )
-    command += "-i{}.flank={} ".format(
+    command += " -i{}.flank={} ".format(
         assay_config.cnv_generate_bed_vep_stage_id, assay_config.vep_bed_flank
     )
 
     if assay_config.assay_name == "TWE":
-        command += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
+        command += " -i{}.buffer_size=1000".format(assay_config.vep_stage_id)
 
     # assign stage out folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
@@ -302,7 +302,7 @@ def run_cnvreports(
         )
         print("Inputs gathered:")
         print(json.dumps(sample2stage_input2files_dict, indent=4))
-        print("Final cmd: {}".format(fcommand))
+        print("Final cmd: {}".format(command))
         print("Deleting '{}' as part of the dry-run".format(rpt_workflow_out_dir))
         delete_folders_cmd = "dx rm -r {}".format(rpt_workflow_out_dir)
         subprocess.call(delete_folders_cmd, shell=True)
