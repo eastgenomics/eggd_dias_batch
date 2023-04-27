@@ -80,8 +80,10 @@ def run_reports(
 
     # Gather sample names that have a Sentieon VCF generated
     ## current pattern picks up both "normal" and "genomic" VCFs
-    single_sample_vfcs = find_files(project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'")
-    single_sample_names = [str(x).split('_')[0] for x in single_sample_vfcs]
+    single_sample_vcfs = find_files(
+        project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'"
+    )
+    single_sample_names = [str(x).split('_')[0] for x in single_sample_vcfs]
 
     # Keep the samplesheet samples that have a VCF
     available_samples = set(single_sample_names).intersection(samplesheet_sample_names)
@@ -189,10 +191,9 @@ def run_reports(
         ss_workflow_out_dir, sample_name_list, assay_config.rpt_stage_input_dict
     )
 
-    # list that is going to represent the header in the batch tsv file
+    # list to represent the header row in the batch.tsv file
     headers = []
-    # list that is going to represent the lines for each sample in the batch
-    # tsv file
+    # list to represent the rows/lines for each sample in the batch.tsv file
     values = []
 
     job_dict = {"starting": [], "missing_from_manifest": [], "symbols": []}
@@ -260,57 +261,48 @@ def run_reports(
     print("Created and uploaded job report file: {}".format(report_file))
 
     rpt_batch_file = create_batch_file(headers, values)
+    # Check batch file is correct every time
+    check_batch_file = assess_batch_file(rpt_batch_file)
 
-    args = ""
-    args += "-i{}.flank={} ".format(
+    if check_batch_file is True:
+        print(
+            "Format of the file is correct: {}".format(rpt_batch_file)
+        )
+    else:
+        print((
+            "Number of columns in header doesn't match "
+            "number of columns in values at line {}".format(check_batch_file)
+        ))
+
+    command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
+        assay_config.rpt_workflow_id, rpt_batch_file
+    )
+    command += "-i{}.flank={} ".format(
         assay_config.generate_bed_vep_stage_id, assay_config.vep_bed_flank
     )
 
     if assay_config.assay_name == "TWE":
-        args += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
-
-    command = "dx run -y --rerun-stage '*' {} {} --batch-tsv={}".format(
-        assay_config.rpt_workflow_id, args, rpt_batch_file
-    )
+        command += "-i{}.buffer_size=1000".format(assay_config.vep_stage_id)
 
     # assign stage out folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
-    destination = " --destination={} ".format(rpt_workflow_out_dir)
-
-    final_command = " ".join([command, app_relative_paths, destination])
+    command += " --destination={} {} ".format(
+        rpt_workflow_out_dir, app_relative_paths
+    )
 
     if dry_run:
-        print("Created workflow dir: {}".format(rpt_workflow_out_dir))
-        print("Stage info:")
-        print(json.dumps(
-            OrderedDict(sorted(rpt_workflow_stage_info.iteritems())), indent=2)
-        )
-        print("Inputs gathered:")
-        print(json.dumps(sample2stage_input2files_dict, indent=4))
-        print("Created apps out dir: {}")
+        print("Created workflow out dir: {}".format(rpt_workflow_out_dir))
+        print("Created stage out dirs: ")
         print(json.dumps(
             OrderedDict(sorted(rpt_output_dirs.iteritems())), indent=4)
         )
-        print("Created batch tsv: {}".format(rpt_batch_file))
-
-        check_batch_file = assess_batch_file(rpt_batch_file)
-
-        if check_batch_file is True:
-            print(
-                "{}: Format of the file is correct".format(rpt_batch_file)
-            )
-        else:
-            print((
-                "Number of columns in header doesn't match "
-                "nb of columns in values at line {}".format(check_batch_file)
-            ))
-
-        print("Stage output dirs: {}".format(app_relative_paths))
-        print("Final cmd: {}".format(final_command))
+        print("Inputs gathered:")
+        print(json.dumps(sample2stage_input2files_dict, indent=4))
+        print("Final cmd: {}".format(command))
         print("Deleting '{}' as part of the dry-run".format(rpt_workflow_out_dir))
         delete_folders_cmd = "dx rm -r {}".format(rpt_workflow_out_dir)
         subprocess.call(delete_folders_cmd, shell=True)
     else:
-        subprocess.call(final_command, shell=True)
+        subprocess.call(command, shell=True)
 
     return rpt_workflow_out_dir
