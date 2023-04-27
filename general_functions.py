@@ -365,7 +365,10 @@ def get_stage_inputs(input_dir, sample_name_list, stage_input_pattern_dict): # r
         sample2stage_input2files_dict[sample] = {}
         # find the inputs for each stage using given app/pattern
         for stage_input, stage_input_info in stage_input_pattern_dict.items():
-            if len(input_dir.split("/")) < 3:
+            # example input_dir for reports: /output/CEN-230420_1847/
+            # example input_dir for cnvreports:
+            # /output/CEN-230420_1847/eggd_GATKgCNV_call_v1.0.1-CUSTOM_CONFIG_CEN_EPICreports_v3-230426-1/
+            if len(input_dir.split("/")) < 5:
                 input_app_dir = find_app_dir(
                     input_dir, stage_input_info["app"]
                 )
