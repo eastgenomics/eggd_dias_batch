@@ -112,7 +112,7 @@ def parse_CLI_args(): # -> argparse.Namespace:
         help='A single sample workflow output directory path'
     )
     parser_r.add_argument(
-        'sample_panel', type=str, nargs="?",
+        'sample_ID_Rcode', type=str, nargs="?",
         help=(
             'DNAnexus file-ID of a csv file containing samples and '
             ' clinical indications for SNV report generation'
@@ -128,7 +128,7 @@ def parse_CLI_args(): # -> argparse.Namespace:
         help='A single sample workflow output directory path'
     )
     parser_r.add_argument(
-        'reanalysis_list', type=str,
+        'sample_X_panel', type=str,
         help=(
             'Tab delimited file containing sample and panel for reanalysis'
             '. One sample/panel combination per line'
@@ -143,7 +143,7 @@ def parse_CLI_args(): # -> argparse.Namespace:
         help='A CNV calling output directory path'
     )
     parser_cr.add_argument(
-        'sample_panel', type=str, nargs="?",
+        'cnvsample_ID_Rcode', type=str, nargs="?",
         help=(
             'DNAnexus file-ID of a csv file containing samples and '
             ' clinical indications for CNV report generation'
@@ -159,7 +159,7 @@ def parse_CLI_args(): # -> argparse.Namespace:
         help='A CNV calling output directory path'
     )
     parser_cr.add_argument(
-        'cnvreanalysis_list', type=str,
+        'cnvsample_X_panel', type=str,
         help=(
             'Tab delimited file containing sample and panel for cnvreanalysis'
             '. One sample/panel combination per line'
@@ -239,22 +239,22 @@ def main():
     elif subcommand == "reports":
         reports_out_dir = run_reports(
             args.input_dir, args.dry_run, config, assay_id,
-            sample_panel = args.sample_panel
+            sample_ID_Rcode = args.sample_ID_Rcode
         )
     elif subcommand == "reanalysis":
         reports_out_dir = run_reports(
             args.input_dir, args.dry_run, config, assay_id,
-            reanalysis_file = args.reanalysis_list
+            sample_X_panel = args.sample_X_panel
         )
     elif subcommand == "cnvreports":
         cnvreports_out_dir = run_cnvreports(
             args.input_dir, args.dry_run, config, assay_id,
-            sample_panel = args.sample_panel
+            sample_ID_Rcode = args.cnvsample_ID_Rcode
         )
     elif subcommand == "cnvreanalysis":
         cnv_reports_out_dir = run_cnvreports(
             args.input_dir, args.dry_run, config, assay_id,
-            reanalysis_file = args.cnvreanalysis_list
+            sample_X_panel = args.cnvsample_X_panel
         )
     else:
         SUBCOMMAND_OPTIONS[subcommand](
