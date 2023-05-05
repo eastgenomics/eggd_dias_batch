@@ -131,7 +131,7 @@ def run_cnvreports(
                     panels.append(R_code)
                 else:
                     clinical_indication = next(
-                        (key for key in CI2panels_dict.keys() if key.startswith(R_code)),
+                        (key for key in CI2panels_dict.keys() if key.split("_")[0] == R_code),
                         None)
                     CIs.append(clinical_indication)
                     panels.extend(list(CI2panels_dict[clinical_indication]))
