@@ -269,39 +269,6 @@ def dx_get_object_name(object_id):
         return None
 
 
-def parse_samplesheet(sample_sheet_ID): # reports
-    """ Return list of samples from the sample sheet
-
-    Args:
-        sample_sheet_ID (str): DNAnexus file-ID of the SampleSheet
-
-    Returns:
-        list: List of sample names
-    """
-
-    sample_names = []
-    cmd = "dx cat {}".format(sample_sheet_ID)
-    # Stream content of the SampleSheet from DNAnexus
-    sample_sheet_content = subprocess.check_output(cmd, shell=True)
-    # Split content into non-empty lines
-    lines = sample_sheet_content.split("\n")[:-1]
-
-    data = False
-
-    # Loop over lines and parse sample ID/names
-    for line in lines:
-        if data is False:
-            # skip lines until reaching [Data] section with "Sample_ID"
-            if line.startswith("Sample_ID"):
-                data = True
-        else:
-            # SampleSheet always has a comma separated [Data] section
-            Sample_ID = line.split(",")[0]
-            sample_names.append(Sample_ID)
-
-    return sample_names
-
-
 def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"): # reports
     """ Return the workflow output dir so that it is not duplicated when run
 
@@ -732,29 +699,6 @@ def parse_genepanels(genepanels_file_id): # reports
 
     return data
 
-
-def gather_samplesheet(): # reports
-    """ Get file-ID of SampleSheet within given project
-
-    Returns:
-        str: DNAnexus file-ID of the Sample sheet
-    """
-
-    # get the project id from the environment variable
-    current_project = os.environ.get('DX_PROJECT_CONTEXT_ID')
-    results = dxpy.find_data_objects(
-        classname="file", name="SampleSheet.csv", project=current_project
-    )
-
-    sample_sheets = []
-
-    for sample_sheet in results:
-        sample_sheets.append(sample_sheet)
-
-    # quick check to see if we get none or multiple
-    assert len(sample_sheets) == 1, "Didn't gather only one sample sheet file"
-
-    return sample_sheets[0]["id"]
 
 def find_files(project_name, app_dir, pattern="."): # reports
     """Searches for files ending in provided pattern (e.g "*bam") in a
