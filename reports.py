@@ -28,7 +28,7 @@ from general_functions import (
 # reports
 def run_reports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id,
-    sample_panel=None, reanalysis_file=None
+    sample_ID_Rcode=None, sample_X_CI=None
 ):
     """Reads in the manifest file given on the command line and runs the
     SNV reports workflow.
@@ -41,12 +41,12 @@ def run_reports(
         dry_run: optional flag to set up but not run jobs
         assay_config: contains all the dynamic input file DNAnexus IDs
         assay_id: arg from cmd line what assay this is for
-        sample_panel: DNAnexus file-ID of Epic manifest
-            specifying R_codes or _HGNC IDs
-            to analyse samples with (reports command)
-        reanalysis_file: filename of Gemini manifest
-            specifying clinical indications
-            to analyse samples with (reanalysis command)
+        sample_ID_Rcode: filename of Epic manifest containing sample identifiers
+            and specifying R_codes (or _HGNC IDs) to analyse samples with
+            used with reports command
+        sample_X_CI: filename of Gemini manifest containing X numbers
+            and specifying clinical indications to analyse samples with
+            used with reanalysis command
     """
 
     ### Set up environment: make output folders
@@ -92,7 +92,7 @@ def run_reports(
     # Placeholder for list of sample names that are available in all 3 lists:
     # ie SampleSheet, Sentieon VCF and present in manifest (see below)
     sample_name_list = []
-    # Placeholder dict for gene_panels and clinical indications
+    # Placeholder dict for gene_CIs and clinical indications
     # based on R code from manifest (see below)
     sample2CIpanel_dict = {}
 
@@ -101,11 +101,12 @@ def run_reports(
 
     ## Based on the command arg input, identify samples and panels from the
     ## Epic or Gemini-style manifest file
-    if sample_panel is not None:
-        print("reports with Epic")
+    if sample_ID_Rcode is not None:
+        print("running dias_reports with sample identifiers and test codes "
+                "from Epic")
         # Gather samples from the Epic manifest file (command line input file-ID)
         ## manifest_data is a {sample: {CIs: []}} dict
-        manifest_data = parse_Epic_manifest(project_id, sample_panel)
+        manifest_data = parse_Epic_manifest(project_id, sample_ID_Rcode)
         manifest_samples = manifest_data.keys() # list of tuples
 
         # manifest file only has partial sample names/identifiers
@@ -143,12 +144,13 @@ def run_reports(
                 "panels": panels
             }
 
-    elif reanalysis_file is not None:
-        print("reanalysis with Gemini")
+    elif sample_X_CI is not None:
+        print("running dias_reports with X numbers and clinical indications "
+                "from Gemini")
         # Gather samples from the Gemini manifest file (command line input filename)
         ## manifest_data is a {sample: {CIs: []}} dict
         # parse reanalysis file into 
-        manifest_data = parse_Gemini_manifest(reanalysis_file)
+        manifest_data = parse_Gemini_manifest(sample_X_CI)
         manifest_samples = manifest_data.keys() # list of tuples
 
         # manifest file only has partial sample names/identifiers
@@ -184,7 +186,7 @@ def run_reports(
             }
 
     else:
-        assert sample_panel or reanalysis_file, "No file was provided with sample & panel information"
+        assert sample_ID_Rcode or sample_X_CI, "No file was provided with sample & panel information"
 
     # Gather sample-specific input file IDs based on the given app-pattern
     sample2stage_input2files_dict = get_stage_inputs(
