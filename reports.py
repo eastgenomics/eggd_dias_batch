@@ -14,8 +14,6 @@ from general_functions import (
     make_workflow_out_dir,
     make_app_out_dirs,
     find_files,
-    gather_samplesheet,
-    parse_samplesheet,
     parse_genepanels,
     prepare_batch_writing,
     create_batch_file,
@@ -74,10 +72,6 @@ def run_reports(
     )
 
     ### Identify samples to run reports workflow for
-    # Gather samples from SampleSheet.csv
-    sample_sheet_ID = gather_samplesheet()
-    samplesheet_sample_names = parse_samplesheet(sample_sheet_ID)
-
     # Gather sample names that have a Sentieon VCF generated
     ## current pattern picks up both "normal" and "genomic" VCFs
     single_sample_vcfs = find_files(
@@ -85,12 +79,9 @@ def run_reports(
     )
     single_sample_names = [str(x).split('_')[0] for x in single_sample_vcfs]
 
-    # Keep the samplesheet samples that have a VCF
-    available_samples = set(single_sample_names).intersection(samplesheet_sample_names)
-
     ### Identify panels and clinical indications for each sample
-    # Placeholder for list of sample names that are available in all 3 lists:
-    # ie SampleSheet, Sentieon VCF and present in manifest (see below)
+    # Placeholder for list of sample names that are available in:
+    # has Sentieon VCF and present in manifest (see below)
     sample_name_list = []
     # Placeholder dict for gene_CIs and clinical indications
     # based on R code from manifest (see below)
@@ -107,10 +98,10 @@ def run_reports(
         # Gather samples from the Epic manifest file (command line input file-ID)
         ## manifest_data is a {sample: {CIs: []}} dict
         manifest_data = parse_Epic_manifest(project_id, sample_ID_Rcode)
-        manifest_samples = manifest_data.keys() # list of tuples
+        manifest_samples = manifest_data.keys()
 
         # manifest file only has partial sample names/identifiers
-        for sample in available_samples:
+        for sample in single_sample_names:
             Instrument_ID = sample.split('-')[0]
             Specimen_ID = sample.split('-')[1]
             partial_identifier = "-".join([Instrument_ID, Specimen_ID])
@@ -154,7 +145,7 @@ def run_reports(
         manifest_samples = manifest_data.keys() # list of tuples
 
         # manifest file only has partial sample names/identifiers
-        for sample in available_samples:
+        for sample in single_sample_names:
             partial_identifier = sample.split('-')[0] # X number
             if partial_identifier in manifest_samples:
                     sample_name_list.append(sample)
