@@ -7,14 +7,14 @@ import subprocess
 from general_functions import (
     dx_get_project_id,
     dx_get_object_name,
-    parse_Epic_manifest,
-    parse_Gemini_manifest,
     get_workflow_stage_info,
     get_stage_inputs,
     make_workflow_out_dir,
     make_app_out_dirs,
     find_files,
     parse_genepanels,
+    parse_Epic_manifest,
+    parse_Gemini_manifest,
     prepare_batch_writing,
     create_batch_file,
     assess_batch_file,
@@ -102,7 +102,7 @@ def run_cnvreports(
                 "from Epic")
         # Gather samples from the Epic manifest file (command line input file-ID)
         ## manifest_data is a {sample: {CIs: []}} dict
-        manifest_data = parse_Epic_manifest(project_id, sample_ID_Rcode)
+        manifest_data = parse_Epic_manifest(sample_ID_Rcode)
         manifest_samples = manifest_data.keys()
 
         # manifest file only has partial sample names/identifiers
