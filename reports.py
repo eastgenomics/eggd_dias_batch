@@ -88,7 +88,7 @@ def run_reports(
     sample2CIpanel_dict = {}
 
     # Load genepanels information
-    genepanels_data = parse_genepanels(assay_config.genepanels_file)
+    CI2panels_dict = parse_genepanels(assay_config.genepanels_file)
 
     ## Based on the command arg input, identify samples and panels from the
     ## Epic or Gemini-style manifest file
@@ -126,10 +126,10 @@ def run_reports(
                     panels.append(R_code)
                 else:
                     clinical_indication = next(
-                        (key for key in genepanels_data if key.startswith(R_code)),
+                        (key for key in CI2panels_dict.keys() if key.startswith(R_code)),
                         None)
                     CIs.append(clinical_indication)
-                    panels.extend(list(genepanels_data[clinical_indication]))
+                    panels.extend(list(CI2panels_dict[clinical_indication]))
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
                 "panels": panels
@@ -167,10 +167,10 @@ def run_reports(
                     panels.append(R_code)
                 else:
                     clinical_indication = next(
-                        (key for key in genepanels_data if key.startswith(R_code)),
+                        (key for key in CI2panels_dict if key.startswith(R_code)),
                         None)
                     CIs.append(clinical_indication)
-                    panels.extend(list(genepanels_data[clinical_indication]))
+                    panels.extend(list(CI2panels_dict[clinical_indication]))
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
                 "panels": panels
