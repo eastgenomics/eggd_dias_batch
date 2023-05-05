@@ -3,6 +3,7 @@
 from collections import defaultdict
 import datetime
 import os
+import csv
 import subprocess
 import uuid
 import dxpy
@@ -599,43 +600,84 @@ def get_latest_config(folder):
     return config_latest_version
 
 
-def parse_Epic_manifest(project_id, manifest_file_id): # reports
+def parse_Epic_manifest(manifest_file): # reports
     """ Parse manifest from Epic
 
     Args:
-        manifest_file_id (str): DNAnexus file id for manifest file
-            should contain one sample per row, with
-            multiple clinical indications separated by semicolon
+        manifest_file (str): filename from command arg for Epic manifest file
+            semicolon delimited fields, including sample identifiers and
+            R-codes of clinical indications separated by commas
 
     Returns:
-        dict: Dict of samples linked to list of clinical indications
-            partial sample identifiers and R_code or _HGNC ID
+        dict: {"sample": "CIs": [] }
+            Dict of samples linked to list of clinical indications
+            partial sample identifiers and C/R_codes or _HGNC IDs
     """
     data = {}
-    if manifest_file_id.startswith("project"):
-        project_ID, manifest_id = manifest_file_id.split(":")[1]
-        if project_id != project_ID:
-            print("WARNING! Manifest file is provided from a different project!")
-    else:
-        manifest_id = manifest_file_id
+    line_count = 0
 
-    with dxpy.open_dxfile(manifest_id, project=project_id, mode='r') as f:
-        for line in f: # can't skip header, but will be filtered out later
-            record = line.strip().split(",") # assuming comma-separated values
-            Specimen_ID = record[0].strip("SP-")
-            Instrument_ID = record[1]
+    # parse the Epic manifest file (format true as of 23.05.05)
+    with open(manifest_file, 'r') as f:
+        # parse semicolon delimited file
+        Epic_reader = csv.reader(f, delimiter=';')
+        Epic_content = {}
 
-            sample_identifier = "-".join([Instrument_ID, Specimen_ID])
-            clinical_indications = record[-1].split(";") # assuming semicolon-separated values
-            R_codes = list(set(
-                [CI for CI in clinical_indications if CI.startswith("R") or CI.startswith("_")]
-            ))
-            # if sample is already assigned to a list of CIs, extend the list
-            if sample_identifier in data.keys():
-                data[sample_identifier]["CIs"].append(R_codes)
-            # if sample has no CIs yet, save the list
+        for row in Epic_reader:
+            # skip first row which is expected to contain a batch ID
+            if line_count == 0:
+                line_count += 1
+                continue
+            # take next row to be header/dict keys
+            elif line_count == 1:
+                line_count += 1
+                headers = row
+                # expecting Test Codes to be in the last column
+                headers[-1] = "Test Codes"
+                for i in range(len(row)):
+                    Epic_content[headers[i]] = []
             else:
-                data[sample_identifier] = {"CIs": R_codes}
+                for i, value in enumerate(row):
+                    if i < len(row)-1:
+                        Epic_content[headers[i]].append(value)
+                    else:
+                        # expecting Test Codes to be comma-separated
+                        # TODO handle C test codes
+                        R_codes = list(set(
+                            [CI for CI in value.split(",")
+                            if CI.startswith("R") or CI.startswith("_")]
+                        ))
+                        Epic_content[headers[i]].append(R_codes)
+
+    # convert Epic manifest into sample2Rcode dict
+    for i in range(len(Epic_content['Instrument ID'])):
+        # check whether it is a reanalysis
+        if Epic_content['Re-analysis Specimen ID'][i] != "" and Epic_content['Re-analysis Instrument ID'][i] != "":
+            sample_identifier = "-".join(
+                [Epic_content['Re-analysis Instrument ID'][i],
+                    Epic_content['Re-analysis Specimen ID'][i].strip("SP-")])
+            assert sample_identifier not in data.keys(), (
+                "Sample with given identifiers has already been requested to be"
+                " analysed for clinical indications {}".format(
+                    data[sample_identifier]["CIs"]
+                )
+            )
+            data[sample_identifier] = {"CIs": Epic_content['Test Codes'][i]}
+        # check whether it is a new report
+        elif Epic_content['Specimen ID'][i] != "" and Epic_content['Instrument ID'][i] != "":
+            sample_identifier = "-".join(
+                [Epic_content['Instrument ID'][i],
+                    Epic_content['Specimen ID'][i].strip("SP-")])
+            data[sample_identifier] = {"CIs": Epic_content['Test Codes'][i]}
+        # let user know if insufficient identifiers were provided
+        else:
+            print("Insufficient sample identifiers were provided in sample row {}: "
+                    "reanalysis Specimen ID '{}', reanalysis Instrument ID '{}', "
+                    "Specimen ID '{}', Instrument ID '{}'".format(i+1,
+                        Epic_content['Re-analysis Specimen ID'][i],
+                        Epic_content['Re-analysis Instrument ID'][i],
+                        Epic_content['Specimen ID'][i],
+                        Epic_content['Instrument ID'][i])
+                )
 
     return data
 
@@ -644,12 +686,13 @@ def parse_Gemini_manifest(manifest_file): # reports
     """ Parse manifest from Gemini
 
     Args:
-        manifest_file (str): filename from command arg for manifest file
-            should contain one sample per row, with
-            multiple clinical indications separated by tab
+        manifest_file (str): filename from command arg for Gemini manifest file
+            tab delimited fields, including sample identifiers (X number) and
+            full name of clinical indications separated by commas
 
     Returns:
-        dict: Dict of samples linked to list of clinical indications
+        dict: {"sample": "CIs": [] }
+            Dict of samples linked to list of clinical indications
             partial sample identifiers (X number) and 
             full clinical indication starting with R_code or _HGNC ID
     """
@@ -657,14 +700,14 @@ def parse_Gemini_manifest(manifest_file): # reports
 
     with open(manifest_file) as f:
         for line in f:
-            record = line.strip().split("\t")
+            record = line.strip().split("\t") # expecting tab delimited fields
             assert len(record) == 2, (
                 "Unexpected number of fields in reanalysis_list. "
                 "File must contain one tab separated "
                 "sample/panel combination per line"
             )
             sample_identifier = record[0] # X number
-            clinical_indications = record[1].split(";")
+            clinical_indications = record[-1].split(",")
             R_codes = list(set(
                 [CI for CI in clinical_indications if CI.startswith("R") or CI.startswith("_")]
             ))
@@ -685,7 +728,8 @@ def parse_genepanels(genepanels_file_id): # reports
         genepanels_file_id (str): DNAnexus file id for genepanels file
 
     Returns:
-        dict: Dict of samples linked to panels and clinical indications
+        dict: Dict of clinical indication (R-code) to list of panels
+            {"CI": ["panels"]}
     """
 
     data = {}
