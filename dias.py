@@ -128,7 +128,7 @@ def parse_CLI_args(): # -> argparse.Namespace:
         help='A single sample workflow output directory path'
     )
     parser_r.add_argument(
-        'sample_X_panel', type=str,
+        'sample_X_CI', type=str,
         help=(
             'Tab delimited file containing sample and panel for reanalysis'
             '. One sample/panel combination per line'
@@ -159,7 +159,7 @@ def parse_CLI_args(): # -> argparse.Namespace:
         help='A CNV calling output directory path'
     )
     parser_cr.add_argument(
-        'cnvsample_X_panel', type=str,
+        'cnvsample_X_CI', type=str,
         help=(
             'Tab delimited file containing sample and panel for cnvreanalysis'
             '. One sample/panel combination per line'
@@ -244,7 +244,7 @@ def main():
     elif subcommand == "reanalysis":
         reports_out_dir = run_reports(
             args.input_dir, args.dry_run, config, assay_id,
-            sample_X_panel = args.sample_X_panel
+            sample_X_CI = args.sample_X_CI
         )
     elif subcommand == "cnvreports":
         cnvreports_out_dir = run_cnvreports(
@@ -254,7 +254,7 @@ def main():
     elif subcommand == "cnvreanalysis":
         cnv_reports_out_dir = run_cnvreports(
             args.input_dir, args.dry_run, config, assay_id,
-            sample_X_panel = args.cnvsample_X_panel
+            sample_X_CI = args.cnvsample_X_CI
         )
     else:
         SUBCOMMAND_OPTIONS[subcommand](
