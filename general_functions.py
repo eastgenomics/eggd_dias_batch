@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
 from collections import defaultdict
+import subprocess
 import datetime
 import os
 import csv
-import subprocess
+import re
 import uuid
 import dxpy
 
@@ -641,10 +642,11 @@ def parse_Epic_manifest(manifest_file): # reports
                         Epic_content[headers[i]].append(value)
                     else:
                         # expecting Test Codes to be comma-separated
-                        # TODO handle C test codes
+                        # handle R###.# and C##.# test codes and _HGNC IDs
                         R_codes = list(set(
-                            [CI for CI in value.split(",")
-                            if CI.startswith("R") or CI.startswith("_")]
+                            [CI for CI in value.split(",") if
+                            re.search(r"^[RC][0-9]+\.[0-9]+", CI) or
+                            re.search(r"^_", CI)]
                         ))
                         Epic_content[headers[i]].append(R_codes)
 
@@ -663,7 +665,7 @@ def parse_Epic_manifest(manifest_file): # reports
                     " to be analysed for clinical indications: {} in this manifest"
                     " and will not be analysed for {}.".format(
                         sample_identifier, data[sample_identifier]["CIs"],
-                        Epic_content["Test Codes"]
+                        Epic_content["Test Codes"][i]
                     )
                 )
                 print("Please escalate to a senior bioinformatician and the "
@@ -685,7 +687,7 @@ def parse_Epic_manifest(manifest_file): # reports
                     " to be analysed for clinical indications: {} in this manifest"
                     " and will not be analysed for {}.".format(
                         sample_identifier, data[sample_identifier]["CIs"],
-                        Epic_content["Test Codes"]
+                        Epic_content["Test Codes"][i]
                     )
                 )
                 print("Please escalate to a senior bioinformatician and the "
