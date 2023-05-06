@@ -655,18 +655,44 @@ def parse_Epic_manifest(manifest_file): # reports
             sample_identifier = "-".join(
                 [Epic_content['Re-analysis Instrument ID'][i],
                     Epic_content['Re-analysis Specimen ID'][i].strip("SP-")])
-            assert sample_identifier not in data.keys(), (
-                "Sample with given identifiers has already been requested to be"
-                " analysed for clinical indications {}".format(
-                    data[sample_identifier]["CIs"]
+            try:
+                assert sample_identifier not in data.keys()
+            except AssertionError:
+                print(
+                    "Sample with given identifiers: {} has been requested"
+                    " to be analysed for clinical indications: {} in this manifest"
+                    " and will not be analysed for {}.".format(
+                        sample_identifier, data[sample_identifier]["CIs"],
+                        Epic_content["Test Codes"]
+                    )
                 )
-            )
+                print("Please escalate to a senior bioinformatician and the "
+                        "Clinical Scientists to ensure patient sample is "
+                        "analysed with the correct clinical indications "
+                        "and is recorded in Epic correctly!")
+                continue
             data[sample_identifier] = {"CIs": Epic_content['Test Codes'][i]}
         # check whether it is a new report
         elif Epic_content['Specimen ID'][i] != "" and Epic_content['Instrument ID'][i] != "":
             sample_identifier = "-".join(
                 [Epic_content['Instrument ID'][i],
                     Epic_content['Specimen ID'][i].strip("SP-")])
+            try:
+                assert sample_identifier not in data.keys()
+            except AssertionError:
+                print(
+                    "Sample with given identifiers: {} has been requested"
+                    " to be analysed for clinical indications: {} in this manifest"
+                    " and will not be analysed for {}.".format(
+                        sample_identifier, data[sample_identifier]["CIs"],
+                        Epic_content["Test Codes"]
+                    )
+                )
+                print("Please escalate to a senior bioinformatician and the "
+                        "Clinical Scientists to ensure patient sample is "
+                        "analysed with the correct clinical indications "
+                        "and is recorded in Epic correctly!")
+                continue
             data[sample_identifier] = {"CIs": Epic_content['Test Codes'][i]}
         # let user know if insufficient identifiers were provided
         else:
