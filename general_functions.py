@@ -643,12 +643,12 @@ def parse_Epic_manifest(manifest_file): # reports
                     else:
                         # expecting Test Codes to be comma-separated
                         # handle R###.# and C##.# test codes and _HGNC IDs
-                        R_codes = list(set(
+                        test_codes = list(set(
                             [CI for CI in value.split(",") if
                             re.search(r"^[RC][0-9]+\.[0-9]+", CI) or
                             re.search(r"^_", CI)]
                         ))
-                        Epic_content[headers[i]].append(R_codes)
+                        Epic_content[headers[i]].append(test_codes)
 
     # convert Epic manifest into sample2Rcode dict
     for i in range(len(Epic_content['Instrument ID'])):
@@ -736,15 +736,15 @@ def parse_Gemini_manifest(manifest_file): # reports
             )
             sample_identifier = record[0] # X number
             clinical_indications = record[-1].split(",")
-            R_codes = list(set(
+            CIs = list(set(
                 [CI for CI in clinical_indications if CI.startswith("R") or CI.startswith("_")]
             ))
             # if sample is already assigned to a list of CIs, extend the list
             if sample_identifier in data.keys():
-                data[sample_identifier]["CIs"].append(R_codes)
+                data[sample_identifier]["CIs"].append(CIs)
             # if sample has no CIs yet, save the list
             else:
-                data[sample_identifier] = {"CIs": R_codes}
+                data[sample_identifier] = {"CIs": CIs}
 
     return data
 

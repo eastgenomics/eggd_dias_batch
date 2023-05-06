@@ -112,7 +112,7 @@ def parse_CLI_args(): # -> argparse.Namespace:
         help='A single sample workflow output directory path'
     )
     parser_r.add_argument(
-        'sample_ID_Rcode', type=str, nargs="?",
+        'sample_ID_TestCode', type=str, nargs="?",
         help=(
             'DNAnexus file-ID of a csv file containing samples and '
             ' clinical indications for SNV report generation'
@@ -143,7 +143,7 @@ def parse_CLI_args(): # -> argparse.Namespace:
         help='A CNV calling output directory path'
     )
     parser_cr.add_argument(
-        'cnvsample_ID_Rcode', type=str, nargs="?",
+        'cnvsample_ID_TestCode', type=str, nargs="?",
         help=(
             'DNAnexus file-ID of a csv file containing samples and '
             ' clinical indications for CNV report generation'
@@ -239,7 +239,7 @@ def main():
     elif subcommand == "reports":
         reports_out_dir = run_reports(
             args.input_dir, args.dry_run, config, assay_id,
-            sample_ID_Rcode = args.sample_ID_Rcode
+            sample_ID_TestCode = args.sample_ID_TestCode
         )
     elif subcommand == "reanalysis":
         reports_out_dir = run_reports(
@@ -249,7 +249,7 @@ def main():
     elif subcommand == "cnvreports":
         cnvreports_out_dir = run_cnvreports(
             args.input_dir, args.dry_run, config, assay_id,
-            sample_ID_Rcode = args.cnvsample_ID_Rcode
+            sample_ID_TestCode = args.cnvsample_ID_TestCode
         )
     elif subcommand == "cnvreanalysis":
         cnv_reports_out_dir = run_cnvreports(

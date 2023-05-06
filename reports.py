@@ -26,7 +26,7 @@ from general_functions import (
 # reports
 def run_reports(
     ss_workflow_out_dir, dry_run, assay_config, assay_id,
-    sample_ID_Rcode=None, sample_X_CI=None
+    sample_ID_TestCode=None, sample_X_CI=None
 ):
     """Reads in the manifest file given on the command line and runs the
     SNV reports workflow.
@@ -39,8 +39,8 @@ def run_reports(
         dry_run: optional flag to set up but not run jobs
         assay_config: contains all the dynamic input file DNAnexus IDs
         assay_id: arg from cmd line what assay this is for
-        sample_ID_Rcode: filename of Epic manifest containing sample identifiers
-            and specifying R_codes (or _HGNC IDs) to analyse samples with
+        sample_ID_TestCode: filename of Epic manifest containing sample identifiers
+            and specifying C/R codes (or _HGNC IDs) to analyse samples with
             used with reports command
         sample_X_CI: filename of Gemini manifest containing X numbers
             and specifying clinical indications to analyse samples with
@@ -95,14 +95,14 @@ def run_reports(
 
     ## Based on the command arg input, identify samples and panels from the
     ## Epic or Gemini-style manifest file
-    if sample_ID_Rcode is not None:
+    if sample_ID_TestCode is not None:
         print("running dias_reports with sample identifiers and test codes "
                 "from Epic")
         # Gather samples from the Epic manifest file (command line input file-ID)
         ## manifest_data is a {sample: {CIs: []}} dict
 
         # manifest file only has partial sample names/identifiers
-        manifest_data = parse_Epic_manifest(sample_ID_Rcode)
+        manifest_data = parse_Epic_manifest(sample_ID_TestCode)
         manifest_samples = manifest_data.keys()
 
         # match partial identifier from available sample names with
@@ -117,22 +117,22 @@ def run_reports(
 
         # With the relevant samples identified,
         # parse the clinical indications (R code or HGNC) they were booked for
-        sample2Rcodes_dict = dict(
+        sample2testcodes_dict = dict(
             (sample_CI["sample"], sample_CI["CIs"]) for sample_CI 
                 in manifest_data.values() if "sample" in sample_CI.keys()
         )
 
-        # Get gene panels based on R code from manifest
-        for sample, R_codes in sample2Rcodes_dict.items():
+        # Get gene panels based on test code from manifest
+        for sample, test_codes in sample2testcodes_dict.items():
             CIs = []
             panels = []
-            for R_code in R_codes:
-                if R_code.startswith("_"):
-                    CIs.append(R_code)
-                    panels.append(R_code)
+            for test_code in test_codes:
+                if test_code.startswith("_"):
+                    CIs.append(test_code)
+                    panels.append(test_code)
                 else:
                     clinical_indication = next(
-                        (key for key in CI2panels_dict.keys() if key.split("_")[0] == R_code),
+                        (key for key in CI2panels_dict.keys() if key.split("_")[0] == test_code),
                         None)
                     CIs.append(clinical_indication)
                     panels.extend(list(CI2panels_dict[clinical_indication]))
@@ -158,22 +158,22 @@ def run_reports(
                     manifest_data[partial_identifier]["sample"] = sample
 
         # With the relevant samples identified, parse the R codes they were booked
-        sample2Rcodes_dict = dict(
+        sample2CIs_dict = dict(
             (sample_CI["sample"], sample_CI["CIs"]) for sample_CI 
                 in manifest_data.values() if "sample" in sample_CI.keys()
         )
 
-        # Get gene panels based on R code from manifest
-        for sample, R_codes in sample2Rcodes_dict.items():
+        # Get gene panels based on clinical indication from manifest
+        for sample, clinical_indications in sample2CIs_dict.items():
             CIs = []
             panels = []
-            for R_code in R_codes:
-                if R_code.startswith("_"):
-                    CIs.append(R_code)
-                    panels.append(R_code)
+            for CI in clinical_indications:
+                if CI.startswith("_"):
+                    CIs.append(CI)
+                    panels.append(CI)
                 else:
                     clinical_indication = next(
-                        (key for key in CI2panels_dict if key.startswith(R_code)),
+                        (key for key in CI2panels_dict.keys() if key.split("_")[0] == CI),
                         None)
                     CIs.append(clinical_indication)
                     panels.extend(list(CI2panels_dict[clinical_indication]))
@@ -183,7 +183,7 @@ def run_reports(
             }
 
     else:
-        assert sample_ID_Rcode or sample_X_CI, "No file was provided with sample & panel information"
+        assert sample_ID_TestCode or sample_X_CI, "No file was provided with sample & panel information"
 
     # Gather sample-specific input file IDs based on the given app-pattern
     sample2stage_input2files_dict = get_stage_inputs(
