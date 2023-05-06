@@ -82,7 +82,9 @@ def run_cnvreports(
     cnvcall_sample_vcfs = find_files(
         project_name, cnv_calling_out_dir, pattern="-E '(.*)_segments.vcf$'"
     )
-    cnvcall_sample_names = [str(x).split('_')[0] for x in cnvcall_sample_vcfs]
+    cnvcall_sample_names = list(set(
+        [str(x).split('_')[0] for x in cnvcall_sample_vcfs]
+    ))
 
     ### Identify panels and clinical indications for each sample
     # Placeholder for list of sample names that are available in all 3 lists:
@@ -102,10 +104,13 @@ def run_cnvreports(
                 "from Epic")
         # Gather samples from the Epic manifest file (command line input file-ID)
         ## manifest_data is a {sample: {CIs: []}} dict
+
+        # manifest file only has partial sample names/identifiers
         manifest_data = parse_Epic_manifest(sample_ID_Rcode)
         manifest_samples = manifest_data.keys()
 
-        # manifest file only has partial sample names/identifiers
+        # match partial identifier from available sample names with
+        # those from the manifest
         for sample in cnvcall_sample_names:
             Instrument_ID = sample.split('-')[0]
             Specimen_ID = sample.split('-')[1]

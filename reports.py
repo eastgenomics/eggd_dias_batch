@@ -77,7 +77,10 @@ def run_reports(
     single_sample_vcfs = find_files(
         project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'"
     )
-    single_sample_names = [str(x).split('_')[0] for x in single_sample_vcfs]
+    # convert list of VCF file names to set of sample names
+    single_sample_names = list(set(
+        [str(x).split('_')[0] for x in single_sample_vcfs]
+    ))
 
     ### Identify panels and clinical indications for each sample
     # Placeholder for list of sample names that are available in:
@@ -97,10 +100,13 @@ def run_reports(
                 "from Epic")
         # Gather samples from the Epic manifest file (command line input file-ID)
         ## manifest_data is a {sample: {CIs: []}} dict
+
+        # manifest file only has partial sample names/identifiers
         manifest_data = parse_Epic_manifest(sample_ID_Rcode)
         manifest_samples = manifest_data.keys()
 
-        # manifest file only has partial sample names/identifiers
+        # match partial identifier from available sample names with
+        # those from the manifest
         for sample in single_sample_names:
             Instrument_ID = sample.split('-')[0]
             Specimen_ID = sample.split('-')[1]
