@@ -129,15 +129,23 @@ def run_reports(
             CIs = []
             panels = []
             for test_code in test_codes:
-                if test_code.startswith("_"):
+                # single gene based on _HGNC ID
+                if test_code.startswith("_HGNC"):
                     CIs.append(test_code)
                     panels.append(test_code)
+                # clinical indication and panel based on test_code
                 else:
                     clinical_indication = next(
                         (key for key in CI2panels_dict.keys() if key.split("_")[0] == test_code),
                         None)
-                    CIs.append(clinical_indication)
-                    panels.extend(list(CI2panels_dict[clinical_indication]))
+                    if clinical_indication is None:
+                        print("Clinical indication for test code {} was not"
+                            " found in genepanels file for sample {}".format(
+                            test_code, sample
+                        ))
+                    else:
+                        CIs.append(clinical_indication)
+                        panels.extend(list(CI2panels_dict[clinical_indication]))
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
                 "panels": panels
@@ -170,15 +178,22 @@ def run_reports(
             CIs = []
             panels = []
             for CI in clinical_indications:
-                if CI.startswith("_"):
+                # single gene based on _HGNC ID
+                if CI.startswith("_HGNC"):
                     CIs.append(CI)
                     panels.append(CI)
                 else:
                     clinical_indication = next(
                         (key for key in CI2panels_dict.keys() if key == CI),
                         None)
-                    CIs.append(clinical_indication)
-                    panels.extend(list(CI2panels_dict[clinical_indication]))
+                    if clinical_indication is None:
+                        print("Clinical indication for test code {} was not"
+                            " found in genepanels file for sample {}".format(
+                            CI, sample
+                        ))
+                    else:
+                        CIs.append(clinical_indication)
+                        panels.extend(list(CI2panels_dict[clinical_indication]))
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
                 "panels": panels
