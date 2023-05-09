@@ -798,7 +798,7 @@ def find_files(project_name, app_dir, pattern="."): # reports
     """
     projectID  = list(dxpy.bindings.search.find_projects(name=project_name))[0]['id']
     # the pattern is usually "-E 'pattern'" and we dont want the -E part
-    pattern = pattern.split('-E ')[1].replace("'", "")
+    pattern = pattern.strip("-E ").strip("'")
     search_result = []
 
     try:

@@ -11,6 +11,7 @@ from general_functions import (
     get_stage_inputs,
     make_workflow_out_dir,
     make_app_out_dirs,
+    find_app_dir,
     find_files,
     parse_genepanels,
     parse_Epic_manifest,
@@ -74,8 +75,9 @@ def run_reports(
     ### Identify samples to run reports workflow for
     # Gather sample names that have a Sentieon VCF generated
     ## current pattern picks up both "normal" and "genomic" VCFs
+    sentieon_folder_path = find_app_dir(ss_workflow_out_dir, assay_config.cnvcalling_input_dict["app"])
     single_sample_vcfs = find_files(
-        project_name, ss_workflow_out_dir, pattern="-E '(.*).vcf.gz$'"
+        project_name, sentieon_folder_path, pattern="(.*).vcf.gz$"
     )
     # convert list of VCF file names to set of sample names
     single_sample_names = list(set(
