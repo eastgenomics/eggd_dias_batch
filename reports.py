@@ -237,24 +237,6 @@ def run_reports(
             CI_list = sample2CIpanel_dict[sample_id]["clinical_indications"]
             panel_list = sample2CIpanel_dict[sample_id]["panels"]
 
-            # get single genes with the sample
-            single_genes = [
-                panel for panel in panel_list if panel.startswith("_")
-            ]
-
-            # if there are single genes
-            if single_genes:
-                # check if they are HGNC ids
-                symbols = [gene.startswith("_HGNC") for gene in single_genes]
-
-                # if they are not, assume it is gene symbols or at least
-                # something is going on and needs checking
-                if not all(symbols):
-                    job_dict["symbols"].append(
-                        (sample_id, ";".join(CIs))
-                    )
-                    continue
-
             job_dict["starting"].append(sample_id)
             # join up potential lists of CIs and panels to align the batch
             # file properly
