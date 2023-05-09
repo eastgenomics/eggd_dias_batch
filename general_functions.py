@@ -636,6 +636,7 @@ def parse_Epic_manifest(manifest_file): # reports
                 headers[-1] = "Test Codes"
                 for i in range(len(row)):
                     Epic_content[headers[i]] = []
+            # all other rows contain sample identifiers and test codes
             else:
                 for i, value in enumerate(row):
                     if i < len(row)-1:
@@ -643,10 +644,11 @@ def parse_Epic_manifest(manifest_file): # reports
                     else:
                         # expecting Test Codes to be comma-separated
                         # handle R###.# and C##.# test codes and _HGNC IDs
+                        # strip whitespaces in case they get through somehow
                         test_codes = list(set(
-                            [CI for CI in value.split(",") if
-                            re.search(r"^[RC][0-9]+\.[0-9]+", CI) or
-                            re.search(r"^_", CI)]
+                            [CI.strip(" ") for CI in value.split(",") if
+                            re.search(r"^[RC][0-9]+\.[0-9]+", CI.strip(" ")) or
+                            re.search(r"^_HGNC", CI.strip(" "))]
                         ))
                         Epic_content[headers[i]].append(test_codes)
 
@@ -673,7 +675,9 @@ def parse_Epic_manifest(manifest_file): # reports
                         "analysed with the correct clinical indications "
                         "and is recorded in Epic correctly!")
                 continue
-            data[sample_identifier] = {"CIs": Epic_content['Test Codes'][i]}
+            data[sample_identifier] = {
+                "CIs": Epic_content['Test Codes'][i],
+                "analysis": "reanalysis"}
         # check whether it is a new report
         elif Epic_content['Specimen ID'][i] != "" and Epic_content['Instrument ID'][i] != "":
             sample_identifier = "-".join(
@@ -695,7 +699,9 @@ def parse_Epic_manifest(manifest_file): # reports
                         "analysed with the correct clinical indications "
                         "and is recorded in Epic correctly!")
                 continue
-            data[sample_identifier] = {"CIs": Epic_content['Test Codes'][i]}
+            data[sample_identifier] = {
+                "CIs": Epic_content['Test Codes'][i],
+                "analysis": "analysis"}
         # let user know if insufficient identifiers were provided
         else:
             print("Insufficient sample identifiers were provided in sample row {}: "
@@ -706,6 +712,9 @@ def parse_Epic_manifest(manifest_file): # reports
                         Epic_content['Specimen ID'][i],
                         Epic_content['Instrument ID'][i])
                 )
+            data[sample_identifier] = {
+                "CIs": Epic_content['Test Codes'][i],
+                "analysis": "insufficient"}
 
     return data
 
