@@ -88,7 +88,7 @@ def run_cnvreports(
 
     ### Identify panels and clinical indications for each sample
     # Placeholder dict for gene_panels and clinical indications
-    # based on R code from manifest (see below)
+    # based on test code from manifest (see below)
     sample2CIpanel_dict = {}
 
     # Load genepanels information
@@ -137,6 +137,7 @@ def run_cnvreports(
                         (key for key in CI2panels_dict.keys() if key.split("_")[0] == test_code),
                         None)
                     if clinical_indication is None:
+                        # TODO skip sample if CI not found
                         print("Clinical indication for test code {} was not"
                             " found in genepanels file for sample {}".format(
                             test_code, sample
@@ -198,7 +199,7 @@ def run_cnvreports(
     else:
         assert sample_ID_TestCode or sample_X_CI, "No file was provided with sample & panel information"
 
-    # Gather sample-specific input file IDs based on the given app-pattern
+    ### Gather sample-specific input file IDs based on the given app-pattern
     sample2stage_input2files_dict = get_stage_inputs(
         cnv_calling_out_dir, sample2CIpanel_dict.keys(), assay_config.cnv_rpt_stage_input_dict
     )
@@ -210,6 +211,7 @@ def run_cnvreports(
 
     job_dict = {"starting": [], "missing_from_manifest": [], "symbols": []}
 
+    ### Initialise headers and values for a batch.tsv
     # get the headers and values from the staging inputs
     rpt_headers, rpt_values = prepare_batch_writing(
         sample2stage_input2files_dict, "cnvreports",
@@ -253,6 +255,7 @@ def run_cnvreports(
 
     print("Created and uploaded job report file: {}".format(report_file))
 
+    ### Create a batch.tsv
     rpt_batch_file = create_batch_file(headers, values)
     # Check batch file is correct every time
     check_batch_file = assess_batch_file(rpt_batch_file)
@@ -267,17 +270,18 @@ def run_cnvreports(
             "number of columns in values at line {}".format(check_batch_file)
         ))
 
+    ### Create dx run command
     command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
         assay_config.cnv_rpt_workflow_id, rpt_batch_file
     )
+    # add flank to the VCF filtering bed at the generate_bed stage
     command += " -i{}.flank={} ".format(
         assay_config.cnv_generate_bed_vep_stage_id, assay_config.vep_bed_flank
     )
-
+    # increase buffer for TWE assay at eggd_vep stage
     if assay_config.assay_name == "TWE":
         command += " -i{}.buffer_size=1000".format(assay_config.vep_stage_id)
-
-    # assign stage out folders
+    # assign output folders
     app_relative_paths = format_relative_paths(rpt_workflow_stage_info)
     command += " --destination={} {} ".format(
         cnvrpt_workflow_out_dir, app_relative_paths
