@@ -262,12 +262,15 @@ def run_reports(
 
     if check_batch_file is True:
         print(
-            "Format of the file is correct: {}".format(rpt_batch_file)
+            "Format of the file {} is correct".format(rpt_batch_file)
         )
     else:
         print((
-            "Number of columns in header doesn't match "
-            "number of columns in values at line {}".format(check_batch_file)
+            "Format of the file {} is NOT correct: "
+            "number of columns in header doesn't match "
+            "number of columns in values at line {}".format(
+                rpt_batch_file, check_batch_file
+            )
         ))
 
     ### Create dx run command
