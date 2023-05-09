@@ -87,9 +87,6 @@ def run_cnvreports(
     ))
 
     ### Identify panels and clinical indications for each sample
-    # Placeholder for list of sample names that are available in all 3 lists:
-    # hsa GATKgCNV segments.VCF and present in manifest (see below)
-    sample_name_list = []
     # Placeholder dict for gene_panels and clinical indications
     # based on R code from manifest (see below)
     sample2CIpanel_dict = {}
@@ -116,7 +113,6 @@ def run_cnvreports(
             Specimen_ID = sample.split('-')[1]
             partial_identifier = "-".join([Instrument_ID, Specimen_ID])
             if partial_identifier in manifest_samples:
-                    sample_name_list.append(sample)
                     manifest_data[partial_identifier]["sample"] = sample
 
         # With the relevant samples identified,
@@ -166,7 +162,6 @@ def run_cnvreports(
         for sample in cnvcall_sample_names:
             partial_identifier = sample.split('-')[0] # X number
             if partial_identifier in manifest_samples:
-                    sample_name_list.append(sample)
                     manifest_data[partial_identifier]["sample"] = sample
 
         # With the relevant samples identified, parse the R codes they were booked
@@ -205,7 +200,7 @@ def run_cnvreports(
 
     # Gather sample-specific input file IDs based on the given app-pattern
     sample2stage_input2files_dict = get_stage_inputs(
-        cnv_calling_out_dir, sample_name_list, assay_config.cnv_rpt_stage_input_dict
+        cnv_calling_out_dir, sample2CIpanel_dict.keys(), assay_config.cnv_rpt_stage_input_dict
     )
 
     # list to represent the header row in the batch.tsv file
@@ -271,7 +266,7 @@ def run_cnvreports(
             job_dict["missing_from_manifest"].append(sample_id)
 
     report_file = create_job_reports(
-        cnvrpt_workflow_out_dir, sample_name_list, job_dict
+        cnvrpt_workflow_out_dir, sample2CIpanel_dict.keys(), job_dict
     )
 
     print("Created and uploaded job report file: {}".format(report_file))
