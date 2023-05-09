@@ -610,7 +610,7 @@ def parse_Epic_manifest(manifest_file): # reports
             R-codes of clinical indications separated by commas
 
     Returns:
-        dict: {"sample": "CIs": [] }
+        dict: {"sample": "test_codes": [] }
             Dict of samples linked to list of clinical indications
             partial sample identifiers and C/R_codes or _HGNC IDs
     """
@@ -676,7 +676,7 @@ def parse_Epic_manifest(manifest_file): # reports
                         "and is recorded in Epic correctly!")
                 continue
             data[sample_identifier] = {
-                "CIs": Epic_content['Test Codes'][i],
+                "test_codes": Epic_content['Test Codes'][i],
                 "analysis": "reanalysis"}
         # check whether it is a new report
         elif Epic_content['Specimen ID'][i] != "" and Epic_content['Instrument ID'][i] != "":
@@ -700,7 +700,7 @@ def parse_Epic_manifest(manifest_file): # reports
                         "and is recorded in Epic correctly!")
                 continue
             data[sample_identifier] = {
-                "CIs": Epic_content['Test Codes'][i],
+                "test_codes": Epic_content['Test Codes'][i],
                 "analysis": "analysis"}
         # let user know if insufficient identifiers were provided
         else:
@@ -713,7 +713,7 @@ def parse_Epic_manifest(manifest_file): # reports
                         Epic_content['Instrument ID'][i])
                 )
             data[sample_identifier] = {
-                "CIs": Epic_content['Test Codes'][i],
+                "test_codes": Epic_content['Test Codes'][i],
                 "analysis": "insufficient"}
 
     return data
@@ -728,7 +728,7 @@ def parse_Gemini_manifest(manifest_file): # reports
             full name of clinical indications separated by commas
 
     Returns:
-        dict: {"sample": "CIs": [] }
+        dict: {"sample": "test_codes": [] }
             Dict of samples linked to list of clinical indications
             partial sample identifiers (X number) and 
             full clinical indication starting with R_code or _HGNC ID
@@ -753,7 +753,7 @@ def parse_Gemini_manifest(manifest_file): # reports
                 data[sample_identifier]["CIs"].append(CIs)
             # if sample has no CIs yet, save the list
             else:
-                data[sample_identifier] = {"CIs": CIs}
+                data[sample_identifier] = {"test_codes": CIs}
 
     return data
 

@@ -122,7 +122,7 @@ def run_cnvreports(
         # With the relevant samples identified,
         # parse the clinical indications (R code or HGNC) they were booked for
         sample2testcodes_dict = dict(
-            (sample_CI["sample"], sample_CI["CIs"]) for sample_CI 
+            (sample_CI["sample"], sample_CI["test_codes"]) for sample_CI 
                 in manifest_data.values() if "sample" in sample_CI.keys()
         )
 
@@ -171,7 +171,7 @@ def run_cnvreports(
 
         # With the relevant samples identified, parse the R codes they were booked
         sample2CIs_dict = dict(
-            (sample_CI["sample"], sample_CI["CIs"]) for sample_CI 
+            (sample_CI["sample"], sample_CI["test_codes"]) for sample_CI 
                 in manifest_data.values() if "sample" in sample_CI.keys()
         )
 
