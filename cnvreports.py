@@ -91,6 +91,14 @@ def run_cnvreports(
     # based on test code from manifest (see below)
     sample2CIpanel_dict = {}
 
+    # Placeholder dict for the number of samples with suitable VCF,
+    # a list of invalid sample identifiers and
+    # a list of sample identifiers with invalid panel/CI requests
+    job_report_dict = {
+        "total_single": len(cnvcall_sample_vcfs),
+        "invalid_samples": [], "invalid_tests": []
+    }
+
     # Load genepanels information
     CI2panels_dict = parse_genepanels(assay_config.genepanels_file)
 
@@ -100,11 +108,17 @@ def run_cnvreports(
         print("running dias_cnvreports with sample identifiers and test codes "
                 "from Epic")
         # Gather samples from the Epic manifest file (command line input file-ID)
-        ## manifest_data is a {sample: {CIs: []}} dict
-
+        ## manifest_data is a {sample: {test_codes: [], analysis: string}} dict
         # manifest file only has partial sample names/identifiers
         manifest_data = parse_Epic_manifest(sample_ID_TestCode)
         manifest_samples = manifest_data.keys()
+        # populate job report dict 
+        job_report_dict["total_manifest"] = len(manifest_samples)
+        invalid_samples = [sample_identifier for
+                sample_identifier, v in manifest_data.items() if
+                v["analysis"] == "insufficient"
+        ]
+        job_report_dict["invalid_samples"] = invalid_samples
 
         # match partial identifier from available sample names with
         # those from the manifest
@@ -124,6 +138,7 @@ def run_cnvreports(
 
         # Get gene panels based on test code from manifest
         for sample, test_codes in sample2testcodes_dict.items():
+            skip_sample = False
             CIs = []
             panels = []
             for test_code in test_codes:
@@ -137,7 +152,9 @@ def run_cnvreports(
                         (key for key in CI2panels_dict.keys() if key.split("_")[0] == test_code),
                         None)
                     if clinical_indication is None:
-                        # TODO skip sample if CI not found
+                        # skip sample if CI not found
+                        skip_sample = True
+                        invalid_test_code = test_code
                         print("Clinical indication for test code {} was not"
                             " found in genepanels file for sample {}".format(
                             test_code, sample
@@ -145,6 +162,12 @@ def run_cnvreports(
                     else:
                         CIs.append(clinical_indication)
                         panels.extend(list(CI2panels_dict[clinical_indication]))
+            if skip_sample:
+                # skip sample if CI not found for any of its test_codes
+                job_report_dict["invalid_tests"].append(
+                    (sample, invalid_test_code)
+                )
+                continue
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
                 "panels": panels
@@ -158,6 +181,9 @@ def run_cnvreports(
         # parse reanalysis file into 
         manifest_data = parse_Gemini_manifest(sample_X_CI)
         manifest_samples = manifest_data.keys() # list of tuples
+        # populate job report dict 
+        job_report_dict["total_manifest"] = len(manifest_samples)
+        job_report_dict["invalid_samples"] = ["not applicable"]
 
         # manifest file only has partial sample names/identifiers
         for sample in cnvcall_sample_names:
@@ -173,6 +199,7 @@ def run_cnvreports(
 
         # Get gene panels based on clinical indication from manifest
         for sample, clinical_indications in sample2CIs_dict.items():
+            skip_sample = False
             CIs = []
             panels = []
             for CI in clinical_indications:
@@ -184,6 +211,9 @@ def run_cnvreports(
                         (key for key in CI2panels_dict.keys() if key == CI),
                         None)
                     if clinical_indication is None:
+                        # skip sample if CI not found
+                        skip_sample = True
+                        invalid_test_code = CI
                         print("Clinical indication for test code {} was not"
                             " found in genepanels file for sample {}".format(
                             CI, sample
@@ -191,6 +221,12 @@ def run_cnvreports(
                     else:
                         CIs.append(clinical_indication)
                         panels.extend(list(CI2panels_dict[clinical_indication]))
+            if skip_sample:
+                # skip sample if CI not found for any of its CI
+                job_report_dict["invalid_tests"].append(
+                    (sample, invalid_test_code)
+                )
+                continue
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
                 "panels": panels
@@ -204,14 +240,12 @@ def run_cnvreports(
         cnv_calling_out_dir, sample2CIpanel_dict.keys(), assay_config.cnv_rpt_stage_input_dict
     )
 
+
+    ### Initialise headers and values for a batch.tsv
     # list to represent the header row in the batch.tsv file
     headers = []
     # list to represent the rows/lines for each sample in the batch.tsv file
     values = []
-
-    job_dict = {"starting": [], "missing_from_manifest": [], "symbols": []}
-
-    ### Initialise headers and values for a batch.tsv
     # get the headers and values from the staging inputs
     rpt_headers, rpt_values = prepare_batch_writing(
         sample2stage_input2files_dict, "cnvreports",
@@ -233,22 +267,21 @@ def run_cnvreports(
     for line in rpt_values:
         # sample id is the first element of every list generated by
         # the prepare_batch_writing function
-        sample_id = line[0]
+        sample = line[0]
 
-        if sample_id in sample2CIpanel_dict:
-            CI_list = sample2CIpanel_dict[sample_id]["clinical_indications"]
-            panel_list = sample2CIpanel_dict[sample_id]["panels"]
+        CI_list = sample2CIpanel_dict[sample]["clinical_indications"]
+        panel_list = sample2CIpanel_dict[sample]["panels"]
 
-            job_dict["starting"].append(sample_id)
-            # join up potential lists of CIs and panels to align the batch
-            # file properly
-            CIs = ";".join(CI_list)
-            panels = ";".join(panel_list)
-            line.extend([CIs, CIs, CIs, panels])
-            values.append(line)
-        else:
-            job_dict["missing_from_manifest"].append(sample_id)
+        # join up potential lists of CIs and panels to align the batch
+        # file properly
+        CIs = ";".join(CI_list)
+        panels = ";".join(panel_list)
+        line.extend([CIs, CIs, CIs, panels])
+        values.append(line)
 
+    job_report_dict["successful"] = len(rpt_values)
+
+    report_file = create_job_reports(
     report_file = create_job_reports(
         cnvrpt_workflow_out_dir, sample2CIpanel_dict.keys(), job_dict
     )
