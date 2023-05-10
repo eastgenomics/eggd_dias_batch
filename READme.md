@@ -1,6 +1,6 @@
 # dias.py
 
-This Python module was developed by the East GLH rare disease bioinformatics team to run DNAnexus apps and workflows as part of germline analysis of next generation sequencing data: from FASTQ to Excel variant workbooks, generating quality and coverage reports.
+This Python module was developed by the East GLH rare disease bioinformatics team to run DNAnexus apps and workflows as part of germline analysis of next generation sequencing data: CNV calling from BAMs, generate Excel variant workbooks from VCF and generating panel-specific coverage reports.
 This READme describes the module architecture and should serve as a guide to future users and developers of the Dias pipeline.
 To understand how to run it, get trained by a qualified member of the team and read the Dias manual.
 
@@ -31,12 +31,6 @@ It curently supports the following workflows and apps:
   - Main script, called to run every part of the pipeline
 - general_functions.py
   - Contains general purpose functions: get the date, create folders, get file ids...
-<!-- - single_workflow.py
-  - Generates the batch tsv and runs the dx cmd to start the single workflow
-- multi_workflow.py
-  - Generates the batch tsv and runs the dx cmd to start the multi workflow
-- multiqc.py
-  - Runs the MultiQC app for run-level quality report -->
 - cnvcalling.py
   - Runs the GATKgCNV_call app for run-level CNV detection
 - reports.py
