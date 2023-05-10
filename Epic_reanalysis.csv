@@ -1,8 +1,0 @@
-23-NGSA11;;;;;;;;;;;;;,,,,
-Re-analysis Specimen ID;Re-analysis Instrument ID;Specimen ID;Instrument ID;Run folder;Batch ID;Specimen Type;Order ID;Priority;Test;Sex;Patient Age;Family #;Test Codes,,,,
-PREVSPECID;PREVINSTID;23123R0005;100041675;;23-NGWES7;Peripheral blood;447260;Routine;*Rare Disease NGS Analysis*;Female;30 yrs;Data Unavailable;, , , , 
-GM2303240;X224434;23123R0001;100041659;;23-NGWES7;Peripheral blood;447083;Routine;*Rare Disease NGS Analysis*;Female;30 yrs;Data Unavailable;R154.1, , , , 
-;;SP-GM2303321;X224472;CEN Run 18/04;23-NGWES7;Peripheral blood;341163;Routine;*Rare Disease NGS Analysis*;Male;70 yrs;Data Unavailable;R154.1,research, , , 
-;;SP-GM2302989;X224482;;23-NGWES7;Peripheral blood;332066;Routine;*Rare Disease NGS Analysis*;Male;40 yrs;Data Unavailable;R102.1,R39.1,_HGNC:32221, , 
-;;23123R0001;;;23-NGWES7;Peripheral blood;447083;Routine;*Rare Disease NGS Analysis*;Female;30 yrs;Data Unavailable;, , , , 
-23110R0002;100045860;23124R0011;100048595;230309_A01303_0163_AHW87VDRX2;23-NGWES7;Stored Sample;352039;Routine;*Rare Disease NGS Analysis*;Female;65 yrs;Data Unavailable;, , , , 
