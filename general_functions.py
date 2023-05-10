@@ -711,6 +711,12 @@ def parse_Epic_manifest(manifest_file): # reports
                         Epic_content['Specimen ID'][i],
                         Epic_content['Instrument ID'][i])
                 )
+            sample_identifier = "-".join([
+                    Epic_content['Re-analysis Instrument ID'][i],
+                    Epic_content['Re-analysis Specimen ID'][i].strip("SP-"),
+                    Epic_content['Instrument ID'][i],
+                    Epic_content['Specimen ID'][i].strip("SP-")
+                ])
             data[sample_identifier] = {
                 "test_codes": Epic_content['Test Codes'][i],
                 "analysis": "insufficient"}
@@ -812,6 +818,7 @@ def find_files(project_name, app_dir, pattern="."): # reports
             ))
 
     return search_result
+
 
 def make_app_output_dir(app_id, ss_workflow_out_dir, app_name, assay_id):
     """Creates directory for single app with version, date and attempt
