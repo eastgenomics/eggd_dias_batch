@@ -6,7 +6,6 @@ import datetime
 import os
 import csv
 import re
-import uuid
 import dxpy
 
 from packaging import version
@@ -463,7 +462,7 @@ def prepare_batch_writing(
 
 
 def create_batch_file(headers, values): # reports
-    """ Create batch file + return filename
+    """ Create batch.tsv file and return filename
 
     Args:
         headers (tuple): Tuple of headers
@@ -473,8 +472,8 @@ def create_batch_file(headers, values): # reports
         str: Batch filename
     """
 
-    batch_uuid = str(uuid.uuid4())
-    batch_filename = ".".join([batch_uuid, "tsv"])
+    date, time = get_datetime()
+    batch_filename = "".join(["batch_", date, "-", time, ".tsv"])
 
     # check if all headers gathered are identical
     assert len(set(headers)) == 1, (
