@@ -19,7 +19,7 @@ from general_functions import (
     create_batch_file,
     assess_batch_file,
     format_relative_paths,
-    create_job_reports
+    create_job_report_file
 )
 
 
@@ -95,7 +95,7 @@ def run_cnvreports(
     # a list of invalid sample identifiers and
     # a list of sample identifiers with invalid panel/CI requests
     job_report_dict = {
-        "total_single": len(cnvcall_sample_vcfs),
+        "total_input": len(cnvcall_sample_vcfs),
         "invalid_samples": [], "invalid_tests": []
     }
 
@@ -281,13 +281,6 @@ def run_cnvreports(
 
     job_report_dict["successful"] = len(rpt_values)
 
-    report_file = create_job_reports(
-    report_file = create_job_reports(
-        cnvrpt_workflow_out_dir, sample2CIpanel_dict.keys(), job_dict
-    )
-
-    print("Created and uploaded job report file: {}".format(report_file))
-
     ### Create a batch.tsv
     rpt_batch_file = create_batch_file(headers, values)
     # Check batch file is correct every time
@@ -306,7 +299,10 @@ def run_cnvreports(
             )
         ))
 
-    ### Create dx run command
+    ### Create a job report file
+    job_report_file = create_job_report_file(job_report_dict)
+
+    ### Create the dx run command
     command = "dx run -y --rerun-stage '*' {} --batch-tsv={}".format(
         assay_config.cnv_rpt_workflow_id, rpt_batch_file
     )
@@ -331,11 +327,15 @@ def run_cnvreports(
         )
         print("Inputs gathered:")
         print(json.dumps(sample2stage_input2files_dict, indent=4))
+        print("Job report file created as {}".format(job_report_file))
         print("Final cmd: {}".format(command))
         print("Deleting '{}' as part of the dry-run".format(cnvrpt_workflow_out_dir))
         delete_folders_cmd = "dx rm -r {}".format(cnvrpt_workflow_out_dir)
         subprocess.call(delete_folders_cmd, shell=True)
     else:
+        # Upload job report file and set off workflows
+        cmd = "dx upload {} --path {}".format(job_report_file, cnvrpt_workflow_out_dir)
+        subprocess.check_output(cmd, shell=True)
         subprocess.call(command, shell=True)
 
     return cnvrpt_workflow_out_dir
