@@ -879,7 +879,7 @@ def create_job_report_file(job__report_dict):
     # rpt_out_dir should always be /output/dias_single/dias_reports but in case
     # someone adds a "/" at the end, which I do sometimes
     date, time = get_datetime()
-    job_report_file = "report_{}_{}.txt".format(date, time)
+    job_report_file = "job_report_{}_{}.txt".format(date, time)
 
     with open(job_report_file, "w") as f:
         f.write(
