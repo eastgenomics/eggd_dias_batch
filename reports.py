@@ -75,7 +75,7 @@ def run_reports(
     ### Identify samples to run reports workflow for
     # Gather sample names that have a Sentieon VCF generated
     ## current pattern picks up both "normal" and "genomic" VCFs
-    sentieon_folder_path = find_app_dir(ss_workflow_out_dir, assay_config.cnvcalling_input_dict["app"])
+    sentieon_folder_path = find_app_dir(ss_workflow_out_dir, "sentieon")
     single_sample_vcfs = find_files(
         project_name, sentieon_folder_path, pattern="(.*).vcf.gz$"
     )
