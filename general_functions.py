@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
 from collections import defaultdict
+import subprocess
 import datetime
 import os
-import subprocess
-import uuid
+import csv
+import re
 import dxpy
 
 from packaging import version
@@ -12,15 +13,16 @@ from packaging import version
 # Generic functions
 
 
-def get_date():
+def get_datetime():
     """ Get the date in YYMMDD format
 
     Returns:
         str: String of date in YYMMDD format
     """
 
-    date = datetime.datetime.now()
-    return date.strftime("%y%m%d")
+    date = datetime.datetime.now().strftime("%y%m%d")
+    time = datetime.datetime.now().strftime("%H%M")
+    return date, time
 
 
 def dx_make_workflow_dir(dx_dir_path):
@@ -91,7 +93,7 @@ def get_object_attribute_from_object_id_or_path(object_id_or_path, attribute):
     return None
 
 
-def get_workflow_stage_info(workflow_id):
+def get_workflow_stage_info(workflow_id): # reports
     """ Get the workflow stage info i.e. stage id, app id and app name
 
     Args:
@@ -118,7 +120,7 @@ def get_workflow_stage_info(workflow_id):
     return stages
 
 
-def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
+def make_app_out_dirs(workflow_stage_info, workflow_output_dir): # reports
     """ Create directories for the apps
 
     Args:
@@ -147,7 +149,7 @@ def make_app_out_dirs(workflow_stage_info, workflow_output_dir):
     return out_dirs
 
 
-def format_relative_paths(workflow_stage_info):
+def format_relative_paths(workflow_stage_info): # reports
     """ Add specific app output directory to final command line
 
     Args:
@@ -166,7 +168,7 @@ def format_relative_paths(workflow_stage_info):
     return result
 
 
-def find_app_dir(workflow_output_dir, app_basename):
+def find_app_dir(workflow_output_dir, app_basename): # reports
     """ Find app directory
 
     Args:
@@ -199,7 +201,7 @@ def find_app_dir(workflow_output_dir, app_basename):
     return "".join([workflow_output_dir, search_result[0]])
 
 
-def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."):
+def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."): # reports
     """ Get the file ids for a given app directory
 
     Args:
@@ -233,83 +235,42 @@ def get_stage_input_file_list(app_dir, app_subdir="", filename_pattern="."):
     return file_ids
 
 
-def get_dx_cwd_project_id():
+def dx_get_project_id():
     """ Return project id using dx env
 
     Returns:
         str: DNAnexus project id
     """
 
-    command = (
-        'dx env | grep -P "Current workspace\t" | '
-        'awk -F "\t" \'{print $NF}\' | sed s/\'"\'//g'
-    )
-    project_id = subprocess.check_output(command, shell=True).strip()
+    project_id = os.environ.get('DX_PROJECT_CONTEXT_ID')
+
     return project_id
 
 
-def get_dx_cwd_project_name():
-    """ Return project name using dx env
-
-    Returns:
-        str: DNAnexus project name
-    """
-
-    command = (
-        'dx env | grep -P "Current workspace name" | '
-        'awk -F "\t" \'{print $NF}\' | sed s/\'"\'//g'
-    )
-
-    project_name = subprocess.check_output(command, shell=True).strip()
-    return project_name
-
-
-def get_sample_ids_from_sample_sheet(sample_sheet_path):
-    """ Return list of samples from the sample sheet
+def dx_get_object_name(object_id):
+    """ Get specific attribute from DNAnexus description of object
 
     Args:
-        sample_sheet_path (str): Path to the sample sheet
+        object_id (str): DNAnexus object ID
 
     Returns:
-        list: List of samples
+        str: Name of DNAnexus object
     """
 
-    sample_ids = set()
-    cmd = "dx cat {}".format(sample_sheet_path)
-    sample_sheet_content = subprocess.check_output(cmd, shell=True).split("\n")
-
-    data = False
-    index = 0
-
-    for line in sample_sheet_content:
-        if line:
-            if data is True:
-                line = line.split(",")
-
-                if index == 0:
-                    # get column of sample_id programmatically
-                    sample_id_pos = [
-                        i
-                        for i, header in enumerate(line)
-                        if header == "Sample_ID"
-                    ][0]
-                else:
-                    # get the sample ids using the header position
-                    if not line[sample_id_pos].startswith("NA"):
-                        sample_ids.add(
-                            line[sample_id_pos].split("-")[0]
-                        )
-
-                index += 1
-            else:
-                # Use [Data] as a way to identify when we reached data
-                if line.startswith("[Data]"):
-                    data = True
-
-    return sample_ids
+    # This try except is used to handle permission errors generated when
+    # dx describe tries to get info about files we do not have permission
+    # to access.
+    # In these cases the description is returned but the command has non-0
+    # exit status so errors out
+    try:
+        object_name = dxpy.describe(object_id)['name']
+        return object_name
+    except dxpy.exceptions.DXError:
+        print("Object ID was not provided in the correct format")
+        return None
 
 
-def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
+def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"): # reports
     """ Return the workflow output dir so that it is not duplicated when run
 
     Args:
@@ -328,7 +289,7 @@ def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
     workflow_dir = "{}{}".format(workflow_out_dir, workflow_name)
 
     workflow_output_dir_pattern = "{workflow_dir}-{assay}-{date}-{index}/"
-    date = get_date()
+    date, time = get_datetime()
 
     # when creating the new folder, check if the folder already exists
     # increment index until it works or reaches 100
@@ -349,12 +310,13 @@ def make_workflow_out_dir(workflow_id, assay_id, workflow_out_dir="/output/"):
     return None
 
 
-def get_stage_inputs(input_dir, stage_input_dict):
+def get_stage_inputs(input_dir, sample_name_list, stage_input_pattern_dict): # reports
     """ Return dict with sample2stage2files
 
     Args:
         input_dir (str): Directory of single workflow
-        stage_input_dict (dict): Dict of stage2app
+        sample_name_list (list): list of sample names
+        stage_input_pattern_dict (dict): Dict of stage input search patterns
 
     Returns:
         dict: Dict of sample2stage2file_list
@@ -362,30 +324,40 @@ def get_stage_inputs(input_dir, stage_input_dict):
 
     # Allows me to not have to check if a key exists before creating an entry in the dict
     # Example: dict[entry][sub-entry][list-entry].append(ele)
-    dict_res = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    sample2stage_input2files_dict = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
+    )
 
-    # type_input can be either "multi" or a sample id
-    for type_input in stage_input_dict:
+    for sample in sample_name_list:
+        # make a placeholder for the sample
+        sample2stage_input2files_dict[sample] = {}
         # find the inputs for each stage using given app/pattern
-        for stage_input, stage_input_info in stage_input_dict[type_input].items():
-            input_app_dir = find_app_dir(
-                input_dir, stage_input_info["app"]
-            )
+        for stage_input, stage_input_info in stage_input_pattern_dict.items():
+            # example input_dir for reports: /output/CEN-230420_1847/
+            # example input_dir for cnvreports:
+            # /output/CEN-230420_1847/eggd_GATKgCNV_call_v1.0.1-CUSTOM_CONFIG_CEN_EPICreports_v3-230426-1/
+            if len(input_dir.split("/")) < 5:
+                input_app_dir = find_app_dir(
+                    input_dir, stage_input_info["app"]
+                )
+            else:
+                input_app_dir = input_dir
+
             inputs = get_stage_input_file_list(
                 input_app_dir,
                 app_subdir=stage_input_info["subdir"],
-                filename_pattern=stage_input_info["pattern"].format(type_input)
+                filename_pattern=stage_input_info["pattern"].format(sample)
             )
-            dict_res[type_input][stage_input]["file_list"] = inputs
+            sample2stage_input2files_dict[sample][stage_input] = inputs
 
-    return dict_res
+    return sample2stage_input2files_dict
 
 
 def prepare_batch_writing(
-    stage_input_dict, type_workflow, assay_config_happy_stage_prefix,
-    assay_config_somalier_relate_stage_id,assay_config_athena_stage_id,
-    assay_config_generate_workbook_stage_id, workflow_specificity={}
-):
+    stage_input_dict, type_workflow, assay_config_happy_stage_prefix=None,
+    assay_config_somalier_relate_stage_id=None,assay_config_athena_stage_id=None,
+    assay_config_generate_workbook_stage_id=None, workflow_specificity={}
+): # reports
     """ Return headers and values for the batch file writing
 
     Args:
@@ -403,35 +375,23 @@ def prepare_batch_writing(
     batch_headers = []
     batch_values = []
 
-    for type_input in stage_input_dict:
-        stage_data = stage_input_dict[type_input]
+
+    for sample in stage_input_dict:
+        stage_data = stage_input_dict[sample]
         headers = ["batch ID"]
         values = []
 
-        # multi needs the happy static value
-        if type_workflow == "multi":
-            values.append("multi")
-            # Hap.py - static values
-            headers.append(assay_config_happy_stage_prefix)
-            values.append("NA12878")
-
-        elif type_workflow == "reports" or type_workflow == "cnvreports":
-            # renaming type_input for comprehension in this elif
-            sample_id = type_input
-
-            if sample_id.startswith("NA"):
-                continue
-
-            values.append(sample_id)
+        if type_workflow == "reports" or type_workflow == "cnvreports":
+            values.append(sample)
 
             # get the index for the coverage report that needs to be created
             coverage_reports = find_previous_reports(
-                sample_id, "coverage_report.html"
+                sample, "coverage_report.html"
             )
-            # get the index for the xls report that needs to be created
-            xls_reports = find_previous_reports(sample_id, ".xls*")
-            xls_index = get_next_index(xls_reports)
             coverage_index = get_next_index(coverage_reports)
+            # get the index for the xls report that needs to be created
+            xls_reports = find_previous_reports(sample, ".xls*")
+            xls_index = get_next_index(xls_reports)
 
             index_to_use = max([xls_index, coverage_index])
 
@@ -440,6 +400,8 @@ def prepare_batch_writing(
             if type_workflow != "cnvreports":
                 # add the name param to athena
                 headers.append("{}.name".format(assay_config_athena_stage_id))
+                # add the value of name to athena
+                values.append("{}_{}".format(sample, index_to_use))
 
             # add the name output_prefix to generate_workbooks
             headers.append("{}.output_prefix".format(
@@ -447,12 +409,8 @@ def prepare_batch_writing(
                 )
             )
 
-            if type_workflow != "cnvreports":
-                # add the value of name to athena
-                values.append("{}_{}".format(sample_id, index_to_use))
-
             # add the value of output prefix to generate workbooks
-            values.append("{}_{}".format(sample_id, index_to_use))
+            values.append("{}_{}".format(sample, index_to_use))
 
         # add the dynamic files to the headers and values
         for stage, file_id in workflow_specificity.items():
@@ -461,28 +419,28 @@ def prepare_batch_writing(
 
         # For each stage add the column header and the values in that column
         for stage_input in stage_data:
-            if len(stage_data[stage_input]["file_list"]) == 0:
+            if len(stage_data[stage_input]) == 0:
                 continue
 
             headers.append(stage_input)  # col for file name
             headers.append(" ".join([stage_input, "ID"]))  # col for file ID
 
             # One file in file list - no need to merge into array
-            if len(stage_data[stage_input]["file_list"]) == 1:
+            if len(stage_data[stage_input]) == 1:
                 if "{}".format(assay_config_somalier_relate_stage_id) in stage_input:
-                    file_ids = stage_data[stage_input]["file_list"]
+                    file_ids = stage_data[stage_input]
                 else:
-                    file_ids = stage_data[stage_input]["file_list"][0]
+                    file_ids = stage_data[stage_input][0]
 
                 values.append("")  # No need to provide file name in batch file
                 values.append(file_ids)
 
             # make a square bracketed comma separated list if multiple input files
-            elif len(stage_data[stage_input]["file_list"]) > 1:
+            elif len(stage_data[stage_input]) > 1:
                 # Square bracketed csv list
                 file_id_list = [
                     file_id
-                    for file_id in stage_data[stage_input]["file_list"]
+                    for file_id in stage_data[stage_input]
                 ]
                 file_ids = "[{file_ids}]".format(file_ids=",".join(file_id_list))
                 values.append("")  # No need to provide file name in batch file
@@ -494,7 +452,7 @@ def prepare_batch_writing(
         assert len(set(map(len, batch_headers))) == 1, (
             "Sample {} doesn't have the same number of files gathered. "
             "Check if no single jobs failed/fastqs "
-            "for this sample were given".format(type_input)
+            "for this sample were given".format(sample)
         )
 
         # add values for every sample
@@ -503,8 +461,8 @@ def prepare_batch_writing(
     return (batch_headers, batch_values)
 
 
-def create_batch_file(headers, values):
-    """ Create batch file + return filename
+def create_batch_file(headers, values): # reports
+    """ Create batch.tsv file and return filename
 
     Args:
         headers (tuple): Tuple of headers
@@ -514,8 +472,8 @@ def create_batch_file(headers, values):
         str: Batch filename
     """
 
-    batch_uuid = str(uuid.uuid4())
-    batch_filename = ".".join([batch_uuid, "tsv"])
+    date, time = get_datetime()
+    batch_filename = "".join(["batch_", date, "-", time, ".tsv"])
 
     # check if all headers gathered are identical
     assert len(set(headers)) == 1, (
@@ -536,7 +494,7 @@ def create_batch_file(headers, values):
     return batch_filename
 
 
-def assess_batch_file(batch_file):
+def assess_batch_file(batch_file): # reports
     """ Check if the batch file has the same number of headers and values
 
     Args:
@@ -561,7 +519,7 @@ def assess_batch_file(batch_file):
     return True
 
 
-def find_previous_reports(sample, suffix):
+def find_previous_reports(sample, suffix): # reports
     """ Return the reports for given sample if they exist
 
     Args:
@@ -588,7 +546,7 @@ def find_previous_reports(sample, suffix):
     return reports
 
 
-def get_next_index(file_names):
+def get_next_index(file_names): # reports
     """ Return the index to assign to the new report
 
     Args:
@@ -642,37 +600,178 @@ def get_latest_config(folder):
     return config_latest_version
 
 
-def parse_manifest(manifest_file_id):
-    """ Parse manifest
+def parse_Epic_manifest(manifest_file): # reports
+    """ Parse manifest from Epic
 
     Args:
-        manifest_file_id (str): DNAnexus file id for manifest file
+        manifest_file (str): filename from command arg for Epic manifest file
+            semicolon delimited fields, including sample identifiers and
+            R-codes of clinical indications separated by commas
 
     Returns:
-        dict: Dict of samples linked to panels and clinical indications
+        dict: {"sample": "test_codes": [] }
+            Dict of samples linked to list of clinical indications
+            partial sample identifiers and C/R_codes or _HGNC IDs
     """
+    data = {}
+    line_count = 0
 
-    data = defaultdict(lambda: defaultdict(set))
+    # parse the Epic manifest file (format true as of 23.05.05)
+    with open(manifest_file, 'r') as f:
+        # parse semicolon delimited file
+        Epic_reader = csv.reader(f, delimiter=';')
+        Epic_content = {}
 
-    project_id, manifest_id = manifest_file_id.split(":")
+        for row in Epic_reader:
+            # skip first row which is expected to contain a batch ID
+            if line_count == 0:
+                line_count += 1
+                continue
+            # take next row to be header/dict keys
+            elif line_count == 1:
+                line_count += 1
+                headers = row
+                # expecting Test Codes to be in the last column
+                headers[-1] = "Test Codes"
+                for i in range(len(row)):
+                    Epic_content[headers[i]] = []
+            # all other rows contain sample identifiers and test codes
+            else:
+                for i, value in enumerate(row):
+                    if i < len(row)-1:
+                        Epic_content[headers[i]].append(value)
+                    else:
+                        # expecting Test Codes to be comma-separated
+                        # handle R###.# and C##.# test codes and _HGNC IDs
+                        # strip whitespaces in case they get through somehow
+                        test_codes = list(set(
+                            [CI.strip(" ") for CI in value.split(",") if
+                            re.search(r"^[RC][0-9]+\.[0-9]+", CI.strip(" ")) or
+                            re.search(r"^_HGNC", CI.strip(" "))]
+                        ))
+                        Epic_content[headers[i]].append(test_codes)
 
-    with dxpy.open_dxfile(manifest_id, project=project_id) as f:
-        for line in f:
-            sample, clinical_indication, panel, gene = line.strip().split("\t")
-            data[sample]["clinical_indications"].add(clinical_indication)
-            data[sample]["panels"].add(panel)
+    # convert Epic manifest into sample2Rcode dict
+    for i in range(len(Epic_content['Instrument ID'])):
+        # check whether it is a reanalysis
+        if Epic_content['Re-analysis Specimen ID'][i] != "" and Epic_content['Re-analysis Instrument ID'][i] != "":
+            sample_identifier = "-".join(
+                [Epic_content['Re-analysis Instrument ID'][i],
+                    Epic_content['Re-analysis Specimen ID'][i].strip("SP-")])
+            try:
+                assert sample_identifier not in data.keys()
+            except AssertionError:
+                print(
+                    "Sample with given identifiers: {} has been requested"
+                    " to be analysed for clinical indications: {} in this manifest"
+                    " and will not be analysed for {}.".format(
+                        sample_identifier, data[sample_identifier]["CIs"],
+                        Epic_content["Test Codes"][i]
+                    )
+                )
+                print("Please escalate to a senior bioinformatician and the "
+                        "Clinical Scientists to ensure patient sample is "
+                        "analysed with the correct clinical indications "
+                        "and is recorded in Epic correctly!")
+                continue
+            data[sample_identifier] = {
+                "test_codes": Epic_content['Test Codes'][i],
+                "analysis": "reanalysis"}
+        # check whether it is a new report
+        elif Epic_content['Specimen ID'][i] != "" and Epic_content['Instrument ID'][i] != "":
+            sample_identifier = "-".join(
+                [Epic_content['Instrument ID'][i],
+                    Epic_content['Specimen ID'][i].strip("SP-")])
+            try:
+                assert sample_identifier not in data.keys()
+            except AssertionError:
+                print(
+                    "Sample with given identifiers: {} has been requested"
+                    " to be analysed for clinical indications: {} in this manifest"
+                    " and will not be analysed for {}.".format(
+                        sample_identifier, data[sample_identifier]["CIs"],
+                        Epic_content["Test Codes"][i]
+                    )
+                )
+                print("Please escalate to a senior bioinformatician and the "
+                        "Clinical Scientists to ensure patient sample is "
+                        "analysed with the correct clinical indications "
+                        "and is recorded in Epic correctly!")
+                continue
+            data[sample_identifier] = {
+                "test_codes": Epic_content['Test Codes'][i],
+                "analysis": "analysis"}
+        # let user know if insufficient identifiers were provided
+        else:
+            print("Insufficient sample identifiers were provided in sample row {}: "
+                    "reanalysis Specimen ID '{}', reanalysis Instrument ID '{}', "
+                    "Specimen ID '{}', Instrument ID '{}'".format(i+1,
+                        Epic_content['Re-analysis Specimen ID'][i],
+                        Epic_content['Re-analysis Instrument ID'][i],
+                        Epic_content['Specimen ID'][i],
+                        Epic_content['Instrument ID'][i])
+                )
+            sample_identifier = "-".join([
+                    Epic_content['Re-analysis Instrument ID'][i],
+                    Epic_content['Re-analysis Specimen ID'][i].strip("SP-"),
+                    Epic_content['Instrument ID'][i],
+                    Epic_content['Specimen ID'][i].strip("SP-")
+                ])
+            data[sample_identifier] = {
+                "test_codes": Epic_content['Test Codes'][i],
+                "analysis": "insufficient"}
 
     return data
 
 
-def parse_genepanels(genepanels_file_id):
+def parse_Gemini_manifest(manifest_file): # reports
+    """ Parse manifest from Gemini
+
+    Args:
+        manifest_file (str): filename from command arg for Gemini manifest file
+            tab delimited fields, including sample identifiers (X number) and
+            full name of clinical indications separated by commas
+
+    Returns:
+        dict: {"sample": "test_codes": [] }
+            Dict of samples linked to list of clinical indications
+            partial sample identifiers (X number) and 
+            full clinical indication starting with R_code or _HGNC ID
+    """
+    data = {}
+
+    with open(manifest_file) as f:
+        for line in f:
+            record = line.strip().split("\t") # expecting tab delimited fields
+            assert len(record) == 2, (
+                "Unexpected number of fields in reanalysis_list. "
+                "File must contain one tab separated "
+                "sample/panel combination per line"
+            )
+            sample_identifier = record[0] # X number
+            clinical_indications = record[-1].split(",")
+            CIs = list(set(
+                [CI for CI in clinical_indications if CI.startswith("R") or CI.startswith("_")]
+            ))
+            # if sample is already assigned to a list of CIs, extend the list
+            if sample_identifier in data.keys():
+                data[sample_identifier]["CIs"].append(CIs)
+            # if sample has no CIs yet, save the list
+            else:
+                data[sample_identifier] = {"test_codes": CIs}
+
+    return data
+
+
+def parse_genepanels(genepanels_file_id): # reports
     """ Parse genepanels
 
     Args:
         genepanels_file_id (str): DNAnexus file id for genepanels file
 
     Returns:
-        dict: Dict of samples linked to panels and clinical indications
+        dict: Dict of clinical indication (R-code) to list of panels
+            {"CI": ["panels"]}
     """
 
     data = {}
@@ -687,33 +786,10 @@ def parse_genepanels(genepanels_file_id):
     return data
 
 
-def gather_sample_sheet():
-    """ Get sample sheet id
-
-    Returns:
-        str: Sample sheet DNAnexus id
-    """
-
-    # get the project id from the environment variable
-    current_project = os.environ.get('DX_PROJECT_CONTEXT_ID')
-    result = dxpy.find_data_objects(
-        classname="file", name="SampleSheet.csv", project=current_project
-    )
-
-    sample_sheets = []
-
-    for sample_sheet in result:
-        sample_sheets.append(sample_sheet)
-
-    # quick check to see if we get none or multiple
-    assert len(sample_sheets) == 1, "Didn't gather only one sample sheet file"
-
-    return sample_sheets[0]["id"]
-
-def find_files(project_name, app_dir, pattern="."):
+def find_files(project_name, app_dir, pattern="."): # reports
     """Searches for files ending in provided pattern (e.g "*bam") in a
     given path that contains the files that are being searched for
-   (e.g /output/single/sentieon_output).
+    (e.g /output/single/sentieon_output).
 
     Args:
         app_dir (str): single path including directory to output app.
@@ -727,7 +803,7 @@ def find_files(project_name, app_dir, pattern="."):
     """
     projectID  = list(dxpy.bindings.search.find_projects(name=project_name))[0]['id']
     # the pattern is usually "-E 'pattern'" and we dont want the -E part
-    pattern = pattern.split('-E ')[1].replace("'", "")
+    pattern = pattern.strip("-E ").strip("'")
     search_result = []
 
     try:
@@ -738,10 +814,11 @@ def find_files(project_name, app_dir, pattern="."):
             search_result.append(file["describe"]["name"])
     except ValueError:
         print('Could not files {} in {}'.format(
-              pattern,app_dir
+                pattern, app_dir
             ))
 
     return search_result
+
 
 def make_app_output_dir(app_id, ss_workflow_out_dir, app_name, assay_id):
     """Creates directory for single app with version, date and attempt
@@ -760,7 +837,7 @@ def make_app_output_dir(app_id, ss_workflow_out_dir, app_name, assay_id):
     app_version = str(dxpy.describe(app_id)['version'])
 
     app_output_dir_pattern = "{ss_workflow_out_dir}/{app_name}_v{version}-{assay}-{date}-{index}/"
-    date = get_date()
+    date, time = get_datetime()
 
     # when creating the new folder, check if the folder already exists
     # increment index until it works or reaches 100
@@ -781,3 +858,47 @@ def make_app_output_dir(app_id, ss_workflow_out_dir, app_name, assay_id):
         i += 1
 
     return None
+
+
+def create_job_report_file(job__report_dict):
+    """ Create and upload a job report file where samples are categorised into:
+        - expected number of samples from input VCF ("total_input")
+        - expected number of samples from manifest ("total_manifest")
+        - number of jobs being set off for valid sample+panels ("successful")
+        - list of samples with invalid sample identifier ("invalid_samples")
+        - list of samples with invalid test_code/clinical indication ("invalid_tests")
+
+    Args:
+        job__report_dict (dict): Dict with the lists of samples for the categories
+        listed above
+
+    Returns:
+        str: Job report file name
+    """
+
+    # rpt_out_dir should always be /output/dias_single/dias_reports but in case
+    # someone adds a "/" at the end, which I do sometimes
+    date, time = get_datetime()
+    job_report_file = "job_report_{}_{}.txt".format(date, time)
+
+    with open(job_report_file, "w") as f:
+        f.write(
+            "Number of samples with suitable input VCF files: {}\n"
+            "Number of samples with valid identifiers and tests from manifest: {}\n\n"
+            "Number of samples for which a reports job started: {}\n\n"
+            "Samples for which jobs didn't start:\n"
+            "samples with invalid identifiers \n  {}\n"
+            "samples with invalid test requests (sample: invalid test)\n"
+            .format(
+                job__report_dict["total_input"],
+                job__report_dict["total_manifest"],
+                job__report_dict["successful"],
+                job__report_dict["invalid_samples"]
+            )
+        )
+        for sample, test in job__report_dict["invalid_tests"]:
+            f.write(
+                "  * {}: {}".format(sample, test)
+            )
+
+    return job_report_file
