@@ -172,6 +172,9 @@ def run_cnvreports(
                 "clinical_indications": CIs,
                 "panels": panels
             }
+        # Upload manifest file
+        cmd = "dx upload {} --path {}".format(sample_ID_TestCode, rpt_workflow_out_dir)
+        subprocess.check_output(cmd, shell=True)
 
     elif sample_X_CI is not None:
         print("running dias_cnvreports with X numbers and clinical indications "
@@ -231,6 +234,9 @@ def run_cnvreports(
                 "clinical_indications": CIs,
                 "panels": panels
             }
+        # Upload manifest file
+        cmd = "dx upload {} --path {}".format(sample_X_CI, rpt_workflow_out_dir)
+        subprocess.check_output(cmd, shell=True)
 
     else:
         assert sample_ID_TestCode or sample_X_CI, "No file was provided with sample & panel information"
