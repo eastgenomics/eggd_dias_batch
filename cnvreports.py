@@ -173,7 +173,7 @@ def run_cnvreports(
                 "panels": panels
             }
         # Upload manifest file
-        cmd = "dx upload {} --path {}".format(sample_ID_TestCode, rpt_workflow_out_dir)
+        cmd = "dx upload {} --path {}".format(sample_ID_TestCode, cnvrpt_workflow_out_dir)
         subprocess.check_output(cmd, shell=True)
 
     elif sample_X_CI is not None:
@@ -235,7 +235,7 @@ def run_cnvreports(
                 "panels": panels
             }
         # Upload manifest file
-        cmd = "dx upload {} --path {}".format(sample_X_CI, rpt_workflow_out_dir)
+        cmd = "dx upload {} --path {}".format(sample_X_CI, cnvrpt_workflow_out_dir)
         subprocess.check_output(cmd, shell=True)
 
     else:
