@@ -903,7 +903,7 @@ def create_job_report_file(job__report_dict):
         )
         for sample, test in job__report_dict["invalid_tests"]:
             f.write(
-                "  * {}: {}".format(sample, test)
+                "{}\t{}\n".format(sample, test)
             )
 
     return job_report_file
