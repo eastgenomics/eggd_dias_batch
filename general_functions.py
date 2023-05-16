@@ -750,15 +750,20 @@ def parse_Gemini_manifest(manifest_file): # reports
             )
             sample_identifier = record[0] # X number
             clinical_indications = record[-1].split(",")
-            CIs = list(set(
-                [CI for CI in clinical_indications if CI.startswith("R") or CI.startswith("_")]
+            # expecting Test Codes to be comma-separated
+            # handle R###.# and C##.# test codes and _HGNC IDs
+            # strip whitespaces in case they get through somehow
+            test_codes = list(set(
+                [CI.strip(" ") for CI in clinical_indications if
+                re.search(r"^[RC][0-9]+\.[0-9]+", CI.strip(" ")) or
+                re.search(r"^_HGNC", CI.strip(" "))]
             ))
-            # if sample is already assigned to a list of CIs, extend the list
+            # if sample is already assigned to a list of test_codes, extend the list
             if sample_identifier in data.keys():
-                data[sample_identifier]["CIs"].append(CIs)
-            # if sample has no CIs yet, save the list
+                data[sample_identifier]["test_codes"].extend(test_codes)
+            # if sample has no test_codes yet, save the list
             else:
-                data[sample_identifier] = {"test_codes": CIs}
+                data[sample_identifier] = {"test_codes": test_codes}
 
     return data
 
