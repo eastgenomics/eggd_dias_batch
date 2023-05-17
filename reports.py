@@ -210,8 +210,9 @@ def run_reports(
                     panels.append(CI)
                 else:
                     clinical_indication = next(
-                        (key for key in CI2panels_dict.keys() if key == CI),
-                        None)
+                        (key for key in CI2panels_dict.keys()
+                            if key.split("_")[0] == CI.split("_")[0]), None
+                        )
                     if clinical_indication is None:
                         # skip sample if CI not found
                         skip_sample = True
