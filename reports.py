@@ -267,7 +267,9 @@ def run_reports(
             "{}.clinical_indication".format(assay_config.generate_workbook_stage_id),
             "{}.panel".format(assay_config.generate_bed_vep_stage_id),
             "{}.panel".format(assay_config.generate_bed_athena_stage_id),
-            "{}.panel".format(assay_config.generate_workbook_stage_id)
+            "{}.panel".format(assay_config.generate_workbook_stage_id),
+            "{}.output_file_prefix".format(assay_config.generate_bed_vep_stage_id),
+            "{}.output_file_prefix".format(assay_config.generate_bed_athena_stage_id)
         ])
         headers.append(tuple(new_headers))
 
@@ -283,7 +285,8 @@ def run_reports(
         # file properly
         CIs = ";".join(CI_list)
         panels = ";".join(panel_list)
-        line.extend([CIs, CIs, CIs, panels])
+        test_codes = "&&".join([CI.split("_")[0] for CI in CI_list])
+        line.extend([CIs, CIs, CIs, panels, test_codes, test_codes])
         values.append(line)
 
     job_report_dict["successful"] = len(rpt_values)
