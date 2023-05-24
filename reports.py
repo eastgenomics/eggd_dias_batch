@@ -139,11 +139,13 @@ def run_reports(
             skip_sample = False
             CIs = []
             panels = []
+            prefixes = []
             for test_code in test_codes:
                 # single gene based on _HGNC ID
                 if test_code.startswith("_HGNC"):
                     CIs.append(test_code)
                     panels.append(test_code)
+                    prefixes.append(test_code)
                 # clinical indication and panel based on test_code
                 else:
                     clinical_indication = next(
@@ -160,6 +162,7 @@ def run_reports(
                     else:
                         CIs.append(clinical_indication)
                         panels.extend(list(CI2panels_dict[clinical_indication]))
+                        prefixes.append(test_code.split("_")[0])
             if skip_sample:
                 # skip sample if CI not found for any of its test_codes
                 job_report_dict["invalid_tests"].append(
@@ -168,7 +171,8 @@ def run_reports(
                 continue
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
-                "panels": panels
+                "panels": panels,
+                "prefixes": prefixes
             }
         # Upload manifest file
         cmd = "dx upload {} --path {}".format(sample_ID_TestCode, rpt_workflow_out_dir)
@@ -203,11 +207,13 @@ def run_reports(
             skip_sample = False
             CIs = []
             panels = []
+            prefixes = []
             for CI in clinical_indications:
                 # single gene based on _HGNC ID
                 if CI.startswith("_HGNC"):
                     CIs.append(CI)
                     panels.append(CI)
+                    prefixes.append(CI)
                 else:
                     clinical_indication = next(
                         (key for key in CI2panels_dict.keys()
@@ -224,6 +230,7 @@ def run_reports(
                     else:
                         CIs.append(clinical_indication)
                         panels.extend(list(CI2panels_dict[clinical_indication]))
+                        prefixes.append(CI.split("_")[0])
             if skip_sample:
                 # skip sample if CI not found for any of its CI
                 job_report_dict["invalid_tests"].append(
@@ -232,7 +239,8 @@ def run_reports(
                 continue
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
-                "panels": panels
+                "panels": panels,
+                "prefixes": prefixes
             }
         # Upload manifest file
         cmd = "dx upload {} --path {}".format(sample_X_CI, rpt_workflow_out_dir)
@@ -280,12 +288,13 @@ def run_reports(
 
         CI_list = sample2CIpanel_dict[sample]["clinical_indications"]
         panel_list = sample2CIpanel_dict[sample]["panels"]
+        prefix_list = sample2CIpanel_dict[sample]["prefixes"]
 
         # join up potential lists of CIs and panels to align the batch
         # file properly
         CIs = ";".join(CI_list)
         panels = ";".join(panel_list)
-        test_codes = "&&".join([CI.split("_")[0] for CI in CI_list])
+        test_codes = "&&".join(prefix_list)
         line.extend([CIs, CIs, CIs, panels, test_codes, test_codes])
         values.append(line)
 
