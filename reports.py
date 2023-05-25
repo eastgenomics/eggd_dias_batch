@@ -137,15 +137,23 @@ def run_reports(
         # Get gene panels based on test code from manifest
         for sample, test_codes in sample2testcodes_dict.items():
             skip_sample = False
+            # placeholders for storing
+            # clinical indication (test code: R, C code or _HGNC:ID)
             CIs = []
+            # panel name associated with the above clinical indication
             panels = []
+            # test code (R or C code) parsed from the clinical indication text or _HGNC:ID
+            prefixes = []
             for test_code in test_codes:
                 # single gene based on _HGNC ID
                 if test_code.startswith("_HGNC"):
                     CIs.append(test_code)
                     panels.append(test_code)
+                    prefixes.append(test_code)
                 # clinical indication and panel based on test_code
                 else:
+                    # look up the corresponding clinical indication text and associated panels
+                    # from the genepanels.tsv file (parsed into CI2panels_dict variable)
                     clinical_indication = next(
                         (key for key in CI2panels_dict.keys() if key.split("_")[0] == test_code),
                         None)
@@ -158,8 +166,12 @@ def run_reports(
                             test_code, sample
                         ))
                     else:
+                        # add the clinical indication text corresponding the test code
                         CIs.append(clinical_indication)
+                        # add a list of associated panels (to be displayed in the variant workbooks)
                         panels.extend(list(CI2panels_dict[clinical_indication]))
+                        # record the test code (for naming the generated bed file)
+                        prefixes.append(test_code)
             if skip_sample:
                 # skip sample if CI not found for any of its test_codes
                 job_report_dict["invalid_tests"].append(
@@ -168,7 +180,8 @@ def run_reports(
                 continue
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
-                "panels": panels
+                "panels": panels,
+                "prefixes": prefixes
             }
         # Upload manifest file
         cmd = "dx upload {} --path {}".format(sample_ID_TestCode, rpt_workflow_out_dir)
@@ -187,6 +200,7 @@ def run_reports(
         job_report_dict["invalid_samples"] = ["not applicable"]
 
         # manifest file only has partial sample names/identifiers
+        # identify the full sample name based on the X number
         for sample in single_sample_names:
             partial_identifier = sample.split('-')[0] # X number
             if partial_identifier in manifest_samples:
@@ -201,14 +215,22 @@ def run_reports(
         # Get gene panels based on clinical indication from manifest
         for sample, clinical_indications in sample2CIs_dict.items():
             skip_sample = False
+            # placeholders for storing
+            # clinical indication (test code: R, C code or _HGNC:ID)
             CIs = []
+            # panel name associated with the above clinical indication
             panels = []
+            # test code (R or C code) parsed from the clinical indication text or _HGNC:ID
+            prefixes = []
             for CI in clinical_indications:
                 # single gene based on _HGNC ID
                 if CI.startswith("_HGNC"):
                     CIs.append(CI)
                     panels.append(CI)
+                    prefixes.append(CI)
                 else:
+                    # look up the corresponding clinical indication text and associated panels
+                    # from the genepanels.tsv file (parsed into CI2panels_dict variable)
                     clinical_indication = next(
                         (key for key in CI2panels_dict.keys()
                             if key.split("_")[0] == CI.split("_")[0]), None
@@ -222,8 +244,12 @@ def run_reports(
                             CI, sample
                         ))
                     else:
+                        # add the clinical indication text corresponding the test code
                         CIs.append(clinical_indication)
+                        # add a list of associated panels (to be displayed in the variant workbooks)
                         panels.extend(list(CI2panels_dict[clinical_indication]))
+                        # record the test code (for naming the generated bed file)
+                        prefixes.append(CI.split("_")[0])
             if skip_sample:
                 # skip sample if CI not found for any of its CI
                 job_report_dict["invalid_tests"].append(
@@ -232,7 +258,8 @@ def run_reports(
                 continue
             sample2CIpanel_dict[sample] = {
                 "clinical_indications": CIs,
-                "panels": panels
+                "panels": panels,
+                "prefixes": prefixes
             }
         # Upload manifest file
         cmd = "dx upload {} --path {}".format(sample_X_CI, rpt_workflow_out_dir)
@@ -280,12 +307,13 @@ def run_reports(
 
         CI_list = sample2CIpanel_dict[sample]["clinical_indications"]
         panel_list = sample2CIpanel_dict[sample]["panels"]
+        prefix_list = sample2CIpanel_dict[sample]["prefixes"]
 
-        # join up potential lists of CIs and panels to align the batch
-        # file properly
+        # join up potential lists of CIs and panels to align
+        # the batch file properly
         CIs = ";".join(CI_list)
         panels = ";".join(panel_list)
-        test_codes = "&&".join([CI.split("_")[0] for CI in CI_list])
+        test_codes = "&&".join(prefix_list)
         line.extend([CIs, CIs, CIs, panels, test_codes, test_codes])
         values.append(line)
 
