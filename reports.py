@@ -26,7 +26,7 @@ from general_functions import (
 
 # reports
 def run_reports(
-    ss_workflow_out_dir, dry_run, assay_config, assay_id,
+    ss_workflow_out_dir, dry_run, mosaic, assay_config, assay_id,
     sample_ID_TestCode=None, sample_X_CI=None
 ):
     """Reads in the manifest file given on the command line and runs the
@@ -269,9 +269,14 @@ def run_reports(
         assert sample_ID_TestCode or sample_X_CI, "No file was provided with sample & panel information"
 
     ### Gather sample-specific input file IDs based on the given app-pattern
-    sample2stage_input2files_dict = get_stage_inputs(
-        ss_workflow_out_dir, sample2CIpanel_dict.keys(), assay_config.rpt_stage_input_dict
-    )
+    if mosaic:
+        sample2stage_input2files_dict = get_stage_inputs(
+            ss_workflow_out_dir, sample2CIpanel_dict.keys(), assay_config.rpt_mosaic_input_dict
+        )
+    else:
+        sample2stage_input2files_dict = get_stage_inputs(
+            ss_workflow_out_dir, sample2CIpanel_dict.keys(), assay_config.rpt_stage_input_dict
+        )
 
 
     ### Initialise headers and values for a batch.tsv

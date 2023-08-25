@@ -42,7 +42,10 @@ def parse_CLI_args(): # -> argparse.Namespace:
         "-d", "--dry_run", action="store_true",
         default=False, help="Make a dry run"
     )
-
+    parser.add_argument(
+        "-m", "--mosaic", action="store_true",
+        default=False, help="Perform mosaic variant calling"
+    )
     parser.add_argument(
         "-a", "--assay", choices=ASSAY_OPTIONS.keys(), help=(
             "Type of assay needed for this run of samples"
@@ -197,7 +200,7 @@ def main():
         )
     elif subcommand == "reports":
         reports_out_dir = run_reports(
-            args.input_dir, args.dry_run, config, assay_id,
+            args.input_dir, args.dry_run, args.mosaic, config, assay_id,
             sample_ID_TestCode = args.sample_ID_TestCode
         )
     elif subcommand == "reanalysis":
