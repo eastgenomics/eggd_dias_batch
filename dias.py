@@ -43,10 +43,6 @@ def parse_CLI_args(): # -> argparse.Namespace:
         default=False, help="Make a dry run"
     )
     parser.add_argument(
-        "-m", "--mosaic", action="store_true",
-        default=False, help="Perform mosaic variant calling"
-    )
-    parser.add_argument(
         "-a", "--assay", choices=ASSAY_OPTIONS.keys(), help=(
             "Type of assay needed for this run of samples"
         )
@@ -83,6 +79,10 @@ def parse_CLI_args(): # -> argparse.Namespace:
             ' clinical indications for SNV report generation'
             '. One sample name per row with semicolon separated R codes'
         )
+    )
+    parser_r.add_argument(
+        "-m", "--mosaic", action="store_true",
+        default=False, help="Perform mosaic variant calling"
     )
     parser_r.set_defaults(which='reports')
 
