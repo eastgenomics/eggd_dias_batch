@@ -271,7 +271,7 @@ def run_reports(
     ### Gather sample-specific input file IDs based on the given app-pattern
     if mosaic:
         sample2stage_input2files_dict = get_stage_inputs(
-            ss_workflow_out_dir, sample2CIpanel_dict.keys(), assay_config.rpt_mosaic_input_dict
+            ss_workflow_out_dir, sample2CIpanel_dict.keys(), assay_config.mosaic_rpt_stage_input_dict
         )
     else:
         sample2stage_input2files_dict = get_stage_inputs(
