@@ -80,11 +80,23 @@ def parse_CLI_args(): # -> argparse.Namespace:
             '. One sample name per row with semicolon separated R codes'
         )
     )
-    parser_r.add_argument(
-        "-m", "--mosaic", action="store_true",
-        default=False, help="Perform mosaic variant calling"
-    )
     parser_r.set_defaults(which='reports')
+
+    # Parsing command line args for Mosaic reports
+    parser_r = subparsers.add_parser('mosaicreports', help='mosaicreports help')
+    parser_r.add_argument(
+        'input_dir', type=str,
+        help='A single sample workflow output directory path'
+    )
+    parser_r.add_argument(
+        'sample_ID_TestCode', type=str, nargs="?",
+        help=(
+            'DNAnexus file-ID of a csv file containing samples and '
+            ' clinical indications for Mosaic report generation'
+            '. One sample name per row with semicolon separated R codes'
+        )
+    )
+    parser_r.set_defaults(which='mosaicreports')
 
     # Parsing command line args for SNV reanalysis
     parser_r = subparsers.add_parser('reanalysis', help='reanalysis help')
@@ -201,6 +213,11 @@ def main():
     elif subcommand == "reports":
         reports_out_dir = run_reports(
             args.input_dir, args.dry_run, args.mosaic, config, assay_id,
+            sample_ID_TestCode = args.sample_ID_TestCode
+        )
+    elif subcommand == "mosaicreports":
+        reports_out_dir = run_reports(
+            args.input_dir, args.dry_run, mosaic = True, config, assay_id,
             sample_ID_TestCode = args.sample_ID_TestCode
         )
     elif subcommand == "reanalysis":
