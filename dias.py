@@ -217,7 +217,7 @@ def main():
         )
     elif subcommand == "mosaicreports":
         reports_out_dir = run_reports(
-            args.input_dir, args.dry_run, mosaic=True, config, assay_id,
+            args.input_dir, args.dry_run, True, config, assay_id,
             sample_ID_TestCode = args.sample_ID_TestCode
         )
     elif subcommand == "reanalysis":
