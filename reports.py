@@ -26,7 +26,7 @@ from general_functions import (
 
 # reports
 def run_reports(
-    ss_workflow_out_dir, dry_run, mosaic=False, assay_config, assay_id,
+    ss_workflow_out_dir, dry_run, assay_config, assay_id, mosaic=False,
     sample_ID_TestCode=None, sample_X_CI=None
 ):
     """Reads in the manifest file given on the command line and runs the
