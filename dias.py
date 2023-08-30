@@ -212,12 +212,12 @@ def main():
         )
     elif subcommand == "reports":
         reports_out_dir = run_reports(
-            args.input_dir, args.dry_run, args.mosaic, config, assay_id,
+            args.input_dir, args.dry_run, config, assay_id,
             sample_ID_TestCode = args.sample_ID_TestCode
         )
     elif subcommand == "mosaicreports":
         reports_out_dir = run_reports(
-            args.input_dir, args.dry_run, mosaic = True, config, assay_id,
+            args.input_dir, args.dry_run, mosaic=True, config, assay_id,
             sample_ID_TestCode = args.sample_ID_TestCode
         )
     elif subcommand == "reanalysis":
