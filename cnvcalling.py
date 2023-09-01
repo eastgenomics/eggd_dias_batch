@@ -78,9 +78,7 @@ def run_cnvcall_app(ss_workflow_out_dir, dry_run, assay_config, assay_id, exclud
         "dx run {} --yes --ignore-reuse -iGATK_docker='{}' "
         "-iinterval_list='{}' -iannotation_tsv='{}' {} "
         "-idebug_fail_start=False -idebug_fail_end=False "
-        "-irun_name='{}' --destination='{}' "
-        "--extra-args='{"timeout": 10800000}' "
-        "--extra-args='{"systemRequirements": {"*": {"instanceType": "mem2_ssd1_v2_x8"}}}'"
+        "-irun_name='{}' --destination='{}'"
     ).format(
         assay_config.cnvcall_app_id,
         assay_config.cnvcalling_fixed_inputs["gatk_docker"],
