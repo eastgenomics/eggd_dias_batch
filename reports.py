@@ -285,12 +285,20 @@ def run_reports(
     # list to represent the rows/lines for each sample in the batch.tsv file
     values = []
     # get the headers and values from the staging inputs
-    rpt_headers, rpt_values = prepare_batch_writing(
-        sample2stage_input2files_dict, "reports",
-        assay_config_athena_stage_id=assay_config.athena_stage_id,
-        assay_config_generate_workbook_stage_id=assay_config.generate_workbook_stage_id,
-        workflow_specificity=assay_config.rpt_dynamic_files
-    )
+    if mosaic:
+        rpt_headers, rpt_values = prepare_batch_writing(
+            sample2stage_input2files_dict, "reports",
+            assay_config_athena_stage_id=assay_config.athena_stage_id,
+            assay_config_generate_workbook_stage_id=assay_config.generate_workbook_stage_id,
+            workflow_specificity=assay_config.mosaic_rpt_dynamic_files
+        )
+    else:
+        rpt_headers, rpt_values = prepare_batch_writing(
+            sample2stage_input2files_dict, "reports",
+            assay_config_athena_stage_id=assay_config.athena_stage_id,
+            assay_config_generate_workbook_stage_id=assay_config.generate_workbook_stage_id,
+            workflow_specificity=assay_config.rpt_dynamic_files
+        )
 
     # manually add the headers for panel/clinical_indication inputs
     for header in rpt_headers:
