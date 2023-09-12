@@ -128,6 +128,8 @@ def main(
         mosaic_report=mosaic_report
     )
 
+    dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
+
     assay_config = DXManage().get_assay_config(
         path=assay_config_dir,
         file=assay_config_file,
@@ -152,7 +154,7 @@ def main(
             exclude=exclude_samples,
             wait=wait
         )
-        launched_jobs['cnv_call'] = job_id
+        launched_jobs['CNV calling'] = [job_id]
 
     if cnv_report:
         pass
@@ -166,9 +168,12 @@ def main(
     if testing and launched_jobs:
         # testing => terminate launched jobs
         print("Terminating launched jobs")
-        DXExecute.terminate(list(chain(*launched_jobs.values())))
+        DXExecute().terminate(list(chain(*launched_jobs.values())))
     
-    print(f'All jobs launched:')
+    print(
+        f'All jobs launched:\n\t',
+        "\n\t".join([f"{x[0]}: {x[1]}" for x in launched_jobs.items()])
+    )
 
 
 dxpy.run()

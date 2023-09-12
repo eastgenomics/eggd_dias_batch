@@ -192,7 +192,7 @@ class DXExecute():
         str
             job ID of launch cnv calling job
         """
-        print("Building inputs for CNV calling")
+        print("\nBuilding inputs for CNV calling")
         cnv_config = config['modes']['cnv_call']
 
         # find BAM files and format as $dnanexus_link inputs to add to config
@@ -258,9 +258,9 @@ class DXExecute():
                 raise RuntimeError(
                     f"CNV calling failed in job {job_id}:\n\n{err}"
                 )
-            print("CNV calling completed successfully")
+            print("CNV calling completed successfully\n")
         else:
-            print(f'CNV calling launched: {job_id}')
+            print(f'CNV calling launched: {job_id}\n')
 
         return job_id
 
