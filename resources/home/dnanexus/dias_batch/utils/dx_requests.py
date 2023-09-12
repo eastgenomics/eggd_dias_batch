@@ -38,9 +38,15 @@ class DXManage():
         """
         if file:
             # specified file to use => read in and return
+            print("Reading in specified assay config file")
             file = file.get('$dnanexus_link')
             if not file.startswith('project'):
                 file = self.get_file_project_context(file)
+            
+            print(
+                f"Using assay config file: {file['describe']['name']} "
+                f"({file['project']}:{file['id']})"
+            )
 
             return json.loads(dxpy.bindings.dxfile.DXFile(
                 project=file['project'], dxid=file['id']).read())
@@ -112,10 +118,10 @@ class DXManage():
 
         Returns
         -------
-        str
-            project:file format of file
+        DXObject
+            DXObject file handler object
         """
-        file_details = dxpy.DXFile(dxid=file)
+        file_details = dxpy.DXFile(dxid=file).describe()
         files = dxpy.find_data_objects(
             name=file_details['name'],
             describe=True
@@ -124,7 +130,7 @@ class DXManage():
         files = [x for x in files if x['describe']['archivalState'] == 'live']
         assert files, f"No live files could be found for the ID: {file}"
 
-        return f"{files[0]['project']}:{file}"
+        return files[0]
 
 
     def read_manifest(self, file) -> pd.DataFrame:
@@ -141,22 +147,25 @@ class DXManage():
         pd.DataFrame
             dataframe of manifest file
         """
+        file = file.get('$dnanexus_link')
         if not file.startswith('project'):
             file = self.get_file_project_context(file)
 
         contents = dxpy.bindings.dxfile.DXFile(
             project=file['project'], dxid=file['id']).read()
         
-        manifest = pd.DataFrame(contents)
+        contents = [row.split('\t') for row in contents.split('\n') if row]
+        manifest = pd.DataFrame(contents, columns=['sample', 'panel'])
 
         print(f"Manifest read from file: {file}\n\n{manifest}")
 
+        return manifest
 
 class DXExecute():
     """
     Methods for handling exeuction of apps / worklfows
     """
-    def run_cnv_calling(self, config, single_output_dir, exclude, wait):
+    def run_cnv_calling(self, config, single_output_dir, exclude, wait) -> str:
         """
         Run CNV calling for given samples in manifest
 
@@ -176,6 +185,7 @@ class DXExecute():
         str
             job ID of launch cnv calling job
         """
+        print("Running CNV calling")
         cnv_config = config.get('inputs').get('cnv_call')
 
         # find BAM files and format as $dnanexus_link inputs to add to config
@@ -192,6 +202,8 @@ class DXExecute():
             describe=True
         ))
 
+        print(f"Found {len(files)} .bam/.bai files")
+
         if exclude:
             samples = '\n\t'.join(exlcude.split(','))
             print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
@@ -199,7 +211,9 @@ class DXExecute():
         files = [file for file in files if not file['describe']['name'] in exclude]
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['bambais'] = files
-
+        print(f"{len(files)} .bam/.bai files after exlcuding")
+        
+        # set output folder relative to single dir
         app_details = dxpy.describe(config.get('cnv_call_app_id'))
         folder = path.joinpath(
             single_output_dir,

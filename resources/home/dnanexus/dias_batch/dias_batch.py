@@ -20,18 +20,30 @@ import dxpy
 class CheckInputs():
     """
     Basic methods for validating app inputs
+
+    Raises
+    ------
+    RuntimeError
+        Raised if one or more inputs is invalid
     """
-    def __init__(self, **inputs):
+    def __init__(self, **inputs) -> None:
+        print("Validating inputs")
         self.inputs = inputs
         self.errors = []
         self.check_assay()
         self.check_assay_config_dir()
         self.check_mode_set()
         self.check_single_output_dir()
+
+        if self.errors:
+            errors = '\n\t'.join(x for x in self.errors)
+            raise RuntimeError(
+                f"Errors in inputs passed:\n\t{errors}"
+            )
     
     def check_assay(self):
-        """Check assay string passed is valuid"""
-        if self.inputs['assay'] not in ['CEN', 'WES']:
+        """Check assay string passed is valid"""
+        if self.inputs['assay'] not in ['CEN', 'FH', 'TSOE', 'WES']:
             self.errors.append(
                 f"Invalid assay passed: {self.inputs['assay']}"
             )
@@ -113,37 +125,18 @@ def main(
         mosaic_report=mosaic_report
     )
 
-    if check.errors:
-        errors = '\n\t'.join(x for x in check.errors)
-        raise RuntimeError(
-            f"Errors in inputs passed:\n\t{errors}"
-        )
-    else:
-        (
-            assay,
-            assay_config_file,
-            assay_config_dir,
-            manifest_file,
-            single_output_dir,
-            cnv_call,
-            cnv_report,
-            snv_report,
-            mosaic_report
-        ) = check.inputs.values()
-
-
     assay_config = DXManage().get_assay_config(
         path=assay_config_dir,
         file=assay_config_file,
         assay=assay
     )
 
-    manifest_file = DXManage.read_manifest()
+    manifest = DXManage().read_manifest(manifest_file)
 
     launched_jobs = []
     
     if cnv_call:
-        if any(cnv_report, snv_report, mosaic_report):
+        if any([cnv_report, snv_report, mosaic_report]):
             # going to run some reports after calling finishes, hold app
             # until calling completes
             wait=True
