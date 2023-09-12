@@ -172,7 +172,7 @@ class DXExecute():
     """
     Methods for handling exeuction of apps / worklfows
     """
-    def run_cnv_calling(self, config, single_output_dir, exclude, wait) -> str:
+    def cnv_calling(self, config, single_output_dir, exclude, wait) -> str:
         """
         Run CNV calling for given samples in manifest
 
@@ -229,21 +229,41 @@ class DXExecute():
         # set output folder relative to single dir
         app_details = dxpy.describe(config.get('cnv_call_app_id'))
         folder = make_path(
-            single_output_dir, app_details['name'],
-            app_details['version'], time_stamp()
+            single_output_dir,
+            f"{app_details['name']}-{app_details['version']}",
+            time_stamp()
         )
 
-        print(f"Running CNV calling, outputing to {folder}")
+        print(f"Running CNV calling, outputting to {folder}")
 
-        job_id = dxpy.bindings.dxapp.DXApp(dxid=config.get('cnv_call_app_id')).run(
+        job = dxpy.bindings.dxapp.DXApp(dxid=config.get('cnv_call_app_id')).run(
             app_input=cnv_config['inputs'],
+            project=os.environ.get('DX_PROJECT_CONTEXT_ID'),
             folder=folder,
             priority='high',
-            hold_on_wait=wait,
+            detach=True,
             instance_type=cnv_config.get('instance_type')
         )
 
+        job_id = job.describe().get('id')
+        job_handle = dxpy.bindings.dxjob.DXJob(dxid=job_id)
+
+        if wait:
+            print("Holding app until CNV calling completes...")
+            try:
+                # holds app until job returns success
+                job_handle.wait_on_done()
+            except dxpy.exceptions.DXJobFailureError as err:
+                # dx job error raised (i.e. failed, timed out, terminated)
+                raise RuntimeError(
+                    f"CNV calling failed in job {job_id}:\n\n{err}"
+                )
+            print("CNV calling completed successfully")
+        else:
+            print(f'CNV calling launched: {job_id}')
+
         return job_id
+
 
     @staticmethod
     def terminate(jobs) -> None:
