@@ -1,19 +1,20 @@
+from glob import glob
 from pathlib import Path
 import os
 import subprocess
 import sys
 
-# Install required packages
-subprocess.check_call([
-    sys.executable, '-m ', 'pip', 'install',
-    "--no-index", "--no-deps", "packages/*"
-])
+if os.path.exists('/home/dnanexus'):
+    # running in DNAnexus
+    subprocess.check_call([
+        'pip', 'install', "--no-index", "--no-deps"
+    ] + glob("packages/*"))
+
+    from dias_batch.utils.dx_requests import DXExecute, DXManage
+else:
+    from utils.dx_requests import DXExecute, DXManage
 
 import dxpy
-
-subprocess.check_call(['ls'])
-
-from utils.dx_requests import DXExecute, DXManage
 
 
 class CheckInputs():
@@ -82,33 +83,31 @@ class CheckInputs():
                 self.errors.append('No mode specified to run in')
 
 
-
-
 @dxpy.entry_point('main')
 def main(
-    assay,
-    assay_config_file,
-    assay_config_dir,
-    manifest_file,
-    exclude_samples,
-    single_output_dir,
-    cnv_call,
-    cnv_report,
-    snv_report,
-    mosaic_report,
-    testing
+    assay=None,
+    assay_config_file=None,
+    assay_config_dir=None,
+    manifest_file=None,
+    exclude_samples=None,
+    single_output_dir=None,
+    cnv_call=False,
+    cnv_report=False,
+    snv_report=False,
+    mosaic_report=False,
+    testing=False
 ):
     print(locals())
 
-    check = CheckInputs(assay,
-        assay_config_file,
-        assay_config_dir,
-        manifest_file,
-        single_output_dir,
-        cnv_call,
-        cnv_report,
-        snv_report,
-        mosaic_report
+    check = CheckInputs(assay=assay,
+        assay_config_file=assay_config_file,
+        assay_config_dir=assay_config_dir,
+        manifest_file=manifest_file,
+        single_output_dir=single_output_dir,
+        cnv_call=cnv_call,
+        cnv_report=cnv_report,
+        snv_report=snv_report,
+        mosaic_report=mosaic_report
     )
 
     if check.errors:

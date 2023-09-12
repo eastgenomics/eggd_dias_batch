@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 
 import dxpy
+import pandas as pd
 
 from .utils import time_stamp
 
@@ -43,7 +44,7 @@ class DXManage():
             return json.loads(dx.bindings.dxfile.DXFile(
                 project=file['project'], dxid=file['id']).read())
 
-        # check for valid project:path structure
+        # searching dir for configs, check for valid project:path structure
         assert re.match(r'project-[\d\w]*:/.*', path), (
             f'path to assay configs appears invalid: {path}'
         )
