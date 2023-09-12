@@ -24,6 +24,10 @@ class CheckInputs():
     def __init__(self, **inputs):
         self.inputs = inputs
         self.errors = []
+        self.check_assay()
+        self.check_assay_config_dir()
+        self.check_mode_set()
+        self.check_single_output_dir()
     
     def check_assay(self):
         """Check assay string passed is valuid"""
@@ -38,7 +42,7 @@ class CheckInputs():
             return
 
         project, path = self.inputs['assay_config_dir'].split(':')
-        files = list(dx.find_data_objects(
+        files = list(dxpy.find_data_objects(
             name="*.json",
             name_mode='glob',
             project=project,
@@ -63,7 +67,7 @@ class CheckInputs():
             project = os.environ.get("DX_PROJECT_CONTEXT_ID")
             path = self.inputs['single_output_dir']
 
-        files = list(dx.find_data_objects(
+        files = list(dxpy.find_data_objects(
             project=project,
             folder=path,
             describe=True
@@ -97,9 +101,8 @@ def main(
     mosaic_report=False,
     testing=False
 ):
-    print(locals())
-
-    check = CheckInputs(assay=assay,
+    check = CheckInputs(
+        assay=assay,
         assay_config_file=assay_config_file,
         assay_config_dir=assay_config_dir,
         manifest_file=manifest_file,
@@ -111,13 +114,14 @@ def main(
     )
 
     if check.errors:
-        errors = '\n'.join(x for x in check.errors)
+        errors = '\n\t'.join(x for x in check.errors)
         raise RuntimeError(
-            f"Errors in inputs passed: {errors}"
+            f"Errors in inputs passed:\n\t{errors}"
         )
     else:
         (
-            assay, assay_config_file,
+            assay,
+            assay_config_file,
             assay_config_dir,
             manifest_file,
             single_output_dir,
@@ -128,13 +132,15 @@ def main(
         ) = check.inputs.values()
 
 
-    assay_config = DXManage.get_assay_config(
+    assay_config = DXManage().get_assay_config(
         path=assay_config_dir,
         file=assay_config_file,
         assay=assay
     )
 
     manifest_file = DXManage.read_manifest()
+
+    launched_jobs = []
     
     if cnv_call:
         if any(cnv_report, snv_report, mosaic_report):
@@ -160,6 +166,10 @@ def main(
 
     if mosaic_report:
         pass
+    
+    if testing and launched_jobs:
+        # testing => terminate launched jobs
+        DXExecute.terminate(launched_jobs)
 
 
 dxpy.run()
