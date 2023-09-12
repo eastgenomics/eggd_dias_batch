@@ -38,10 +38,11 @@ class DXManage():
         """
         if file:
             # specified file to use => read in and return
+            file = file.get('$dnanexus_link')
             if not file.startswith('project'):
                 file = self.get_file_project_context(file)
 
-            return json.loads(dx.bindings.dxfile.DXFile(
+            return json.loads(dxpy.bindings.dxfile.DXFile(
                 project=file['project'], dxid=file['id']).read())
 
         # searching dir for configs, check for valid project:path structure
@@ -53,7 +54,7 @@ class DXManage():
 
         project, project_path = path.split(':')
 
-        files = list(dx.find_data_objects(
+        files = list(dxpy.find_data_objects(
             name="*.json",
             name_mode='glob',
             project=project,
@@ -80,7 +81,7 @@ class DXManage():
                 continue
 
             config_data = json.loads(
-                dx.bindings.dxfile.DXFile(
+                dxpy.bindings.dxfile.DXFile(
                     project=file['project'], dxid=file['id']).read())
 
             if not config_data.get('assay') == assay:
@@ -114,12 +115,11 @@ class DXManage():
         str
             project:file format of file
         """
-        files = list(dx.find_data_objects(
-            name=file,
-            project=project,
-            folder=project_path,
+        file_details = dxpy.DXFile(dxid=file)
+        files = dxpy.find_data_objects(
+            name=file_details['name'],
             describe=True
-        ))
+        )
 
         files = [x for x in files if x['describe']['archivalState'] == 'live']
         assert files, f"No live files could be found for the ID: {file}"
@@ -144,10 +144,12 @@ class DXManage():
         if not file.startswith('project'):
             file = self.get_file_project_context(file)
 
-        contents = dx.bindings.dxfile.DXFile(
+        contents = dxpy.bindings.dxfile.DXFile(
             project=file['project'], dxid=file['id']).read()
         
-        return pd.DataFrame(contents)
+        manifest = pd.DataFrame(contents)
+
+        print(f"Manifest read from file: {file}\n\n{manifest}")
 
 
 class DXExecute():
@@ -178,15 +180,22 @@ class DXExecute():
 
         # find BAM files and format as $dnanexus_link inputs to add to config
         bam_dir = Path.joinpath(
-            cnv_config['inputs']['bambais']['folder'], single_output_dir)
+            cnv_config['inputs']['bambais']['folder'],
+            single_output_dir
+        )
 
-        files = list(dx.find_data_objects(
+        files = list(dxpy.find_data_objects(
             name=cnv_config['inputs']['bambais']['name'],
             name_mode='glob',
             project=os.environ.get("DX_PROJECT_CONTEXT_ID"),
             folder=bam_dir,
             describe=True
         ))
+
+        if exclude:
+            samples = '\n\t'.join(exlcude.split(','))
+            print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
+
         files = [file for file in files if not file['describe']['name'] in exclude]
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['bambais'] = files
@@ -201,7 +210,7 @@ class DXExecute():
             )
         )
 
-        job = dx.bindings.dxapp.DXApp(dxid=config.get('cnv_call_app_id')).run(
+        job = dxpy.bindings.dxapp.DXApp(dxid=config.get('cnv_call_app_id')).run(
             app_input=cnv_config,
             folder=folder,
             priority='high',
@@ -211,4 +220,18 @@ class DXExecute():
 
         return job
 
+    @staticmethod
+    def terminate(jobs) -> None:
+        """
+        Terminate all launched jobs in testing mode
 
+        Parameters
+        ----------
+        jobs : list
+            list of job / analysis IDs
+        """
+        for job in jobs:
+            if job.startswith('job'):
+                dxpy.bindings.dxjob.DXJob(dxid=job).terminate()
+            else:
+                dxpy.bindings.dxanalysis.DXAnalysis(dxid=job).terminate()
