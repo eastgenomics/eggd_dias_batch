@@ -1,4 +1,5 @@
 from glob import glob
+from itertools import chain
 from pathlib import Path
 import os
 import subprocess
@@ -40,6 +41,8 @@ class CheckInputs():
             raise RuntimeError(
                 f"Errors in inputs passed:\n\t{errors}"
             )
+        else:
+            print("Inputs valid, continuing...")
     
     def check_assay(self):
         """Check assay string passed is valid"""
@@ -133,7 +136,7 @@ def main(
 
     manifest = DXManage().read_manifest(manifest_file)
 
-    launched_jobs = []
+    launched_jobs = {}
     
     if cnv_call:
         if any([cnv_report, snv_report, mosaic_report]):
@@ -143,13 +146,14 @@ def main(
         else:
             wait=False
 
-        DXExecute().run_cnv_calling(
+        job_id = DXExecute().cnv_calling(
             config=assay_config,
             single_output_dir=single_output_dir,
             exclude=exclude_samples,
             wait=wait
         )
-    
+        launched_jobs['cnv_call'] = job_id
+
     if cnv_report:
         pass
     
@@ -162,7 +166,9 @@ def main(
     if testing and launched_jobs:
         # testing => terminate launched jobs
         print("Terminating launched jobs")
-        DXExecute.terminate(launched_jobs)
+        DXExecute.terminate(list(chain(*launched_jobs.values())))
+    
+    print(f'All jobs launched:')
 
 
 dxpy.run()
