@@ -10,7 +10,11 @@ import re
 import dxpy
 import pandas as pd
 
-from .utils import time_stamp
+from .utils import make_path, time_stamp
+
+
+pd.set_option('display.max_rows', None)
+pd.set_option('max_colwidth', 1500)
 
 
 class DXManage():
@@ -61,8 +65,8 @@ class DXManage():
         project, project_path = path.split(':')
 
         files = list(dxpy.find_data_objects(
-            name="*.json",
-            name_mode='glob',
+            name=".json$",
+            name_mode='regexp',
             project=project,
             folder=project_path,
             describe=True
@@ -157,7 +161,10 @@ class DXManage():
         contents = [row.split('\t') for row in contents.split('\n') if row]
         manifest = pd.DataFrame(contents, columns=['sample', 'panel'])
 
-        print(f"Manifest read from file: {file}\n\n{manifest}")
+        print(
+            f"Manifest read from file: {file['describe']['name']} "
+            f"({file['project']}:{file['id']})\n\n{manifest}"
+        )
 
         return manifest
 
@@ -185,54 +192,58 @@ class DXExecute():
         str
             job ID of launch cnv calling job
         """
-        print("Running CNV calling")
-        cnv_config = config.get('inputs').get('cnv_call')
+        print("Building inputs for CNV calling")
+        cnv_config = config['modes']['cnv_call']
 
         # find BAM files and format as $dnanexus_link inputs to add to config
-        bam_dir = Path.joinpath(
-            cnv_config['inputs']['bambais']['folder'],
-            single_output_dir
+        bam_dir = make_path(
+            single_output_dir, cnv_config['inputs']['bambais']['folder']
         )
 
         files = list(dxpy.find_data_objects(
             name=cnv_config['inputs']['bambais']['name'],
-            name_mode='glob',
+            name_mode='regexp',
             project=os.environ.get("DX_PROJECT_CONTEXT_ID"),
             folder=bam_dir,
             describe=True
         ))
 
-        print(f"Found {len(files)} .bam/.bai files")
+        print(f"Found {len(files)} .bam/.bai files in {bam_dir}")
 
         if exclude:
             samples = '\n\t'.join(exlcude.split(','))
             print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
 
-        files = [file for file in files if not file['describe']['name'] in exclude]
+            # filtering out sample files specified from -iexclude, assuming
+            # here there are no typos, sample names are given as found in
+            # samplesheet and that bam files are named as sampleID_other_stuff.bam
+            files = [
+                file for file in files
+                if not file['describe']['name'].split('_')[0] in exclude
+            ]
+            print(f"{len(files)} .bam/.bai files after exlcuding")
+        
         files = [{"$dnanexus_link": file} for file in files]
-        cnv_config['bambais'] = files
-        print(f"{len(files)} .bam/.bai files after exlcuding")
+        cnv_config['inputs']['bambais'] = files
         
         # set output folder relative to single dir
         app_details = dxpy.describe(config.get('cnv_call_app_id'))
-        folder = path.joinpath(
-            single_output_dir,
-            (
-                f"{app_details['describe']['name']}-"
-                f"{app_details['details']['version']}-"
-                f"{time_stamp}"
-            )
+        folder = make_path(
+            single_output_dir, app_details['name'],
+            app_details['version'], time_stamp()
         )
 
-        job = dxpy.bindings.dxapp.DXApp(dxid=config.get('cnv_call_app_id')).run(
-            app_input=cnv_config,
+        print(f"Running CNV calling, outputing to {folder}")
+
+        job_id = dxpy.bindings.dxapp.DXApp(dxid=config.get('cnv_call_app_id')).run(
+            app_input=cnv_config['inputs'],
             folder=folder,
             priority='high',
             hold_on_wait=wait,
             instance_type=cnv_config.get('instance_type')
         )
 
-        return job
+        return job_id
 
     @staticmethod
     def terminate(jobs) -> None:

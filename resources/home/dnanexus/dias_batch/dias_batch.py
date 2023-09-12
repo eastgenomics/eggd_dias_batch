@@ -137,16 +137,15 @@ def main(
     
     if cnv_call:
         if any([cnv_report, snv_report, mosaic_report]):
-            # going to run some reports after calling finishes, hold app
-            # until calling completes
+            # going to run some reports after calling finishes,
+            # hold app until calling completes
             wait=True
         else:
             wait=False
 
-        DXExecute.run_cnv_calling(
+        DXExecute().run_cnv_calling(
             config=assay_config,
             single_output_dir=single_output_dir,
-            manifest=manifest,
             exclude=exclude_samples,
             wait=wait
         )
@@ -162,6 +161,7 @@ def main(
     
     if testing and launched_jobs:
         # testing => terminate launched jobs
+        print("Terminating launched jobs")
         DXExecute.terminate(launched_jobs)
 
 
