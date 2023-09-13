@@ -136,7 +136,19 @@ def main(
         assay=assay
     )
 
-    manifest = DXManage().read_manifest(manifest_file)
+    manifest = DXManage().read_dxfile_to_dataframe(
+        file=manifest_file,
+        names=['sample', 'panel'],
+        types={'sample': 'str', 'panel': 'category'}
+    )
+
+    genepanels = DXManage().read_dxfile_to_dataframe(
+        file=assay_config.get('reference_files', {}).get('genepanels'),
+        names=['gemini_name', 'panel_name', 'hgnc_id'],
+        types='category'
+    )
+
+    sys.exit()
 
     launched_jobs = {}
     
