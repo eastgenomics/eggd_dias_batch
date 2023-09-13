@@ -277,7 +277,7 @@ class DXExecute():
         print(f"Found {len(files)} .bam/.bai files in {bam_dir}")
 
         if exclude:
-            samples = '\n\t'.join(exlcude.split(','))
+            samples = '\n\t'.join(exclude.split(','))
             print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
 
             # filtering out sample files specified from -iexclude, assuming
