@@ -1,0 +1,126 @@
+{
+    "name": "eggd_dias_batch",
+    "title": "eggd_dias_batch",
+    "version": "1.0.0",
+    "summary": "Launches downstream analyses for Dias",
+    "dxapi": "1.0.0",
+    "inputSpec": [
+        {
+            "name": "assay",
+            "label": "assay",
+            "class": "string",
+            "optional": false,
+            "help": "string of assay to run analysis for (CEN or WES)",
+            "group": ""
+          },
+          {
+            "name": "assay_config_file",
+            "label": "assay config file",
+            "class": "file",
+            "optional": true,
+            "help": "Config file for assay, if not provided will search assay_config_dir for files",
+            "group": ""
+          },
+          {
+            "name": "manifest_file",
+            "label": "manifest file",
+            "class": "file",
+            "optional": true,
+            "help": "manifest file of sample -> panel",
+            "group": ""
+          },
+          {
+            "name": "exclude_samples",
+            "label": "exclude samples",
+            "class": "string",
+            "optional": true,
+            "help": "comma separated string of samples to exclude from analysis"
+          },
+          {
+            "name": "single_output_dir",
+            "label": "single output directory",
+            "class": "string",
+            "optional": false,
+            "help": "path to output directory of dias single",
+            "group": ""
+          },
+          {
+            "name": "cnv_call",
+            "label": "cnv call",
+            "class": "boolean",
+            "optional": true,
+            "help": "run cnv calling",
+            "group": "mode"
+          },
+          {
+            "name": "cnv_report",
+            "label": "cnv report",
+            "class": "boolean",
+            "optional": true,
+            "help": "run cnv reports",
+            "group": "mode"
+          },
+          {
+            "name": "snv_report",
+            "label": "snv report",
+            "class": "boolean",
+            "optional": true,
+            "help": "run snv reports",
+            "group": "mode"
+          },
+          {
+            "name": "mosaic_report",
+            "label": "mosaic report",
+            "class": "boolean",
+            "optional": true,
+            "help": "run mosaic reports",
+            "group": "mode"
+          },
+          {
+            "name": "testing",
+            "label": "testing",
+            "class": "boolean",
+            "optional": true,
+            "help": "run in testing mode, will terminate all jobs",
+            "group": "mode"
+          }
+    ],
+    "outputSpec": [
+
+    ],
+    "runSpec": {
+        "timeoutPolicy": {
+          "*": {
+            "hours": 8
+          }
+        },
+        "interpreter": "python3",
+        "file": "resources/home/dnanexus/dias_batch/dias_batch.py",
+        "distribution": "Ubuntu",
+        "release": "20.04",
+        "version": "0",
+        "headJobOnDemand": true
+    },
+    "access": {
+        "network": [
+            "*"
+        ],
+        "allProjects":"CONTRIBUTE",
+        "project": "CONTRIBUTE"
+    },
+    "developers":[
+        "org-emee_1"
+    ],
+    "authorizedUsers": [
+        "org-emee_1"
+    ],
+    "regionalOptions": {
+        "aws:eu-central-1": {
+            "systemRequirements": {
+                "*": {
+                    "instanceType": "mem1_ssd1_v2_x2"
+                }
+            }
+        }
+    }
+}

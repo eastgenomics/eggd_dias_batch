@@ -1,0 +1,36 @@
+{
+    "assay": "CEN",
+    "version": "2.2.0",
+    "cnv_call_app_id": "app-GJZVB2840KK0kxX998QjgXF0",
+    "snv_report_workflow_id": "workflow-GXzkfYj4QPQp9z4Jz4BF09y6",
+    "cnv_report_workflow_id": "workflow-GXzvJq84XZB1fJk9fBfG88XJ",
+    "modes": {
+        "cnv_call": {
+            "instance_type": "mem2_ssd1_v2_x8",
+            "inputs": {
+                "bambais": {
+                    "folder": "/sentieon-dnaseq-4.2.1/",
+                    "name": ".bam$|.bam.bai"
+                },
+                "GATK_docker": {
+                    "$dnanexus_link": "file-GBBP9JQ433GxV97xBpQkzYZx"
+                },
+                "annotation_tsv": {
+                    "$dnanexus_link": "file-GFPxzPQ4V50z4pv230p82G0q"
+                },
+                "interval_list": {
+                    "$dnanexus_link": "file-GFPxzKj4V50pJX3F4vV58yyg"
+                }
+            }
+        },
+        "cnv_reports": {
+            "stage-cnv_generate_bed_vep.exons_nirvana": "INPUT-exons_nirvana"
+        },
+        "snv_reports": {
+
+        },
+        "mosaic_reports": {
+
+        }
+    }
+}
