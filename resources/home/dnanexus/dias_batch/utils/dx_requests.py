@@ -5,6 +5,7 @@ as running jobs.
 import json
 import os
 from pathlib import Path
+from pprint import pprint
 import re
 
 import dxpy
@@ -60,7 +61,8 @@ class DXManage():
             config = json.loads(dxpy.bindings.dxfile.DXFile(
                 project=file_details['project'], dxid=file_details['id']).read())
             
-            print(f"Assay config file contents:\n\n\t\t{config}")
+            print(f"Assay config file contents:")
+            pprint(config)
             return config
 
         # searching dir for configs, check for valid project:path structure
@@ -114,7 +116,8 @@ class DXManage():
             f"{highest_config.get('version')} from {highest_config.get('dxid')}"
         )
 
-        print(f"Assay config file contents:\n\n\t\t{highest_config}")
+        print(f"Assay config file contents:")
+        pprint(highest_config)
 
         return highest_config
 

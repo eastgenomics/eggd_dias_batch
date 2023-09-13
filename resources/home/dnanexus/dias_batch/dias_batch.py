@@ -148,8 +148,6 @@ def main(
         types='category'
     )
 
-    sys.exit()
-
     launched_jobs = {}
     
     if cnv_call:
@@ -176,16 +174,16 @@ def main(
 
     if mosaic_report:
         pass
-    
-    if testing and launched_jobs:
-        # testing => terminate launched jobs
-        print("Terminating launched jobs")
-        DXExecute().terminate(list(chain(*launched_jobs.values())))
-    
+ 
     print(
         f'All jobs launched:\n\t',
         "\n\t".join([f"{x[0]}: {x[1]}" for x in launched_jobs.items()])
     )
 
+    if testing and launched_jobs:
+        # testing => terminate launched jobs
+        print("Terminating launched jobs")
+        DXExecute().terminate(list(chain(*launched_jobs.values())))
+   
 
 dxpy.run()
