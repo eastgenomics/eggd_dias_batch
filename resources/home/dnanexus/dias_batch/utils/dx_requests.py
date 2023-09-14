@@ -13,7 +13,7 @@ import pandas as pd
 
 from .utils import make_path, time_stamp
 
-
+# for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
 
@@ -163,37 +163,34 @@ class DXManage():
         return files[0]
 
 
-    def read_dxfile_to_dataframe(self, file, names, types=None) -> pd.DataFrame:
+    def read_dxfile(self, file) -> list:
         """
-        Read delimited DXFile object into pd.DataFrame
+        Read contents of a DXFile object
 
-        Abstracted method for reading in files such as manifest and genepanels
+        Abstracted method for reading files such as manifest and genepanels
 
         Parameters
         ----------
         file : str | dict
             file ID of DXFile to read, may be passed as 'file-xxx',
             'project-xxx:file-xxx' or {'$dnanexus_link': '[project-xxx:]file-xxx'}
-        names : list
-            list of names to use for columns
-        types : str | dict
-            either single type as a string or mapping of column: type
 
         Returns
         -------
-        pd.DataFrame
-            dataframe of files contents
+        list
+            contents of file
         
         Raises
         ------
         RuntimeError
             Raised if 'file' argument not in an expected format
         """
+        print(f"Reading from {file}")
         if not file:
             # None passed, not sure if I need to handle this but keep tripping
             # myself up with tests so just going to return and probably
             # end up moving the error along somewhere else but oh well
-            print("Empty file passed to read_dxfile_todataframe() :sadpepe:")
+            print("Empty file passed to read_dxfile() :sadpepe:")
             return
 
         if isinstance(file, dict):
@@ -218,20 +215,8 @@ class DXManage():
                 f"DXFile not in an expected format: {file}"
             )
 
-        contents = dxpy.bindings.dxfile.DXFile(
-            project=project, dxid=file_id).read()
-        contents = [row.split('\t') for row in contents.split('\n') if row]
-
-        df = pd.DataFrame(contents, columns=names)
-        if types:
-            df = df.astype(types)
-
-        print(
-            f"File read in to dataframe: {file_name} "
-            f"({project}:{file_id})\n\n{df}"
-        )
-
-        return df
+        return dxpy.bindings.dxfile.DXFile(
+            project=project, dxid=file_id).read().split('\n')
 
 
 class DXExecute():
@@ -277,12 +262,23 @@ class DXExecute():
         print(f"Found {len(files)} .bam/.bai files in {bam_dir}")
 
         if exclude:
-            samples = '\n\t'.join(exclude.split(','))
+            samples = '\n\t'.join(exclude)
             print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
 
             # filtering out sample files specified from -iexclude, assuming
             # here there are no typos, sample names are given as found in
             # samplesheet and that bam files are named as sampleID_other_stuff.bam
+            exclude_not_present = [
+                name for name in exclude
+                if name not in [x['describe']['name'] for x in files]
+            ]
+            if exclude_not_present:
+                print(
+                    "WARNING: sample ID(s) provided to exclude not present in "
+                    f"bam files found for CNV calling:\n\t{exclude_not_present}"
+                    "\nIgnoring these and continuing..."
+                )
+            
             files = [
                 file for file in files
                 if not file['describe']['name'].split('_')[0] in exclude
