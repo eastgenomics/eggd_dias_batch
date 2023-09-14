@@ -12,10 +12,13 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
+    from dias_batch.utils.utils import parse_manifest
 else:
-    from utils.dx_requests import DXExecute, DXManage
+    from .utils.dx_requests import DXExecute, DXManage
+    from .utils.utils import parse_manifest
 
 import dxpy
+import pandas as pd
 
 
 class CheckInputs():
@@ -136,22 +139,25 @@ def main(
         assay=assay
     )
 
-    manifest = DXManage().read_dxfile_to_dataframe(
-        file=manifest_file,
-        names=['sample', 'panel'],
-        types={'sample': 'str', 'panel': 'category'}
-    )
+    if exclude_samples:
+        exclude_samples = exclude_samples.split(',')
 
-    genepanels = DXManage().read_dxfile_to_dataframe(
+    manifest_data = DXManage().read_dxfile(manifest_file)
+    manifest = parse_manifest(manifest_data)
+
+    genepanels = DXManage().read_dxfile(
         file=assay_config.get('reference_files', {}).get('genepanels'),
-        names=['gemini_name', 'panel_name', 'hgnc_id'],
-        types='category'
+    )
+    genepanels = pd.DataFrame(
+        [x.split('\t') for x in genepanels],
+        columns=['gemini_name', 'panel_name', 'hgnc_id'],
+        dtype='category'
     )
 
     launched_jobs = {}
     
     if cnv_call:
-        if any([cnv_report, snv_report, mosaic_report]):
+        if cnv_report:
             # going to run some reports after calling finishes,
             # hold app until calling completes
             wait=True
