@@ -304,7 +304,7 @@ def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
             # sample had one or more invalid test code
             invalid[sample].extend(sample_invalid_test)
     
-    if invalid_samples:
+    if invalid:
         print(
             "WARNING: one or more samples had an invalid test "
             f"requested:\n\t{invalid}" 

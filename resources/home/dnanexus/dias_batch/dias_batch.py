@@ -33,7 +33,7 @@ class CheckInputs():
         Raised if one or more inputs is invalid
     """
     def __init__(self, **inputs) -> None:
-        print("Validating inputs")
+        print("Validating inputs...")
         self.inputs = inputs
         self.errors = []
         self.check_assay()
