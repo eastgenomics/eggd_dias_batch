@@ -3,7 +3,12 @@ from datetime import datetime
 import re
 from typing import Union
 
+from flatten_json import flatten, unflatten
 import pandas as pd
+
+# for prettier viewing in the logs
+pd.set_option('display.max_rows', 100)
+pd.set_option('max_colwidth', 1500)
 
 
 def time_stamp() -> str:
@@ -134,7 +139,6 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             f"Gemini manifest has more than 2 columns:\n\t{contents}"
         )
 
-        data = defaultdict(list)
         for sample in contents:
             test_codes = sample[1].replace(' ', '').split(',')
             if not all([
@@ -274,10 +278,11 @@ def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
     Union[dict, dict]
         2 dicts of manifest with valid test codes and those that are invalid
     """
+    print("Checking test codes in manifest are valid...")
     invalid = defaultdict(list)
     valid = defaultdict(lambda: defaultdict(list))
 
-    genepanels_test_codes = set(genepanels['test_codes'].tolist())
+    genepanels_test_codes = set(genepanels['test_code'].tolist())
 
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
@@ -418,3 +423,38 @@ def split_tests(data) -> dict:
     
     return split_data
 
+
+def fill_config_reference_inputs(job_config, reference_files) -> dict:
+    """
+    Fill config file input fields for workflow stages against the
+    reference files stored in top level of config
+
+    Parameters
+    ----------
+    job_config : dict
+        subset of assay config for given app/stage
+    reference_files : dict
+        reference file inputs defined in top of assay config
+
+    Returns
+    -------
+    dict
+        config with input files parsed in
+    """
+    print(f"Filling config file, before:\n{job_config}")
+
+    flat_config = flatten(job_config)
+    for file, file_id in reference_files.items():
+        for input, value in flat_config.items():
+            if value == f'INPUT-{file}':
+                flat_config[input] = file_id
+
+    unflat_config = unflatten(flat_config)
+
+    print(f"And now it's filled:\n{unflat_config}")
+
+    return unflat_config
+
+
+
+    
