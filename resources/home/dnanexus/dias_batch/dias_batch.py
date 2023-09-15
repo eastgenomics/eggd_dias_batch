@@ -12,10 +12,10 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
-    from dias_batch.utils.utils import parse_manifest
+    from dias_batch.utils.utils import parse_manifest, split_tests
 else:
     from .utils.dx_requests import DXExecute, DXManage
-    from .utils.utils import parse_manifest
+    from .utils.utils import parse_manifest, split_tests
 
 import dxpy
 import pandas as pd
@@ -111,8 +111,10 @@ def main(
     assay_config_file=None,
     assay_config_dir=None,
     manifest_file=None,
+    split_tests=False,
     exclude_samples=None,
     single_output_dir=None,
+    cnv_call_job_id=None,
     cnv_call=False,
     cnv_report=False,
     snv_report=False,
@@ -144,6 +146,8 @@ def main(
 
     manifest_data = DXManage().read_dxfile(manifest_file)
     manifest = parse_manifest(manifest_data)
+    if split_tests:
+        manifest = split_tests(manifest)
 
     genepanels = DXManage().read_dxfile(
         file=assay_config.get('reference_files', {}).get('genepanels'),

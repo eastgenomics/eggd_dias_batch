@@ -30,6 +30,13 @@
             "group": ""
           },
           {
+            "name": "split_tests",
+            "label": "split tests",
+            "class": "boolean",
+            "optional": "true",
+            "help": "controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one"
+          },
+          {
             "name": "exclude_samples",
             "label": "exclude samples",
             "class": "string",
@@ -43,6 +50,13 @@
             "optional": false,
             "help": "path to output directory of dias single",
             "group": ""
+          },
+          {
+            "name": "cnv_call_job_id",
+            "label": "CNV call job ID",
+            "class": "string",
+            "optional": true,
+            "help": "job ID of CNV calling to use for generating CNV reports, if running calling and reports together the job ID of the calling job will be used"
           },
           {
             "name": "cnv_call",
