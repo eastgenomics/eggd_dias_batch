@@ -11,7 +11,8 @@ import re
 import dxpy
 import pandas as pd
 
-import utils.utils as utils
+from .utils import fill_config_reference_inputs, \
+    filter_manifest_samples_by_files, make_path, time_stamp
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
@@ -287,7 +288,7 @@ class DXExecute():
         cnv_config = config['modes']['cnv_call']
 
         # find BAM files and format as $dnanexus_link inputs to add to config
-        bam_dir = utils.make_path(
+        bam_dir = make_path(
             single_output_dir, cnv_config['inputs']['bambais']['folder']
         )
 
@@ -330,10 +331,10 @@ class DXExecute():
         
         # set output folder relative to single dir
         app_details = dxpy.describe(config.get('cnv_call_app_id'))
-        folder = utils.make_path(
+        folder = make_path(
             single_output_dir,
             f"{app_details['name']}-{app_details['version']}",
-            utils.time_stamp()
+            time_stamp()
         )
 
         print(f"Running CNV calling, outputting to {folder}")
@@ -414,10 +415,15 @@ class DXExecute():
         else:
             pattern = r'X[\d]'
 
-        manifest = utils.filter_manifest_samples_by_files(
+        manifest = filter_manifest_samples_by_files(
             manifest=manifest,
             files=job_output,
             pattern=pattern
+        )
+
+        cnv_reports_config = fill_config_reference_inputs(
+            job_config=config['modes']['cnv_reports'],
+            reference_files=config['reference_files']
         )
         
 

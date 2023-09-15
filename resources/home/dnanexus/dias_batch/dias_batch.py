@@ -178,7 +178,7 @@ def main(
         else:
             wait=False
 
-        job_id = DXExecute().cnv_calling(
+        cnv_call_job_id = DXExecute().cnv_calling(
             config=assay_config,
             single_output_dir=single_output_dir,
             exclude=exclude_samples,
@@ -187,7 +187,13 @@ def main(
         launched_jobs['CNV calling'] = [job_id]
 
     if cnv_report:
-        pass
+        cnv_report_jobs = DXExecute().cnv_reports(
+            call_job_id=cnv_call_job_id,
+            single_output_dir=single_output_dir,
+            manifest=manifest,
+            manifest_source=manifest_source,
+            config=assay_config
+        )
     
     if snv_report:
         pass
