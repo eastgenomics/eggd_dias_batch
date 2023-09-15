@@ -162,13 +162,21 @@ def split_tests(data) -> dict:
         "sample1" : [['panel1', 'panel2', '_gene1']],
         "sample2" : [['panel3']],
         "sample3" : [['panel1'], ['panel2', 'gene2', 'gene3']]
+        "sample4" : [['panel1' 'gene1'], ['panel2', 'gene2']]
     }
 
     which will change to: {
         "sample1" : [['panel1'], ['panel2'], ['_gene1']],
         "sample2" : [['panel3']],
-        "sample3" : [['panel1'], ['panel2'], ['gene2', 'gene3']]
+        "sample3" : [['panel1'], ['panel2'], ['gene2', 'gene3']],
+        "sample4" : [['panel1'], ['gene1'], ['panel2'], ['gene2']]
     }
+
+    n.b. genes in the same initial sub list will always be grouped together
+    to not generate single gene reports (e.g. sample3 above), and where there
+    are single genes in more than one sub list (i.e. from 2 different lines
+    in the manifest) these will not be grouped into one (e.g. sample4 above)
+
 
     Parameters
     ----------
@@ -180,23 +188,23 @@ def split_tests(data) -> dict:
     dict
         mapping of SampleID : [testCodes] with all codes are sub lists
     """
-    split_data = {}
+    split_data = defaultdict(list)
     for sample, test_codes in data.items():
-        split_test_codes = []
+        all_split_test_codes = []
         for test_list in test_codes:
             test_genes = []
             for idx, sub_test in enumerate(test_list):
                 if re.match(r"[RC][\d]+\.[\d]+", sub_test):
                     # it's a panel => split it out
-                    split_test_codes.append([test])
+                    all_split_test_codes.append([test])
                 else:
                     # it's a gene, add these back to a list to group
                     test_genes.append(sub_test)
             if test_genes:
                 # there were some single genes to test
-                split_test_codes.append(list(set(test_genes)))
+                all_split_test_codes.append(list(set(test_genes)))
         
-        split_data[sample] = split_test_codes
+        split_data[sample].extend(all_split_test_codes)
     
     return split_data
 
