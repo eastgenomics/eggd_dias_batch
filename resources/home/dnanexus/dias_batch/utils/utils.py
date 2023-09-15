@@ -317,11 +317,6 @@ def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
     return valid, invalid
 
 
-
-
-
-
-
 def split_test_codes(genepanels) -> pd.DataFrame:
     """
     Split out R/C codes from full CI name for easier matching
