@@ -11,7 +11,7 @@ import re
 import dxpy
 import pandas as pd
 
-from .utils import make_path, time_stamp
+import utils.utils as utils
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
@@ -287,7 +287,7 @@ class DXExecute():
         cnv_config = config['modes']['cnv_call']
 
         # find BAM files and format as $dnanexus_link inputs to add to config
-        bam_dir = make_path(
+        bam_dir = utils.make_path(
             single_output_dir, cnv_config['inputs']['bambais']['folder']
         )
 
@@ -330,10 +330,10 @@ class DXExecute():
         
         # set output folder relative to single dir
         app_details = dxpy.describe(config.get('cnv_call_app_id'))
-        folder = make_path(
+        folder = utils.make_path(
             single_output_dir,
             f"{app_details['name']}-{app_details['version']}",
-            time_stamp()
+            utils.time_stamp()
         )
 
         print(f"Running CNV calling, outputting to {folder}")
@@ -366,6 +366,60 @@ class DXExecute():
 
         return job_id
 
+
+    def cnv_reports(
+            self,
+            call_job_id,
+            single_output_dir,
+            manifest,
+            manifest_source,
+            config
+        ) -> list:
+        """
+        Run Dias reports workflow on output of CNV calling.
+
+        Matches output files of CNV calling against manifest samples,
+        parses config for the workflow and launches workflow per sample.
+
+        Parameters
+        ----------
+        call_job_id : str
+            job ID of CNV calling to use output from
+        single_output_dir : str
+            dnanexus path to Dias single output
+        manifest : dict
+            mapping of sampleID -> testCodes parsed from manifest
+        manifest_source : str
+            source of manifest (Epic or Gemini), required for filtering
+            pattern against sample name 
+        config : dict
+            config for assay, defining fixed inputs for workflow
+
+        Returns
+        -------
+        list
+            list of job IDs launched
+        """
+        job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
+        job_output = dxpy.find_data_objects(
+            name="segments.vcf$",
+            name_mode='regexp',
+            folder=job_details.get('folder'),
+            describe=True
+        )
+
+        # patterns of sample ID and sample file prefix to match on
+        if manifest_source == 'Epic':
+            pattern = r'^[\d\w]+-[\d\w]+'
+        else:
+            pattern = r'X[\d]'
+
+        manifest = utils.filter_manifest_samples_by_files(
+            manifest=manifest,
+            files=job_output,
+            pattern=pattern
+        )
+        
 
     @staticmethod
     def terminate(jobs) -> None:

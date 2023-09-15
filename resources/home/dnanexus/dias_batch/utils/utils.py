@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 import re
+from typing import Union
 
 import pandas as pd
 
@@ -59,6 +60,8 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     dict
         mapping of sampleID (str): 'tests': testCodes (list)
         e.g. {'sample1': {'tests': [['panel1']]}}
+    str
+        source of manifest file (either Epic or Gemini)
     
     Raises
     ------
@@ -156,7 +159,7 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     ])
     print(f"{manifest_source} manifest parsed:\n\t{samples}")
 
-    return data
+    return data, manifest_source
 
 
 def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
@@ -253,6 +256,117 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
     }
 
 
+def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
+    """
+    Parse through manifest dict of sampleID -> test codes to check
+    all codes are valid and exlcude those that are invalid against
+    genepanels file
+
+    Parameters
+    ----------
+    manifest : dict
+        mapping of sampleID -> test codes
+    genepanels : pd.DataFrame
+        dataframe of genepanels file
+
+    Returns
+    -------
+    Union[dict, dict]
+        2 dicts of manifest with valid test codes and those that are invalid
+    """
+    invalid = defaultdict(list)
+    valid = defaultdict(lambda: defaultdict(list))
+
+    genepanels_test_codes = set(genepanels['test_codes'].tolist())
+
+    for sample, test_codes in manifest.items():
+        sample_invalid_test = []
+
+        # test codes stored under 'tests' key and is a list of lists
+        # dependent on what genes / panels have been requested
+        for test_list in test_codes['tests']:
+            valid_tests = []
+            for test in test_list:
+                if test in genepanels_test_codes:
+                    valid_tests.append(test)
+                else:
+                    sample_invalid_test.append(test)
+            if valid_tests:
+                # one or more requested test is in genepanels
+                valid[sample]['tests'].append(valid_tests)
+
+        if sample_invalid_test:
+            # sample had one or more invalid test code
+            invalid[sample].extend(sample_invalid_test)
+    
+    if invalid_samples:
+        print(
+            "WARNING: one or more samples had an invalid test "
+            f"requested:\n\t{invalid}" 
+        )
+    
+    # check if any samples only had test codes that are invalid -> won't
+    # have any reports generated
+    no_tests = set(manifest.keys()) - set(valid.keys())
+    if no_tests:
+        print(
+            "WARNING: samples with invalid test codes resulting in having "
+            f"no tests to run reports for: {no_tests}"
+        )
+    
+    return valid, invalid
+
+
+
+
+
+
+
+def split_test_codes(genepanels) -> pd.DataFrame:
+    """
+    Split out R/C codes from full CI name for easier matching
+    against manifest
+
+    +-----------------------+--------------------------+------------+
+    |      gemini_name      |        panel_name        |   hgnc_id  |
+    +-----------------------+--------------------------+------------+
+    | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 | HGNC:12269 |
+    | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 | HGNC:2202  |
+    +-----------------------+--------------------------+------------+
+
+                                    |
+                                    ▼
+                                        
+    +-----------+-----------------------+---------------------------+------------+
+    | test_code |      gemini_name      |        panel_name         |   hgnc_id  |
+    +-----------+-----------------------+---------------------------+------------+
+    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 | HGNC:12269 |
+    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 | HGNC:2202  |
+    +-----------+-----------------------+---------------------------+------------+
+
+
+
+
+    Parameters
+    ----------
+    genepanels : pd.DataFrame
+        dataframe of genepanels with 3 columns
+
+    Returns
+    -------
+    pd.DataFrame
+        genepanels with test code split to separate column
+    """
+    genepanels['test_code'] = genepanels['gemini_name'].apply(
+        lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
+    )
+    genepanels = genepanels.astype({'test_code': 'category'})
+    genepanels = genepanels[['test_code', 'gemini_name', 'panel_name', 'hgnc_id']]
+
+    print(f"Genepanels file: \n{genepanels}")
+
+    return genepanels
+
 
 def split_tests(data) -> dict:
     """
@@ -308,5 +422,4 @@ def split_tests(data) -> dict:
         split_data[sample]['tests'].extend(all_split_test_codes)
     
     return split_data
-
 

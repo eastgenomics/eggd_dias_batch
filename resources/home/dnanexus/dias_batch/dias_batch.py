@@ -12,10 +12,12 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
-    from dias_batch.utils.utils import parse_manifest, split_tests
+    from dias_batch.utils.utils import parse_manifest, split_tests, \
+        split_test_codes, check_valid_test_codes
 else:
     from .utils.dx_requests import DXExecute, DXManage
-    from .utils.utils import parse_manifest, split_tests
+    from .utils.utils import parse_manifest, split_tests, \
+        split_test_codes, check_valid_test_codes
 
 import dxpy
 import pandas as pd
@@ -144,11 +146,7 @@ def main(
     if exclude_samples:
         exclude_samples = exclude_samples.split(',')
 
-    manifest_data = DXManage().read_dxfile(manifest_file)
-    manifest = parse_manifest(manifest_data)
-    if split_tests:
-        manifest = split_tests(manifest)
-
+    # parse and format genepanels file
     genepanels = DXManage().read_dxfile(
         file=assay_config.get('reference_files', {}).get('genepanels'),
     )
@@ -157,6 +155,18 @@ def main(
         columns=['gemini_name', 'panel_name', 'hgnc_id'],
         dtype='category'
     )
+    genepanels = split_test_codes(genepanels)
+    
+    # parse manifest and format into a mapping of sampleID -> test codes
+    manifest_data = DXManage().read_dxfile(manifest_file)
+    manifest, manifest_source = parse_manifest(manifest_data)
+    if split_tests:
+        manifest = split_tests(manifest)
+
+    # filter manifest tests against genepanels to ensure what has been
+    # requested are test codes we recognise
+    manifest, invalid_tests = check_valid_test_codes(manifest, genepanels)
+    
 
     launched_jobs = {}
     
