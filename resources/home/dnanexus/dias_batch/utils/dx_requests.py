@@ -163,6 +163,46 @@ class DXManage():
         return files[0]
 
 
+    def find_files(self, path, dir=None, pattern=None) -> list:
+        """
+        Search given path in DNAnexus, optionally in a sub directory
+        and with a pattern
+
+        Parameters
+        ----------
+        path : str
+            path to where to search
+        dir : str (optional)
+            sub directory to search, will partially match as /path/dir.*
+        pattern : str (optional)
+            regex file pattern to search for
+
+        Returns
+        -------
+        list
+            list of files found
+        """
+        path = path.rstrip('/')  # I define these and not the user but just
+        dir = dir.strip('/')     # incase I forget anywhere and have extra /
+
+        print(f"Searching for files in {path}/{dir} with pattern {pattern}")
+        files = list(dxpy.find_data_objects(
+            name=pattern,
+            name_mode='regexp',
+            folder=path,
+            describe=True
+        ))
+
+        if dir:
+            # filter down to just those in the given sub dir
+            files = [
+                x for x in files
+                if x['describe']['folder'].startswith(f"{path}/{dir}")
+            ]
+        
+        return files
+
+
     def read_dxfile(self, file) -> list:
         """
         Read contents of a DXFile object
