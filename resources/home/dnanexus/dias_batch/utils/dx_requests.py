@@ -5,6 +5,7 @@ as running jobs.
 import json
 import os
 from pathlib import Path
+from pprint import pprint
 import re
 
 import dxpy
@@ -12,8 +13,8 @@ import pandas as pd
 
 from .utils import make_path, time_stamp
 
-
-pd.set_option('display.max_rows', None)
+# for prettier viewing in the logs
+pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
 
 
@@ -44,16 +45,25 @@ class DXManage():
             # specified file to use => read in and return
             print("Reading in specified assay config file")
             file = file.get('$dnanexus_link')
+
             if not file.startswith('project'):
-                file = self.get_file_project_context(file)
-            
+                # just file-xxx provided => find a project the file is in
+                file_details = self.get_file_project_context(file)
+            else:
+                project, file_id = file.split(':')
+                file_details = dxpy.bindings.dxfile.DXFile(
+                    project=project, dxid=file_id).describe()
             print(
-                f"Using assay config file: {file['describe']['name']} "
-                f"({file['project']}:{file['id']})"
+                f"Using assay config file: {file_details['describe']['name']} "
+                f"({file_details['project']}:{file_details['id']})"
             )
 
-            return json.loads(dxpy.bindings.dxfile.DXFile(
-                project=file['project'], dxid=file['id']).read())
+            config = json.loads(dxpy.bindings.dxfile.DXFile(
+                project=file_details['project'], dxid=file_details['id']).read())
+            
+            print(f"Assay config file contents:")
+            pprint(config)
+            return config
 
         # searching dir for configs, check for valid project:path structure
         assert re.match(r'project-[\d\w]*:/.*', path), (
@@ -106,6 +116,9 @@ class DXManage():
             f"{highest_config.get('version')} from {highest_config.get('dxid')}"
         )
 
+        print(f"Assay config file contents:")
+        pprint(highest_config)
+
         return highest_config
 
 
@@ -125,48 +138,86 @@ class DXManage():
         DXObject
             DXObject file handler object
         """
+        print(f"Searching all projects for: {file}")
+
         file_details = dxpy.DXFile(dxid=file).describe()
         files = dxpy.find_data_objects(
             name=file_details['name'],
             describe=True
         )
 
-        files = [x for x in files if x['describe']['archivalState'] == 'live']
+        # filter out any archived files or those resolving
+        # to the current job container context
+        files = [
+            x for x in files
+            if x['describe']['archivalState'] == 'live'
+            and not re.match(r"^container-[\d\w]+$", x['project'])
+        ]
         assert files, f"No live files could be found for the ID: {file}"
+
+        print(
+            f"Found {file} in {len(files)} projects, "
+            f"using {files[0]['project']} as project context"
+        )
 
         return files[0]
 
 
-    def read_manifest(self, file) -> pd.DataFrame:
+    def read_dxfile(self, file) -> list:
         """
-        Read in manifest file to dataframe
+        Read contents of a DXFile object
+
+        Abstracted method for reading files such as manifest and genepanels
 
         Parameters
         ----------
-        file : str
-            file ID of manifest file to use
-        
+        file : str | dict
+            file ID of DXFile to read, may be passed as 'file-xxx',
+            'project-xxx:file-xxx' or {'$dnanexus_link': '[project-xxx:]file-xxx'}
+
         Returns
         -------
-        pd.DataFrame
-            dataframe of manifest file
-        """
-        file = file.get('$dnanexus_link')
-        if not file.startswith('project'):
-            file = self.get_file_project_context(file)
-
-        contents = dxpy.bindings.dxfile.DXFile(
-            project=file['project'], dxid=file['id']).read()
+        list
+            contents of file
         
-        contents = [row.split('\t') for row in contents.split('\n') if row]
-        manifest = pd.DataFrame(contents, columns=['sample', 'panel'])
+        Raises
+        ------
+        RuntimeError
+            Raised if 'file' argument not in an expected format
+        """
+        print(f"Reading from {file}")
+        if not file:
+            # None passed, not sure if I need to handle this but keep tripping
+            # myself up with tests so just going to return and probably
+            # end up moving the error along somewhere else but oh well
+            print("Empty file passed to read_dxfile() :sadpepe:")
+            return
 
-        print(
-            f"Manifest read from file: {file['describe']['name']} "
-            f"({file['project']}:{file['id']})\n\n{manifest}"
-        )
+        if isinstance(file, dict):
+            # provided as {'$dnanexus_link': '[project-xxx:]file-xxx'}
+            file = file.get('$dnanexus_link')
 
-        return manifest
+        if re.match(r'^file-[\d\w]+$', file):
+            # just file-xxx provided => find a project context to use
+            file_details = self.get_file_project_context(file)
+            project = file_details['project']
+            file_id = file_details['id']
+            file_name = file_details['describe']['name']
+        elif re.match(r'^project-[\d\w]+:file-[\d\w]+', file):
+            # nicely provided as project-xxx:file-xxx
+            project, file_id = file.split(':')
+            file_details = dxpy.bindings.dxfile.DXFile(
+                project=project, dxid=file_id).describe()
+            file_name = file_details['name'] 
+        else:
+            # who knows what's happened, not for me to deal with
+            raise RuntimeError(
+                f"DXFile not in an expected format: {file}"
+            )
+
+        return dxpy.bindings.dxfile.DXFile(
+            project=project, dxid=file_id).read().split('\n')
+
 
 class DXExecute():
     """
@@ -192,7 +243,7 @@ class DXExecute():
         str
             job ID of launch cnv calling job
         """
-        print("\nBuilding inputs for CNV calling")
+        print("Building inputs for CNV calling")
         cnv_config = config['modes']['cnv_call']
 
         # find BAM files and format as $dnanexus_link inputs to add to config
@@ -211,12 +262,23 @@ class DXExecute():
         print(f"Found {len(files)} .bam/.bai files in {bam_dir}")
 
         if exclude:
-            samples = '\n\t'.join(exlcude.split(','))
+            samples = '\n\t'.join(exclude)
             print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
 
             # filtering out sample files specified from -iexclude, assuming
             # here there are no typos, sample names are given as found in
             # samplesheet and that bam files are named as sampleID_other_stuff.bam
+            exclude_not_present = [
+                name for name in exclude
+                if name not in [x['describe']['name'] for x in files]
+            ]
+            if exclude_not_present:
+                print(
+                    "WARNING: sample ID(s) provided to exclude not present in "
+                    f"bam files found for CNV calling:\n\t{exclude_not_present}"
+                    "\nIgnoring these and continuing..."
+                )
+            
             files = [
                 file for file in files
                 if not file['describe']['name'].split('_')[0] in exclude

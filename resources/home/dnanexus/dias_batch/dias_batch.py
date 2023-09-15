@@ -12,10 +12,13 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
+    from dias_batch.utils.utils import parse_manifest, split_tests
 else:
-    from utils.dx_requests import DXExecute, DXManage
+    from .utils.dx_requests import DXExecute, DXManage
+    from .utils.utils import parse_manifest, split_tests
 
 import dxpy
+import pandas as pd
 
 
 class CheckInputs():
@@ -108,8 +111,10 @@ def main(
     assay_config_file=None,
     assay_config_dir=None,
     manifest_file=None,
+    split_tests=False,
     exclude_samples=None,
     single_output_dir=None,
+    cnv_call_job_id=None,
     cnv_call=False,
     cnv_report=False,
     snv_report=False,
@@ -136,12 +141,27 @@ def main(
         assay=assay
     )
 
-    manifest = DXManage().read_manifest(manifest_file)
+    if exclude_samples:
+        exclude_samples = exclude_samples.split(',')
+
+    manifest_data = DXManage().read_dxfile(manifest_file)
+    manifest = parse_manifest(manifest_data)
+    if split_tests:
+        manifest = split_tests(manifest)
+
+    genepanels = DXManage().read_dxfile(
+        file=assay_config.get('reference_files', {}).get('genepanels'),
+    )
+    genepanels = pd.DataFrame(
+        [x.split('\t') for x in genepanels],
+        columns=['gemini_name', 'panel_name', 'hgnc_id'],
+        dtype='category'
+    )
 
     launched_jobs = {}
     
     if cnv_call:
-        if any([cnv_report, snv_report, mosaic_report]):
+        if cnv_report:
             # going to run some reports after calling finishes,
             # hold app until calling completes
             wait=True
@@ -164,16 +184,16 @@ def main(
 
     if mosaic_report:
         pass
-    
-    if testing and launched_jobs:
-        # testing => terminate launched jobs
-        print("Terminating launched jobs")
-        DXExecute().terminate(list(chain(*launched_jobs.values())))
-    
+ 
     print(
         f'All jobs launched:\n\t',
         "\n\t".join([f"{x[0]}: {x[1]}" for x in launched_jobs.items()])
     )
 
+    if testing and launched_jobs:
+        # testing => terminate launched jobs
+        print("Terminating launched jobs")
+        DXExecute().terminate(list(chain(*launched_jobs.values())))
+   
 
 dxpy.run()
