@@ -413,7 +413,7 @@ class DXExecute():
         if manifest_source == 'Epic':
             pattern = r'^[\d\w]+-[\d\w]+'
         else:
-            pattern = r'X[\d]'
+            pattern = r'X[\d]+'
 
         manifest = filter_manifest_samples_by_files(
             manifest=manifest,
@@ -425,6 +425,8 @@ class DXExecute():
             job_config=config['modes']['cnv_reports'],
             reference_files=config['reference_files']
         )
+
+        print("Launching CNV reports per sample...")
         
 
     @staticmethod

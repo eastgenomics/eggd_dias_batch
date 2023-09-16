@@ -12,11 +12,11 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
-    from dias_batch.utils.utils import parse_manifest, split_tests, \
+    from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
         split_test_codes, check_valid_test_codes
 else:
     from .utils.dx_requests import DXExecute, DXManage
-    from .utils.utils import parse_manifest, split_tests, \
+    from .utils.utils import parse_manifest, split_manifest_tests, \
         split_test_codes, check_valid_test_codes
 
 import dxpy
@@ -103,7 +103,7 @@ class CheckInputs():
         """Check at least one running mode set"""
         if not any(
             self.inputs.get(x) for x in 
-            ['cnv_call', 'cnv_report', 'snv_report', 'mosaic_report']):
+            ['cnv_call', 'cnv_reports', 'snv_reports', 'mosaic_reports']):
                 self.errors.append('No mode specified to run in')
 
 
@@ -118,9 +118,9 @@ def main(
     single_output_dir=None,
     cnv_call_job_id=None,
     cnv_call=False,
-    cnv_report=False,
-    snv_report=False,
-    mosaic_report=False,
+    cnv_reports=False,
+    snv_reports=False,
+    mosaic_reports=False,
     testing=False
 ):
     check = CheckInputs(
@@ -130,9 +130,9 @@ def main(
         manifest_file=manifest_file,
         single_output_dir=single_output_dir,
         cnv_call=cnv_call,
-        cnv_reports=cnv_report,
-        snv_reports=snv_report,
-        mosaic_reports=mosaic_report
+        cnv_reports=cnv_reports,
+        snv_reports=snv_reports,
+        mosaic_reports=mosaic_reports
     )
 
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
@@ -161,30 +161,34 @@ def main(
     manifest_data = DXManage().read_dxfile(manifest_file)
     manifest, manifest_source = parse_manifest(manifest_data)
     if split_tests:
-        manifest = split_tests(manifest)
+        manifest = split_manifest_tests(manifest)
 
     # filter manifest tests against genepanels to ensure what has been
-    # requested are test codes we recognise
+    # requested are test codes or HGNC IDs we recognise
     manifest, invalid_tests = check_valid_test_codes(manifest, genepanels)
     
 
     launched_jobs = {}
     
     if cnv_call:
-        if cnv_report:
-            # going to run some reports after calling finishes,
-            # hold app until calling completes
-            wait=True
+        if cnv_call_job_id:
+            print(
+                "Warning: both 'cnv_call' set and cnv_call_job_id "
+                "specified. Will use output of specified job "
+                f"({cnv_call_job_id}) instead of running CNV calling"
+            )
         else:
-            wait=False
+            # check if we're running reports after and to hold app
+            # until CNV calling completes
+            wait = True if cnv_reports else False
 
-        cnv_call_job_id = DXExecute().cnv_calling(
-            config=assay_config,
-            single_output_dir=single_output_dir,
-            exclude=exclude_samples,
-            wait=wait
-        )
-        launched_jobs['CNV calling'] = [cnv_call_job_id]
+            cnv_call_job_id = DXExecute().cnv_calling(
+                config=assay_config,
+                single_output_dir=single_output_dir,
+                exclude=exclude_samples,
+                wait=wait
+            )
+            launched_jobs['CNV calling'] = [cnv_call_job_id]
 
     if cnv_reports:
         cnv_report_jobs = DXExecute().cnv_reports(

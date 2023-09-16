@@ -207,6 +207,7 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
         for each sample where one or more files were found
     """
     # build mapping of prefix using given pattern to matching files
+    # i.e. {'124801362-23230R0131': DXFileObject{'id': ...}}
     file_prefixes = defaultdict(list)
     for file in files:
         match = re.match(pattern, file['describe']['name'])
@@ -215,11 +216,16 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
 
     manifest_no_match = []
     manifest_no_files = []
+    manifest_with_files = defaultdict(lambda: defaultdict(list))
 
     for sample in manifest.keys():
         match = re.match(pattern, sample)
         if not match:
             # sample ID doesn't match expected pattern
+            print(
+                f"Sample in manifest {sample} does not match expected "
+                f"pattern: {pattern}, sample will be excluded from analysis"
+            )
             manifest_no_match.append(sample)
             manifest.pop(sample)
         else:
@@ -238,7 +244,8 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
                     f"Found {len(sample_files)} files for {sample}\n"
                     f"{[x['describe']['name'] for x in sample_files]}"
                 )
-                manifest[sample]['files'] = sample_files
+                manifest_with_files[sample]['tests'] = manifest[sample]['tests']
+                manifest_with_files[sample]['files'] = sample_files
     
     print(
         f"{len(manifest_no_match)} samples in manifest didn't match expected"
@@ -250,20 +257,7 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
         f"matching files: {manifest_no_files}"
     )
 
-    return manifest
-
-
-
-                
-
-
-
-
-    manifest_mapping = {
-        re.match(pattern, k).group(): k
-        if re.match(pattern, k) else None
-        for k, v in manifest
-    }
+    return manifest_with_files
 
 
 def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
@@ -317,6 +311,8 @@ def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
             "WARNING: one or more samples had an invalid test "
             f"requested:\n\t{invalid}" 
         )
+    else:
+        print("All sample test codes valid!")
     
     # check if any samples only had test codes that are invalid -> won't
     # have any reports generated
@@ -330,7 +326,7 @@ def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
     return valid, invalid
 
 
-def split_test_codes(genepanels) -> pd.DataFrame:
+def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     """
     Split out R/C codes from full CI name for easier matching
     against manifest
@@ -376,7 +372,7 @@ def split_test_codes(genepanels) -> pd.DataFrame:
     return genepanels
 
 
-def split_tests(data) -> dict:
+def split_manifest_tests(data) -> dict:
     """
     Split test codes to individual items to generate separate reports
     instead of being combined
@@ -432,6 +428,9 @@ def split_tests(data) -> dict:
     return split_data
 
 
+# def get_panels_and_indications()
+
+
 def fill_config_reference_inputs(job_config, reference_files) -> dict:
     """
     Fill config file input fields for workflow stages against the
@@ -449,7 +448,7 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
     dict
         config with input files parsed in
     """
-    print(f"Filling config file, before:\n{job_config}")
+    print(f"Filling config file with reference files, before:\n\t{job_config}")
 
     flat_config = flatten(job_config)
     for file, file_id in reference_files.items():
@@ -459,10 +458,7 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
 
     unflat_config = unflatten(flat_config)
 
-    print(f"And now it's filled:\n{unflat_config}")
+    print(f"And now it's filled:\n\t{unflat_config}")
 
     return unflat_config
 
-
-
-    
