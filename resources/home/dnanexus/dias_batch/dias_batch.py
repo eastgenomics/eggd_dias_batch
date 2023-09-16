@@ -130,9 +130,9 @@ def main(
         manifest_file=manifest_file,
         single_output_dir=single_output_dir,
         cnv_call=cnv_call,
-        cnv_report=cnv_report,
-        snv_report=snv_report,
-        mosaic_report=mosaic_report
+        cnv_reports=cnv_report,
+        snv_reports=snv_report,
+        mosaic_reports=mosaic_report
     )
 
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
@@ -184,9 +184,9 @@ def main(
             exclude=exclude_samples,
             wait=wait
         )
-        launched_jobs['CNV calling'] = [job_id]
+        launched_jobs['CNV calling'] = [cnv_call_job_id]
 
-    if cnv_report:
+    if cnv_reports:
         cnv_report_jobs = DXExecute().cnv_reports(
             call_job_id=cnv_call_job_id,
             single_output_dir=single_output_dir,
@@ -195,10 +195,10 @@ def main(
             config=assay_config
         )
     
-    if snv_report:
+    if snv_reports:
         pass
 
-    if mosaic_report:
+    if mosaic_reports:
         pass
  
     print(

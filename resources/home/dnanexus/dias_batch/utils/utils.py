@@ -142,13 +142,19 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         for sample in contents:
             test_codes = sample[1].replace(' ', '').split(',')
             if not all([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC", x) for x in test_codes
+                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
             ]):
                 raise RuntimeError(
-                    'Invalid test code provided for sample '
+                    'Invalid test code(s) provided for sample '
                     f'{sample[0]} : {sample[1]}'
                 )
-            data[sample[0]]['tests'].append(sample[1])
+            # add test codes to samples list, keeping just the code part
+            # and not full string (i.e. R134.2 from 
+            # R134.1_Familialhypercholesterolaemia_P)
+            data[sample[0]]['tests'].append([
+                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
+                for x in test_codes
+            ])
         
         manifest_source = 'Gemini'
 
@@ -292,7 +298,9 @@ def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
         for test_list in test_codes['tests']:
             valid_tests = []
             for test in test_list:
-                if test in genepanels_test_codes:
+                if test in genepanels_test_codes or re.match(r'_HGNC:[\d]+', test):
+                    #TODO: should we check that we have a transcript assigned
+                    # to this HGNC ID?
                     valid_tests.append(test)
                 else:
                     sample_invalid_test.append(test)

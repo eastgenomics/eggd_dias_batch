@@ -67,24 +67,24 @@
             "group": "mode"
           },
           {
-            "name": "cnv_report",
-            "label": "cnv report",
+            "name": "cnv_reports",
+            "label": "cnv reports",
             "class": "boolean",
             "optional": true,
             "help": "run cnv reports",
             "group": "mode"
           },
           {
-            "name": "snv_report",
-            "label": "snv report",
+            "name": "snv_reports",
+            "label": "snv reports",
             "class": "boolean",
             "optional": true,
             "help": "run snv reports",
             "group": "mode"
           },
           {
-            "name": "mosaic_report",
-            "label": "mosaic report",
+            "name": "mosaic_reports",
+            "label": "mosaic reports",
             "class": "boolean",
             "optional": true,
             "help": "run mosaic reports",
