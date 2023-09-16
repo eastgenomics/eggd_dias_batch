@@ -4,6 +4,20 @@
     "cnv_call_app_id": "app-GJZVB2840KK0kxX998QjgXF0",
     "snv_report_workflow_id": "workflow-GXzkfYj4QPQp9z4Jz4BF09y6",
     "cnv_report_workflow_id": "workflow-GXzvJq84XZB1fJk9fBfG88XJ",
+    "reference_files": {
+        "genepanels": {
+            "$dnanexus_link": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562"
+        },
+        "exons_nirvana": {
+            "$dnanexus_link": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gk7gZ47gypK7ZZ"
+        },
+        "genes2transcripts": {
+            "$dnanexus_link": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GV4P970433Gj6812zGVBZvB4"
+        },
+        "exonsfile":  {
+            "$dnanexus_link": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gf99pBPbJkV7bq"
+        }
+    },
     "modes": {
         "cnv_call": {
             "instance_type": "mem2_ssd1_v2_x8",
@@ -24,7 +38,41 @@
             }
         },
         "cnv_reports": {
-            "stage-cnv_generate_bed_vep.exons_nirvana": "INPUT-exons_nirvana"
+            "stage-cnv_generate_bed_vep.exons_nirvana": "INPUT-exons_nirvana",
+            "stage-cnv_generate_bed_vep.genes2transcripts": "INPUT-genes2transcripts",
+            "stage-cnv_generate_bed_vep.gene_panels": "INPUT-genepanels",
+            "stage-cnv_generate_bed_vep.gene_panels.additional_regions": {
+                "$dnanexus_link": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GJZQvg0433GkyFZg13K6VV6p"
+            },
+            "stage-cnv_vep.config_file": {
+                "$dnanexus_link": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GQGJ3Z84xyx0jp1q65K1Q1jY"
+            },
+            "stage-cnv_vep.vcf": {
+                "folder": "CNV_vcfs",
+                "name": "_segments.vcf$"
+            },
+            "stage-cnv_generate_bed_excluded.exons_nirvana": "INPUT-exons_nirvana",
+            "stage-cnv_generate_bed_excluded.genes2transcripts": "INPUT-genes2transcripts", 
+            "stage-cnv_generate_bed_excluded.gene_panels": "INPUT-genepanels",
+            "stage-cnv_generate_bed_excluded.additional_regions": {
+                "$dnanexus_link": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GJZQvg0433GkyFZg13K6VV6p"
+            },
+            "stage-cnv_generate_bed_excluded.flank": 0,
+            "stage-cnv_annotate_excluded_regions.cds_hgnc": "INPUT-exons_nirvana", 
+            "stage-cnv_annotate_excluded_regions.cds_gene": "INPUT-exonsfile",
+            "stage-cnv_annotate_excluded_regions.additional_regions": {
+                "$dnanexus_link": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GJZQvg0433GkyFZg13K6VV6p"
+            },
+            "stage-cnv_annotate_excluded_regions.excluded_regions": {
+                "folder": "CNV_summary",
+                "name": "_excluded_intervals.bed$"
+            },
+            "stage-cnv_generate_workbook.additional_sheet_names": "ExcludedRegions",
+            "stage-cnv_generate_workbook.exclude_columns": "REF FILTER CSQ_Allele CSQ_Consequence CSQ_IMPACT",
+            "stage-cnv_generate_workbook.acmg": "true",
+            "stage-cnv_generate_workbook.reorder_columns": "CHROM POS END CNVLEN ID ALT QUAL CSQ_SYMBOL CSQ_Feature CSQ_VARIANT_CLASS CSQ_EXON CSQ_INTRON CSQ_STRAND GT CN NP QA QS QSE QSS",
+            "stage-cnv_generate_workbook.add_comment_column": "true",
+            "stage-cnv_generate_workbook.summary": "dias"
         },
         "snv_reports": {
 
