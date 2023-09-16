@@ -1,14 +1,15 @@
 from collections import defaultdict
 from datetime import datetime
+from pprint import PrettyPrinter
 import re
 from typing import Union
 
-from flatten_json import flatten, unflatten
 import pandas as pd
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
+PPRINT = PrettyPrinter(indent=1).pprint
 
 
 def time_stamp() -> str:
@@ -172,7 +173,7 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     return data, manifest_source
 
 
-def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
+def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
     """
     Filter samples in manifest against those where required per sample
     files have been found with DXManage.find_files().
@@ -186,6 +187,8 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
         dict mapping sampleID -> testCodes from parse_manifest()
     files : list
         list of DXFile objects returned from DXMange.find_files()
+    name : str
+        name of file type to add as key to manifest dict
     pattern : str
         regex pattern for selecting parts of name to match on, i.e.
             (Gemini naming)
@@ -198,7 +201,6 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
             vcf name      : 124801362-23230R0131-23NGSCEN15-8128-M-96527.vcf.gz
             pattern       : '^[\d\w]+-[\d\w]+'
 
-
     Returns
     -------
     dict
@@ -208,11 +210,18 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
     """
     # build mapping of prefix using given pattern to matching files
     # i.e. {'124801362-23230R0131': DXFileObject{'id': ...}}
+    print("Filtering manifest samples against available files")
+    print(f"Total files before filtering against pattern: {len(files)}")
     file_prefixes = defaultdict(list)
+
     for file in files:
         match = re.match(pattern, file['describe']['name'])
         if match:
             file_prefixes[match.group()].append(file)
+    print(
+        "Total files after filtering against pattern: "
+        f"{len(file_prefixes.keys())}"
+    )
 
     manifest_no_match = []
     manifest_no_files = []
@@ -227,7 +236,6 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
                 f"pattern: {pattern}, sample will be excluded from analysis"
             )
             manifest_no_match.append(sample)
-            manifest.pop(sample)
         else:
             # we have prefix, try find matching files with same prefix
             sample_files = file_prefixes.get(match.group())
@@ -238,17 +246,17 @@ def filter_manifest_samples_by_files(manifest, files, pattern) -> dict:
                     f"prefix matched in samplename {match.group()}"
                 )
                 manifest_no_files.append(sample)
-                manifest.pop(sample)
             else:
+                # sample matches pattern and matches some file(s)
                 print(
                     f"Found {len(sample_files)} files for {sample}\n"
                     f"{[x['describe']['name'] for x in sample_files]}"
                 )
                 manifest_with_files[sample]['tests'] = manifest[sample]['tests']
-                manifest_with_files[sample]['files'] = sample_files
+                manifest_with_files[sample][name] = sample_files
     
     print(
-        f"{len(manifest_no_match)} samples in manifest didn't match expected"
+        f"{len(manifest_no_match)} samples in manifest didn't match expected "
         f"pattern of {pattern}: {manifest_no_match}"
     )
 
@@ -428,7 +436,22 @@ def split_manifest_tests(data) -> dict:
     return split_data
 
 
-# def get_panels_and_indications()
+# def get_panels_and_indications(manifest, genepanels) -> dict:
+#     """
+#     _summary_
+
+#     Parameters
+#     ----------
+#     manifest : _type_
+#         _description_
+#     genepanels : _type_
+#         _description_
+
+#     Returns
+#     -------
+#     dict
+#         _description_
+#     """
 
 
 def fill_config_reference_inputs(job_config, reference_files) -> dict:
@@ -448,17 +471,29 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
     dict
         config with input files parsed in
     """
-    print(f"Filling config file with reference files, before:\n\t{job_config}")
+    print(f"Filling config file with reference files, before:")
+    PPRINT(job_config)
 
-    flat_config = flatten(job_config)
-    for file, file_id in reference_files.items():
-        for input, value in flat_config.items():
-            if value == f'INPUT-{file}':
-                flat_config[input] = file_id
+    print(f"Reference files to add:")
+    PPRINT(reference_files)
 
-    unflat_config = unflatten(flat_config)
+    filled_config = {}
 
-    print(f"And now it's filled:\n\t{unflat_config}")
+    for input, value in job_config.items():
+        match = False
+        for reference, file_id in reference_files.items():
+            if value == f'INPUT-{reference}':
+                # add this ref file ID as the input and move to next input
+                match = True
+                filled_config[input] = file_id
+                break
 
-    return unflat_config
+        if not match:
+            # this input isn't a reference file => add back as is   
+            filled_config[input] = value
+
+    print(f"And now it's filled:")
+    PPRINT(filled_config)
+
+    return filled_config
 

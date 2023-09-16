@@ -2,10 +2,12 @@
 Functions related to querying and managing objects in DNAnexus, as well
 as running jobs.
 """
+from copy import deepcopy
 import json
 import os
 from pathlib import Path
 from pprint import pprint
+from pprint import PrettyPrinter
 import re
 
 import dxpy
@@ -17,6 +19,7 @@ from .utils import fill_config_reference_inputs, \
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
+PPRINT = PrettyPrinter(indent=1).pprint
 
 
 class DXManage():
@@ -63,7 +66,7 @@ class DXManage():
                 project=file_details['project'], dxid=file_details['id']).read())
             
             print(f"Assay config file contents:")
-            pprint(config)
+            PPRINT(config)
             return config
 
         # searching dir for configs, check for valid project:path structure
@@ -118,7 +121,7 @@ class DXManage():
         )
 
         print(f"Assay config file contents:")
-        pprint(highest_config)
+        PPRINT(highest_config)
 
         return highest_config
 
@@ -401,12 +404,40 @@ class DXExecute():
         list
             list of job IDs launched
         """
+        print("Configuring inputs for CNV reports")
+
+        # get required files
         job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
-        job_output = dxpy.find_data_objects(
+        segment_vcfs = list(dxpy.find_data_objects(
             name="segments.vcf$",
             name_mode='regexp',
+            project=job_details.get('project'),
             folder=job_details.get('folder'),
             describe=True
+        ))
+        excluded_intervals_bed = list(dxpy.find_data_objects(
+            name="_excluded_intervals.bed$",
+            name_mode='regexp',
+            project=job_details.get('project'),
+            folder=job_details.get('folder'),
+            describe=True
+        ))
+
+        if not excluded_intervals_bed:
+            raise RuntimeError(
+                f"Failed to find exlcuded intervals bed file from {call_job_id}"
+            )
+        else:
+            excluded_intervals_bed = {
+                "$dnanexus_link": {
+                    f"{excluded_intervals_bed[0]['project']}:"
+                    f"{excluded_intervals_bed[0]['id']}"
+                }
+            }
+
+        print(
+            f"Found {len(segment_vcfs)} segments.vcf "
+            f"files from {job_details.get('folder')}"
         )
 
         # patterns of sample ID and sample file prefix to match on
@@ -415,19 +446,63 @@ class DXExecute():
         else:
             pattern = r'X[\d]+'
 
+        # ensure we have a vcf per sample, exclude those that don't have one
         manifest = filter_manifest_samples_by_files(
             manifest=manifest,
-            files=job_output,
+            files=segment_vcfs,
+            name='segment_vcf',
             pattern=pattern
         )
 
+        # populate workflow input config with reference and run level files
         cnv_reports_config = fill_config_reference_inputs(
             job_config=config['modes']['cnv_reports'],
             reference_files=config['reference_files']
         )
+        cnv_reports_config[
+            'stage-cnv_annotate_excluded_regions.excluded_regions'
+        ] = excluded_intervals_bed
+
+        workflow_details = dxpy.describe(config.get('cnv_report_workflow_id'))
+
+        out_folder = make_path(
+            single_output_dir, workflow_details['name']
+        )
 
         print("Launching CNV reports per sample...")
-        
+
+        launched_jobs = []
+        # launch reports workflow, once per sample - set of test codes
+        for sample, sample_config in manifest.items():
+            print(sample, sample_config)
+            test_lists = sample_config['tests']
+            segment_vcf = sample_config['segment_vcf'][0]
+            for idx, tests in enumerate(test_lists):
+                print(
+                    f"Launching CNV reports workflow {idx+1}/"
+                    f"{len(test_lists)} for {sample} with test(s): {tests}"
+                )
+                input = deepcopy(cnv_reports_config)
+                input['stage-cnv_vep.vcf'] = {"$dnanexus_link": 
+                    f"{segment_vcf['project']}:{segment_vcf['id']}"
+                }
+
+                job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
+                    dxid=config.get('cnv_report_workflow_id')
+                ).run(
+                    workflow_input=input,
+                    rerun_stages=['*'],
+                    name=f"{workflow_details['name']}-{sample}"
+                )  
+            
+                job_details = job_handle.describe()
+                launched_jobs.append(job_details['id'])
+                break
+            break
+    
+        print(f"Successfully launched {len(launched_jobs)} CNV reports workflows")
+        return launched_jobs
+
 
     @staticmethod
     def terminate(jobs) -> None:

@@ -13,11 +13,11 @@ if os.path.exists('/home/dnanexus'):
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
     from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
-        split_test_codes, check_valid_test_codes
+        split_genepanels_test_codes, check_valid_test_codes
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, split_manifest_tests, \
-        split_test_codes, check_valid_test_codes
+        split_genepanels_test_codes, check_valid_test_codes
 
 import dxpy
 import pandas as pd
@@ -155,7 +155,7 @@ def main(
         columns=['gemini_name', 'panel_name', 'hgnc_id'],
         dtype='category'
     )
-    genepanels = split_test_codes(genepanels)
+    genepanels = split_genepanels_test_codes(genepanels)
     
     # parse manifest and format into a mapping of sampleID -> test codes
     manifest_data = DXManage().read_dxfile(manifest_file)
@@ -173,9 +173,9 @@ def main(
     if cnv_call:
         if cnv_call_job_id:
             print(
-                "Warning: both 'cnv_call' set and cnv_call_job_id "
-                "specified. Will use output of specified job "
-                f"({cnv_call_job_id}) instead of running CNV calling"
+                "WARNING: both 'cnv_call' set and cnv_call_job_id "
+                "specified.\nWill use output of specified job "
+                f"({cnv_call_job_id}) instead of running CNV calling."
             )
         else:
             # check if we're running reports after and to hold app
