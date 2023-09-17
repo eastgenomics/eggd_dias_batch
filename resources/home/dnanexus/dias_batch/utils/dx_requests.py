@@ -461,13 +461,10 @@ class DXExecute():
         )
 
         #TODO - decide what to do if no samples have a vcf - exit?
+        #TODO - return samples exlcuded for no vcf for summary
 
-        # populate workflow input config with reference and run level files
-        cnv_reports_config = fill_config_reference_inputs(
-            job_config=config['modes']['cnv_reports'],
-            reference_files=config['reference_files']
-        )
-        cnv_reports_config[
+        # add run level file(s) to workflow config
+        config[
             'stage-cnv_annotate_excluded_regions.excluded_regions'
         ] = excluded_intervals_bed
 
@@ -496,7 +493,7 @@ class DXExecute():
                     f"{len(all_test_lists)} for {sample} with "
                     f"test(s): {test_list}"
                 )
-                input = deepcopy(cnv_reports_config)
+                input = deepcopy(config)
                 input['stage-cnv_vep.vcf'] = {
                     "$dnanexus_link": {
                         "project": segment_vcf['project'],
@@ -536,6 +533,124 @@ class DXExecute():
             f"workflows in {round(end - start)}s"
         )
         return launched_jobs
+
+
+    def snv_reports(
+        self,
+        single_output_dir,
+        manifest,
+        manifest_source,
+        config
+        ) -> list:
+        """
+        _summary_
+
+        Parameters
+        ----------
+        single_output_dir : _type_
+            _description_
+        manifest : _type_
+            _description_
+        manifest_source : _type_
+            _description_
+        config : _type_
+            _description_
+
+        Returns
+        -------
+        list
+            _description_
+        """
+        vcf_path = make_path(single_output_dir, 'sentieon')
+        vcf_files = list(dxpy.find_data_objects(
+            name="vcf.gz$",
+            name_mode='regexp',
+            folder=vcf_path,
+            describe=True
+        ))
+
+        print(
+            f"Found {len(vcf_files)} sentieon vcf "
+            f"files from {vcf_path}"
+        )
+
+        # patterns of sample ID and sample file prefix to match on
+        if manifest_source == 'Epic':
+            pattern = r'^[\d\w]+-[\d\w]+'
+        else:
+            pattern = r'X[\d]+'
+        
+        # ensure we have a vcf per sample, exclude those that don't have one
+        manifest = filter_manifest_samples_by_files(
+            manifest=manifest,
+            files=vcf_files,
+            name='sentieon_vcf',
+            pattern=pattern
+        )
+
+        workflow_details = dxpy.describe(config.get('snv_report_workflow_id'))
+
+        out_folder = make_path(
+            single_output_dir, workflow_details['name']
+        )
+
+        print("Launching SNV reports per sample...")
+        start = timer()
+
+        launched_jobs = []
+        # launch reports workflow, once per sample - set of test codes
+        for sample, sample_config in manifest.items():
+            print(f"Launching jobs for {sample} with:")
+            PPRINT(sample_config)
+
+            all_test_lists = sample_config['tests']
+            indication_lists = sample_config['indications']
+            sentieon_vcf = sample_config['sentieon_vcf'][0]
+
+            for idx, test_list in enumerate(all_test_lists):
+                print(
+                    f"Launching SNV reports workflow {idx+1}/"
+                    f"{len(all_test_lists)} for {sample} with "
+                    f"test(s): {test_list}"
+                )
+                input = deepcopy(config)
+                input['stage-snv_vep.vcf'] = {
+                    "$dnanexus_link": {
+                        "project": sentieon_vcf['project'],
+                        "id": sentieon_vcf['id']
+                    }
+                }
+
+                # add required string inputs of panels and indications
+                panels = ';'.join(sample_config['panels'][idx])
+                indications = ';'.join(sample_config['indications'][idx])
+                codes = '&&'.join(test_list)
+
+                #TODO add string inputs to job input
+
+
+                job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
+                    dxid=config.get('snv_report_workflow_id')
+                ).run(
+                    workflow_input=input,
+                    rerun_stages=['*'],
+                    detach=True,
+                    name=f"{workflow_details['name']}_{sample}_{codes}"
+                )  
+            
+                job_details = job_handle.describe()
+                launched_jobs.append(job_details['id'])
+                break
+            break
+    
+        end = timer()
+        print(
+            f"Successfully launched {len(launched_jobs)} SNV reports "
+            f"workflows in {round(end - start)}s"
+        )
+        return launched_jobs
+
+
 
 
     @staticmethod
