@@ -460,6 +460,8 @@ class DXExecute():
             pattern=pattern
         )
 
+        #TODO - decide what to do if no samples have a vcf - exit?
+
         # populate workflow input config with reference and run level files
         cnv_reports_config = fill_config_reference_inputs(
             job_config=config['modes']['cnv_reports'],
@@ -507,12 +509,12 @@ class DXExecute():
                 indications = ';'.join(sample_config['indications'][idx])
                 codes = '&&'.join(test_list)
 
-                input['stage-cnv_generate_bed_vep.panel'] = panels
-                input['stage-cnv_generate_workbook.panel'] = panels
-                input['stage-cnv_generate_bed_excluded.panel'] = panels
+                input['stage-cnv_generate_bed_vep.panel'] = indications
                 input['stage-cnv_generate_bed_vep.output_file_prefix'] = codes
+                input['stage-cnv_generate_bed_excluded.panel'] = indications
                 input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
                 input['stage-cnv_generate_workbook.clinical_indication'] = indications
+                input['stage-cnv_generate_workbook.panel'] = panels
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=config.get('cnv_report_workflow_id')
@@ -520,11 +522,13 @@ class DXExecute():
                     workflow_input=input,
                     rerun_stages=['*'],
                     detach=True,
-                    name=f"{workflow_details['name']}-{sample}"
+                    name=f"{workflow_details['name']}_{sample}_{codes}"
                 )  
             
                 job_details = job_handle.describe()
                 launched_jobs.append(job_details['id'])
+                break
+            break
     
         end = timer()
         print(
