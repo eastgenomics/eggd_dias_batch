@@ -9,6 +9,7 @@ from pathlib import Path
 from pprint import pprint
 from pprint import PrettyPrinter
 import re
+from timeit import default_timer as timer
 
 import dxpy
 import pandas as pd
@@ -475,18 +476,23 @@ class DXExecute():
         )
 
         print("Launching CNV reports per sample...")
+        start = timer()
 
         launched_jobs = []
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
-            print(sample, sample_config)
-            test_lists = sample_config['tests']
+            print(f"Launching jobs for {sample} with:")
+            PPRINT(sample_config)
+
+            all_test_lists = sample_config['tests']
+            indication_lists = sample_config['indications']
             segment_vcf = sample_config['segment_vcf'][0]
 
-            for idx, tests in enumerate(test_lists):
+            for idx, test_list in enumerate(all_test_lists):
                 print(
                     f"Launching CNV reports workflow {idx+1}/"
-                    f"{len(test_lists)} for {sample} with test(s): {tests}"
+                    f"{len(all_test_lists)} for {sample} with "
+                    f"test(s): {test_list}"
                 )
                 input = deepcopy(cnv_reports_config)
                 input['stage-cnv_vep.vcf'] = {
@@ -496,8 +502,17 @@ class DXExecute():
                     }
                 }
 
-                print(f"Input for job:")
-                PPRINT(input)
+                # add required string inputs of panels and indications
+                panels = ';'.join(sample_config['panels'][idx])
+                indications = ';'.join(sample_config['indications'][idx])
+                codes = '&&'.join(test_list)
+
+                input['stage-cnv_generate_bed_vep.panel'] = panels
+                input['stage-cnv_generate_workbook.panel'] = panels
+                input['stage-cnv_generate_bed_excluded.panel'] = panels
+                input['stage-cnv_generate_bed_vep.output_file_prefix'] = codes
+                input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
+                input['stage-cnv_generate_workbook.clinical_indication'] = indications
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=config.get('cnv_report_workflow_id')
@@ -510,10 +525,12 @@ class DXExecute():
             
                 job_details = job_handle.describe()
                 launched_jobs.append(job_details['id'])
-                break
-            break
     
-        print(f"Successfully launched {len(launched_jobs)} CNV reports workflows")
+        end = timer()
+        print(
+            f"Successfully launched {len(launched_jobs)} CNV reports "
+            f"workflows in {round(end - start)}s"
+        )
         return launched_jobs
 
 

@@ -373,7 +373,7 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
                     f"Found {len(sample_files)} files for {sample}\n"
                     f"{[x['describe']['name'] for x in sample_files]}"
                 )
-                manifest_with_files[sample]['tests'] = manifest[sample]['tests']
+                manifest_with_files[sample] = manifest[sample]
                 manifest_with_files[sample][name] = sample_files
     
     print(
