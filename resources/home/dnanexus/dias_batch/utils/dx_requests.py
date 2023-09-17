@@ -430,8 +430,8 @@ class DXExecute():
         else:
             excluded_intervals_bed = {
                 "$dnanexus_link": {
-                    f"{excluded_intervals_bed[0]['project']}:"
-                    f"{excluded_intervals_bed[0]['id']}"
+                    "project": excluded_intervals_bed[0]['project'],
+                    "id": excluded_intervals_bed[0]['id']
                 }
             }
 
@@ -477,15 +477,20 @@ class DXExecute():
             print(sample, sample_config)
             test_lists = sample_config['tests']
             segment_vcf = sample_config['segment_vcf'][0]
+
             for idx, tests in enumerate(test_lists):
                 print(
                     f"Launching CNV reports workflow {idx+1}/"
                     f"{len(test_lists)} for {sample} with test(s): {tests}"
                 )
                 input = deepcopy(cnv_reports_config)
-                input['stage-cnv_vep.vcf'] = {"$dnanexus_link": 
-                    f"{segment_vcf['project']}:{segment_vcf['id']}"
-                }
+                input['stage-cnv_vep.vcf'] = {"$dnanexus_link": {
+                    "project": segment_vcf['project'],
+                    "id": segment_vcf['id']
+                }}
+
+                print(f"Input for job:")
+                PPRINT(input)
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=config.get('cnv_report_workflow_id')

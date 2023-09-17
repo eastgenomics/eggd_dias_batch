@@ -152,9 +152,10 @@ def main(
     )
     genepanels = pd.DataFrame(
         [x.split('\t') for x in genepanels],
-        columns=['gemini_name', 'panel_name', 'hgnc_id'],
-        dtype='category'
+        columns=['gemini_name', 'panel_name', 'hgnc_id']
     )
+    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away gene symbol
+    genepanels = genepanels[genepanels.duplicated()]
     genepanels = split_genepanels_test_codes(genepanels)
     
     # parse manifest and format into a mapping of sampleID -> test codes

@@ -339,24 +339,22 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     Split out R/C codes from full CI name for easier matching
     against manifest
 
-    +-----------------------+--------------------------+------------+
-    |      gemini_name      |        panel_name        |   hgnc_id  |
-    +-----------------------+--------------------------+------------+
-    | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 | HGNC:12269 |
-    | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 | HGNC:2202  |
-    +-----------------------+--------------------------+------------+
+    +-----------------------+--------------------------+
+    |      gemini_name      |        panel_name        |
+    +-----------------------+--------------------------+
+    | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
+    | C2.1_INSR             | CUH_INSR_1.0             |
+    +-----------------------+--------------------------+
 
                                     |
                                     ▼
                                         
-    +-----------+-----------------------+---------------------------+------------+
-    | test_code |      gemini_name      |        panel_name         |   hgnc_id  |
-    +-----------+-----------------------+---------------------------+------------+
-    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 | HGNC:12269 |
-    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 | HGNC:2202  |
-    +-----------+-----------------------+---------------------------+------------+
-
-
+    +-----------+-----------------------+---------------------------+
+    | test_code |      gemini_name      |        panel_name         |
+    +-----------+-----------------------+---------------------------+
+    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
+    | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
+    +-----------+-----------------------+---------------------------+
 
 
     Parameters
@@ -372,8 +370,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     genepanels['test_code'] = genepanels['gemini_name'].apply(
         lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
     )
-    genepanels = genepanels.astype({'test_code': 'category'})
-    genepanels = genepanels[['test_code', 'gemini_name', 'panel_name', 'hgnc_id']]
+    genepanels = genepanels[['test_code', 'gemini_name', 'panel_name']]
 
     print(f"Genepanels file: \n{genepanels}")
 
@@ -485,7 +482,28 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
             if value == f'INPUT-{reference}':
                 # add this ref file ID as the input and move to next input
                 match = True
-                filled_config[input] = file_id
+
+                project = re.search(r'project-[\d\w]+', file_id)
+                file = re.search(r'file-[\d\w]+', file_id)
+
+                # format correctly as dx link
+                if project and file:
+                    file = {
+                        "$dnanexus_link": {
+                            "project": project,
+                            "id": file
+                        }
+                    }
+                elif file and not project:
+                    file = {"$dnanexus_link": file}
+                else:
+                    # not found a file ID
+                    raise RuntimeError(
+                        f"Provided reference doesn't appear valid:"
+                        f"{reference} : {file_id}"
+                    )
+
+                filled_config[input] = file
                 break
 
         if not match:
