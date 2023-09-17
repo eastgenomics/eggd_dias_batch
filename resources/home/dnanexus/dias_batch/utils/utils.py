@@ -433,22 +433,90 @@ def split_manifest_tests(data) -> dict:
     return split_data
 
 
-# def get_panels_and_indications(manifest, genepanels) -> dict:
-#     """
-#     _summary_
+def add_panels_and_indications(manifest, genepanels) -> dict:
+    """
+    Add panel and clinical indication strings to the manifest dict.
 
-#     Parameters
-#     ----------
-#     manifest : _type_
-#         _description_
-#     genepanels : _type_
-#         _description_
+    This adds in the panels and clinical indications for each test code
+    to the manifest under the keys 'panels' and 'indications'. These will
+    be structured the same as the tests list of lists, matching the order
+    and length. This then allows combining these as strings when configuring
+    inputs such as panel strings for generate_bed.
 
-#     Returns
-#     -------
-#     dict
-#         _description_
-#     """
+    Example manifest dict before:
+    "X223201" : {
+        'tests': [['R168.1', '_HGNC:20499'], ['R134.1']]
+    }
+
+    Example manifest dict after:
+    "X223201" : {
+        'tests': [['R168.1', '_HGNC:20499'], ['R134.1']],
+        'panels: [
+            ['Non-acute porphyrias_1.4', '_HGNC:20499'],
+            ['Familial hypercholesterolaemia (GMS)_2.0']
+        ],
+        'indications': [
+            ['R168.1_Non-acute porphyrias_P', '_HGNC:20499'],
+            ['R134.1_Familial hypercholesterolaemia_P']
+        ]
+    }
+
+    Parameters
+    ----------
+    manifest : dict
+        sample -> tests mapping dict of manifest
+    genepanels : pd.DataFrame
+        dataframe of genepanels file
+
+    Returns
+    -------
+    dict
+        manifest dict with additional panel and indication strings
+    """
+    print("Finding panels and clinical indications for tests")
+    print("Manifest before")
+    PPRINT(manifest)
+
+    manifest_with_panels = {}
+
+    for sample, values in manifest.items():
+        sample_tests = {
+            'tests': values['tests'],
+            'panels' : [],
+            'indications': []
+        }
+        for test_list in values['tests']:
+            panels = []
+            indications = []
+            for test in test_list:
+                if re.fullmatch(r'[RC][\d]+\.[\d]+', test):
+                    # get genepanels row for current test prefix, should just
+                    # be one since we dropped HGNC ID column and duplicates
+                    genepanels_row = genepanels[genepanels['test_code'] == test]
+                    panels.append(genepanels_row.loc[0].panel_name)
+                    indications.append(genepanels_row.loc[0].gemini_name)
+                elif re.fullmatch(r'_HGNC:[\d]+', test):
+                    # add gene IDs as is to all lists
+                    panels.append(test)
+                    indications.append(test)
+                else:
+                    # we already validated earlier all the test codes so
+                    # shouldn't get here
+                    raise RuntimeError(
+                        f"Error occured selecting testing from genepanels for "
+                        f"test {test}"
+                    )
+            sample_tests['panels'].append(panels)
+            sample_tests['indications'].append(indications)
+        
+        manifest_with_panels[sample] = sample_tests
+    
+    print("Manifest after")
+    PPRINT(manifest)
+
+    return manifest_with_panels
+
+
 
 
 def fill_config_reference_inputs(job_config, reference_files) -> dict:
@@ -467,6 +535,11 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
     -------
     dict
         config with input files parsed in
+    
+    Raises
+    ------
+    RuntimeError
+        Raised when provided reference in assay config has no file-[\d\w]+ ID
     """
     print(f"Filling config file with reference files, before:")
     PPRINT(job_config)
