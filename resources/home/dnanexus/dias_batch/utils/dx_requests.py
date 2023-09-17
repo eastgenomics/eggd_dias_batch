@@ -403,6 +403,11 @@ class DXExecute():
         -------
         list
             list of job IDs launched
+        
+        Raises
+        ------
+        RuntimeError
+            Raised when an excluded_intervals.bed file can't be found
         """
         print("Configuring inputs for CNV reports")
 
@@ -484,10 +489,12 @@ class DXExecute():
                     f"{len(test_lists)} for {sample} with test(s): {tests}"
                 )
                 input = deepcopy(cnv_reports_config)
-                input['stage-cnv_vep.vcf'] = {"$dnanexus_link": {
-                    "project": segment_vcf['project'],
-                    "id": segment_vcf['id']
-                }}
+                input['stage-cnv_vep.vcf'] = {
+                    "$dnanexus_link": {
+                        "project": segment_vcf['project'],
+                        "id": segment_vcf['id']
+                    }
+                }
 
                 print(f"Input for job:")
                 PPRINT(input)
