@@ -14,12 +14,12 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.dx_requests import DXExecute, DXManage
     from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
-        add_panels_and_indications_to_manifest
+        add_panels_and_indications_to_manifest, fill_config_reference_inputs
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
-        add_panels_and_indications_to_manifest
+        add_panels_and_indications_to_manifest, fill_config_reference_inputs
 
 import dxpy
 import pandas as pd
@@ -145,6 +145,8 @@ def main(
         assay=assay
     )
 
+    assay_config = fill_config_reference_inputs(assay_config)
+
     if exclude_samples:
         exclude_samples = exclude_samples.split(',')
 
@@ -179,12 +181,18 @@ def main(
         genepanels=genepanels
     )
 
+    # populate workflow input config with reference and run level files
+    cnv_reports_config = fill_config_reference_inputs(
+        job_config=config['modes']['cnv_reports'],
+        reference_files=config['reference_files']
+    )
+
     launched_jobs = {}
     
     if cnv_call:
         if cnv_call_job_id:
             print(
-                "WARNING: both 'cnv_call' set and cnv_call_job_id "
+                "WARNING: both 'cnv_call' set and 'cnv_call_job_id' "
                 "specified.\nWill use output of specified job "
                 f"({cnv_call_job_id}) instead of running CNV calling."
             )
@@ -203,12 +211,18 @@ def main(
             launched_jobs['CNV calling'] = [cnv_call_job_id]
 
     if cnv_reports:
+        if not cnv_call_job_id:
+            raise RuntimeError(
+                "Running CNV reports without first running CNV calling and "
+                "cnv_call_job_ID not specified. Please rerun with "
+                "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
+            )
         cnv_report_jobs = DXExecute().cnv_reports(
             call_job_id=cnv_call_job_id,
             single_output_dir=single_output_dir,
             manifest=manifest,
             manifest_source=manifest_source,
-            config=assay_config
+            config=assay_config['mode']['cnv_reports']
         )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
@@ -221,12 +235,12 @@ def main(
  
     print(
         f'All jobs launched:\n\t',
-        "\n\t".join([f"{x[0]}: {x[1]}" for x in launched_jobs.items()])
+        "\n\t".join([f"{x[0]}: {len(x[1])}" for x in launched_jobs.items()])
     )
 
     if testing and launched_jobs:
         # testing => terminate launched jobs
-        print("Terminating launched jobs")
+        print("Terminating launched jobs...")
         DXExecute().terminate(list(chain(*launched_jobs.values())))
    
 

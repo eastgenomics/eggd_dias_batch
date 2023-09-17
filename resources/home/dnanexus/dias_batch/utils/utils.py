@@ -1,4 +1,5 @@
 from collections import defaultdict
+from copy import deepcopy
 from datetime import datetime
 from pprint import PrettyPrinter
 import re
@@ -47,17 +48,15 @@ def make_path(*path) -> str:
     return f"/{path}/"
 
 
-def fill_config_reference_inputs(job_config, reference_files) -> dict:
+def fill_config_reference_inputs(config) -> dict:
     """
-    Fill config file input fields for workflow stages against the
+    Fill config file input fields for all workflow stages against the
     reference files stored in top level of config
 
     Parameters
     ----------
-    job_config : dict
-        subset of assay config for given app/stage
-    reference_files : dict
-        reference file inputs defined in top of assay config
+    config : dict
+        assay config file
 
     Returns
     -------
@@ -70,24 +69,29 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
         Raised when provided reference in assay config has no file-[\d\w]+ ID
     """
     print(f"Filling config file with reference files, before:")
-    PPRINT(job_config)
+    PPRINT(config)
 
     print(f"Reference files to add:")
-    PPRINT(reference_files)
+    PPRINT(config['reference_files'])
 
-    filled_config = {}
+    filled_config = deepcopy(config)
+    filled_config['modes'] = {}  # empty so we can fill with new inputs
 
-    for input, value in job_config.items():
-        match = False
-        for reference, file_id in reference_files.items():
-            if value == f'INPUT-{reference}':
-                # add this ref file ID as the input and move to next input
+    for mode in config['mode'].keys():
+        for input, value in config[mode].items():
+            match = False
+            for reference, file_id in config['reference_files'].items():
+                if not value == f'INPUT-{reference}':
+                    continue
+
+                # this input is a macth => add this ref file ID as
+                # the input and move to next input
                 match = True
 
                 if isinstance(file_id, dict):
                     # being provided as $dnanexus_link format, use it
                     # as is and assume its formatted correctly
-                    filled_config[input] = file_id
+                    filled_config[mode][input] = file_id
 
                 if isinstance(file_id, str):
                     # provided as string (i.e. project-xxx:file-xxx)
@@ -107,17 +111,17 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
                     else:
                         # not found a file ID
                         raise RuntimeError(
-                            f"Provided reference doesn't appear valid:"
-                            f"{reference} : {file_id}"
+                            f"Provided reference doesn't appear "
+                            f"valid: {reference} : {file_id}"
                         )
 
-                    filled_config[input] = dx_link
+                    filled_config[mode][input] = dx_link
 
                 break
 
-        if not match:
-            # this input isn't a reference file => add back as is   
-            filled_config[input] = value
+            if not match:
+                # this input isn't a reference file => add back as is   
+                filled_config[mode][input] = value
 
     print(f"And now it's filled:")
     PPRINT(filled_config)
