@@ -13,11 +13,13 @@ if os.path.exists('/home/dnanexus'):
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
     from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
-        split_genepanels_test_codes, check_valid_test_codes
+        split_genepanels_test_codes, check_valid_test_codes, \
+        add_panels_and_indications
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, split_manifest_tests, \
-        split_genepanels_test_codes, check_valid_test_codes
+        split_genepanels_test_codes, check_valid_test_codes, \
+        add_panels_and_indications
 
 import dxpy
 import pandas as pd
@@ -167,7 +169,9 @@ def main(
     # filter manifest tests against genepanels to ensure what has been
     # requested are test codes or HGNC IDs we recognise
     manifest, invalid_tests = check_valid_test_codes(manifest, genepanels)
-    
+
+    # add in panel and clinical indication strings to manifest dict
+    manifest = add_panels_and_indications(manifest, genepanels)
 
     launched_jobs = {}
     
