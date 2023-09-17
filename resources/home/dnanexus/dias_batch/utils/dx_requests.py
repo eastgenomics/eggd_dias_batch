@@ -504,6 +504,7 @@ class DXExecute():
                 ).run(
                     workflow_input=input,
                     rerun_stages=['*'],
+                    detach=True,
                     name=f"{workflow_details['name']}-{sample}"
                 )  
             

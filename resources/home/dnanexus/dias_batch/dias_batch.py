@@ -13,13 +13,13 @@ if os.path.exists('/home/dnanexus'):
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
     from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
-        split_genepanels_test_codes, check_valid_test_codes, \
-        add_panels_and_indications
+        split_genepanels_test_codes, check_manifest_valid_test_codes, \
+        add_panels_and_indications_to_manifest
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, split_manifest_tests, \
-        split_genepanels_test_codes, check_valid_test_codes, \
-        add_panels_and_indications
+        split_genepanels_test_codes, check_manifest_valid_test_codes, \
+        add_panels_and_indications_to_manifest
 
 import dxpy
 import pandas as pd
@@ -168,10 +168,16 @@ def main(
 
     # filter manifest tests against genepanels to ensure what has been
     # requested are test codes or HGNC IDs we recognise
-    manifest, invalid_tests = check_valid_test_codes(manifest, genepanels)
+    manifest, invalid_tests = check_manifest_valid_test_codes(
+        manifest=manifest,
+        genepanels=genepanels
+    )
 
     # add in panel and clinical indication strings to manifest dict
-    manifest = add_panels_and_indications(manifest, genepanels)
+    manifest = add_panels_and_indications_to_manifest(
+        manifest=manifest,
+        genepanels=genepanels
+    )
 
     launched_jobs = {}
     
@@ -193,6 +199,7 @@ def main(
                 exclude=exclude_samples,
                 wait=wait
             )
+
             launched_jobs['CNV calling'] = [cnv_call_job_id]
 
     if cnv_reports:
@@ -203,6 +210,8 @@ def main(
             manifest_source=manifest_source,
             config=assay_config
         )
+
+        launched_jobs['cnv_reports'] = cnv_report_jobs
     
     if snv_reports:
         pass

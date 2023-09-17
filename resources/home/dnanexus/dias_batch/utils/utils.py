@@ -47,6 +47,127 @@ def make_path(*path) -> str:
     return f"/{path}/"
 
 
+def fill_config_reference_inputs(job_config, reference_files) -> dict:
+    """
+    Fill config file input fields for workflow stages against the
+    reference files stored in top level of config
+
+    Parameters
+    ----------
+    job_config : dict
+        subset of assay config for given app/stage
+    reference_files : dict
+        reference file inputs defined in top of assay config
+
+    Returns
+    -------
+    dict
+        config with input files parsed in
+    
+    Raises
+    ------
+    RuntimeError
+        Raised when provided reference in assay config has no file-[\d\w]+ ID
+    """
+    print(f"Filling config file with reference files, before:")
+    PPRINT(job_config)
+
+    print(f"Reference files to add:")
+    PPRINT(reference_files)
+
+    filled_config = {}
+
+    for input, value in job_config.items():
+        match = False
+        for reference, file_id in reference_files.items():
+            if value == f'INPUT-{reference}':
+                # add this ref file ID as the input and move to next input
+                match = True
+
+                if isinstance(file_id, dict):
+                    # being provided as $dnanexus_link format, use it
+                    # as is and assume its formatted correctly
+                    filled_config[input] = file_id
+
+                if isinstance(file_id, str):
+                    # provided as string (i.e. project-xxx:file-xxx)
+                    project = re.search(r'project-[\d\w]+', file_id)
+                    file = re.search(r'file-[\d\w]+', file_id)
+
+                    # format correctly as dx link
+                    if project and file:
+                        dx_link = {
+                            "$dnanexus_link": {
+                                "project": project.group(),
+                                "id": file.group()
+                            }
+                        }
+                    elif file and not project:
+                        dx_link = {"$dnanexus_link": file.group()}
+                    else:
+                        # not found a file ID
+                        raise RuntimeError(
+                            f"Provided reference doesn't appear valid:"
+                            f"{reference} : {file_id}"
+                        )
+
+                    filled_config[input] = dx_link
+
+                break
+
+        if not match:
+            # this input isn't a reference file => add back as is   
+            filled_config[input] = value
+
+    print(f"And now it's filled:")
+    PPRINT(filled_config)
+
+    return filled_config
+
+
+def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
+    """
+    Split out R/C codes from full CI name for easier matching
+    against manifest
+
+    +-----------------------+--------------------------+
+    |      gemini_name      |        panel_name        |
+    +-----------------------+--------------------------+
+    | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
+    | C2.1_INSR             | CUH_INSR_1.0             |
+    +-----------------------+--------------------------+
+
+                                    |
+                                    ▼
+                                        
+    +-----------+-----------------------+---------------------------+
+    | test_code |      gemini_name      |        panel_name         |
+    +-----------+-----------------------+---------------------------+
+    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
+    | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
+    +-----------+-----------------------+---------------------------+
+
+
+    Parameters
+    ----------
+    genepanels : pd.DataFrame
+        dataframe of genepanels with 3 columns
+
+    Returns
+    -------
+    pd.DataFrame
+        genepanels with test code split to separate column
+    """
+    genepanels['test_code'] = genepanels['gemini_name'].apply(
+        lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
+    )
+    genepanels = genepanels[['test_code', 'gemini_name', 'panel_name']]
+
+    print(f"Genepanels file: \n{genepanels}")
+
+    return genepanels
+
+
 def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     """
     Parse manifest data from file read in DNAnexus
@@ -268,7 +389,7 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
     return manifest_with_files
 
 
-def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
+def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
     """
     Parse through manifest dict of sampleID -> test codes to check
     all codes are valid and exlcude those that are invalid against
@@ -334,49 +455,6 @@ def check_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
     return valid, invalid
 
 
-def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
-    """
-    Split out R/C codes from full CI name for easier matching
-    against manifest
-
-    +-----------------------+--------------------------+
-    |      gemini_name      |        panel_name        |
-    +-----------------------+--------------------------+
-    | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
-    | C2.1_INSR             | CUH_INSR_1.0             |
-    +-----------------------+--------------------------+
-
-                                    |
-                                    ▼
-                                        
-    +-----------+-----------------------+---------------------------+
-    | test_code |      gemini_name      |        panel_name         |
-    +-----------+-----------------------+---------------------------+
-    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
-    | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
-    +-----------+-----------------------+---------------------------+
-
-
-    Parameters
-    ----------
-    genepanels : pd.DataFrame
-        dataframe of genepanels with 3 columns
-
-    Returns
-    -------
-    pd.DataFrame
-        genepanels with test code split to separate column
-    """
-    genepanels['test_code'] = genepanels['gemini_name'].apply(
-        lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
-    )
-    genepanels = genepanels[['test_code', 'gemini_name', 'panel_name']]
-
-    print(f"Genepanels file: \n{genepanels}")
-
-    return genepanels
-
-
 def split_manifest_tests(data) -> dict:
     """
     Split test codes to individual items to generate separate reports
@@ -433,7 +511,7 @@ def split_manifest_tests(data) -> dict:
     return split_data
 
 
-def add_panels_and_indications(manifest, genepanels) -> dict:
+def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     """
     Add panel and clinical indication strings to the manifest dict.
 
@@ -472,6 +550,14 @@ def add_panels_and_indications(manifest, genepanels) -> dict:
     -------
     dict
         manifest dict with additional panel and indication strings
+    
+    Raises
+    ------
+    AssertionError
+        Raised when given test code for sample could not be found in
+        genepanels dataframe
+    RuntimeError
+        Raised when test doesn't appear to match valid R/C code or HGNC ID
     """
     print("Finding panels and clinical indications for tests")
     print("Manifest before")
@@ -493,8 +579,13 @@ def add_panels_and_indications(manifest, genepanels) -> dict:
                     # get genepanels row for current test prefix, should just
                     # be one since we dropped HGNC ID column and duplicates
                     genepanels_row = genepanels[genepanels['test_code'] == test]
-                    panels.append(genepanels_row.loc[0].panel_name)
-                    indications.append(genepanels_row.loc[0].gemini_name)
+
+                    assert not genepanels_row.empty, (
+                        f"Filtering genepanels for {test} returned empty df"
+                    )
+
+                    panels.append(genepanels_row.iloc[0].panel_name)
+                    indications.append(genepanels_row.iloc[0].gemini_name)
                 elif re.fullmatch(r'_HGNC:[\d]+', test):
                     # add gene IDs as is to all lists
                     panels.append(test)
@@ -512,79 +603,7 @@ def add_panels_and_indications(manifest, genepanels) -> dict:
         manifest_with_panels[sample] = sample_tests
     
     print("Manifest after")
-    PPRINT(manifest)
+    PPRINT(manifest_with_panels)
 
     return manifest_with_panels
-
-
-
-
-def fill_config_reference_inputs(job_config, reference_files) -> dict:
-    """
-    Fill config file input fields for workflow stages against the
-    reference files stored in top level of config
-
-    Parameters
-    ----------
-    job_config : dict
-        subset of assay config for given app/stage
-    reference_files : dict
-        reference file inputs defined in top of assay config
-
-    Returns
-    -------
-    dict
-        config with input files parsed in
-    
-    Raises
-    ------
-    RuntimeError
-        Raised when provided reference in assay config has no file-[\d\w]+ ID
-    """
-    print(f"Filling config file with reference files, before:")
-    PPRINT(job_config)
-
-    print(f"Reference files to add:")
-    PPRINT(reference_files)
-
-    filled_config = {}
-
-    for input, value in job_config.items():
-        match = False
-        for reference, file_id in reference_files.items():
-            if value == f'INPUT-{reference}':
-                # add this ref file ID as the input and move to next input
-                match = True
-
-                project = re.search(r'project-[\d\w]+', file_id)
-                file = re.search(r'file-[\d\w]+', file_id)
-
-                # format correctly as dx link
-                if project and file:
-                    file = {
-                        "$dnanexus_link": {
-                            "project": project,
-                            "id": file
-                        }
-                    }
-                elif file and not project:
-                    file = {"$dnanexus_link": file}
-                else:
-                    # not found a file ID
-                    raise RuntimeError(
-                        f"Provided reference doesn't appear valid:"
-                        f"{reference} : {file_id}"
-                    )
-
-                filled_config[input] = file
-                break
-
-        if not match:
-            # this input isn't a reference file => add back as is   
-            filled_config[input] = value
-
-    print(f"And now it's filled:")
-    PPRINT(filled_config)
-
-    return filled_config
 
