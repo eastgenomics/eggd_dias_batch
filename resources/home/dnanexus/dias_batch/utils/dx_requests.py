@@ -543,23 +543,22 @@ class DXExecute():
         config
         ) -> list:
         """
-        _summary_
-
         Parameters
         ----------
-        single_output_dir : _type_
-            _description_
-        manifest : _type_
-            _description_
-        manifest_source : _type_
-            _description_
-        config : _type_
-            _description_
+        single_output_dir : str
+            dnanexus path to Dias single output
+        manifest : dict
+            mapping of sampleID -> testCodes parsed from manifest
+        manifest_source : str
+            source of manifest (Epic or Gemini), required for filtering
+            pattern against sample name 
+        config : dict
+            config for assay, defining fixed inputs for workflow
 
         Returns
         -------
         list
-            _description_
+            list of job IDs launched
         """
         vcf_path = make_path(single_output_dir, 'sentieon')
         vcf_files = list(dxpy.find_data_objects(

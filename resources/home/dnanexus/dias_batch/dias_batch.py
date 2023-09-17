@@ -92,10 +92,26 @@ class CheckInputs():
         files = list(dxpy.find_data_objects(
             project=project,
             folder=path,
-            describe=True
+            limit=1
         ))
 
         if not files:
+            # dir appears empty, try again if not prefixed with /output/
+            if not re.match(r'/output'):
+                prefix_path = make_path('/output', path)
+                files = list(dxpy.find_data_objects(
+                    project=project,
+                    folder=prefix_path,
+                    limit=1
+                ))
+                if files:
+                    print(
+                        f"{path} returned no files but files found in "
+                        f"{prefix_path}, will use this for analysis"
+                    )
+                    self.inputs['single_output_dir'] = prefix_path
+                    return
+
             self.errors.append(
                 "Given Dias single output dir appears to be empty: "
                 f"{self.inputs['single_output_dir']}"
@@ -136,6 +152,9 @@ def main(
         snv_reports=snv_reports,
         mosaic_reports=mosaic_reports
     )
+
+    # assign single out dir in case of missing /output prefix to path
+    single_output_dir = check.inputs['single_output_dir']
 
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
