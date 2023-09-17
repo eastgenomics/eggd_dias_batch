@@ -247,7 +247,12 @@ def main(
         launched_jobs['cnv_reports'] = cnv_report_jobs
     
     if snv_reports:
-        pass
+        snv_reports = DXExecute().snv_reports(
+            single_output_dir=single_output_dir,
+            manifest=manifest,
+            manifest_source=manifest_source,
+            config=assay_config['mode']['snv_reports']
+        )
 
     if mosaic_reports:
         pass
