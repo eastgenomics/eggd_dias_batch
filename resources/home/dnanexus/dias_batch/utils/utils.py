@@ -86,7 +86,7 @@ def fill_config_reference_inputs(config) -> dict:
     print(filled_config)
 
     for mode, mode_config in config['modes'].items():
-        if not mode_config['inputs']:
+        if not mode_config.get('inputs'):
             print(
                 f"WARNING: {mode} in the config does not appear to "
                 f"have an 'inputs' key, skipping adding reference files"

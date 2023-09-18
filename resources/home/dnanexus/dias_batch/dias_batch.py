@@ -259,7 +259,8 @@ def main(
             manifest=manifest,
             manifest_source=manifest_source,
             config=assay_config['modes']['snv_reports'],
-            start=start_time
+            start=start_time,
+            sample_limit=sample_limit
         )
 
     if mosaic_reports:
