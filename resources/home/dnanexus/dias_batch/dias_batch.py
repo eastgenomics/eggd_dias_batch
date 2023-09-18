@@ -256,12 +256,22 @@ def main(
             manifest=manifest,
             manifest_source=manifest_source,
             config=assay_config['modes']['snv_reports'],
+            mosaic=False,
             start=start_time,
             sample_limit=sample_limit
         )
 
     if mosaic_reports:
-        pass
+        mosaic_reports = DXExecute().snv_reports(
+            workflow_id=assay_config.get('snv_report_workflow_id'),
+            single_output_dir=single_output_dir,
+            manifest=manifest,
+            manifest_source=manifest_source,
+            config=assay_config['modes']['mosaic_reports'],
+            mosaic=True,
+            start=start_time,
+            sample_limit=sample_limit
+        )
  
     print(
         f'All jobs launched:\n\t',

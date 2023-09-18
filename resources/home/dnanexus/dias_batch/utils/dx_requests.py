@@ -571,6 +571,7 @@ class DXExecute():
         manifest,
         manifest_source,
         config,
+        mosaic,
         start,
         sample_limit
         ) -> list:
@@ -588,6 +589,8 @@ class DXExecute():
             pattern against sample name 
         config : dict
             config for assay, defining fixed inputs for workflow
+        mosaic : bool
+            controls if running reports on mosaic (mutect2) output
         start : str
             start time of running app for naming output folders
         sample_limit : int
@@ -598,10 +601,11 @@ class DXExecute():
         list
             list of job IDs launched
         """
+        # find .vcf or .vcf.gz but NOT .g.vcf
         vcf_files = DXManage().find_files(
             path=single_output_dir,
-            dir='sentieon',
-            pattern="^[^\.]*(?!\.g)\.vcf\.gz$"
+            dir=config.get('vcf_subdir'),
+            pattern="^[^\.]*(?!\.g)\.vcf(\.gz)?$"
         )
 
         mosdepth_files = DXManage().find_files(
@@ -695,10 +699,13 @@ class DXExecute():
 
                 input['stage-rpt_generate_bed_athena.panel'] = indications
                 input['stage-rpt_generate_bed_athena.output_file_prefix'] = codes
-                input['stage-rpt_generate_bed_vep'] = indications
+                input['stage-rpt_generate_bed_vep.panel'] = indications
                 input['stage-rpt_generate_bed_vep.output_file_prefix'] = codes
                 input['stage-rpt_generate_workbook.clinical_indication'] = indications
                 input['stage-rpt_generate_workbook.panel'] = panels
+
+                print(f"Inputs for {sample}:")
+                PPRINT(input)
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=workflow_id

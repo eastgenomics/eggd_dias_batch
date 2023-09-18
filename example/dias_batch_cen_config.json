@@ -82,6 +82,7 @@
             }
         },
         "snv_reports": {
+            "vcf_subdir": "sentieon",
             "inputs": {
                 "stage-rpt_generate_bed_athena.exons_nirvana": "INPUT-exons_nirvana",
                 "stage-rpt_generate_bed_athena.nirvana_genes2transcripts": "INPUT-genes2transcripts",
@@ -112,6 +113,7 @@
             }
         },
         "mosaic_reports": {
+            "vcf_subdir": "TNhaplotyper2",
             "inputs": {
                 "stage-rpt_generate_bed_athena.exons_nirvana": "INPUT-exons_nirvana",
                 "stage-rpt_generate_bed_athena.nirvana_genes2transcripts": "INPUT-genes2transcripts",

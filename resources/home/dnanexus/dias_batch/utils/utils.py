@@ -11,7 +11,7 @@ import pandas as pd
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
-PPRINT = PrettyPrinter(indent=4, width=sys.maxsize).pprint
+PPRINT = PrettyPrinter(indent=4, width=1000).pprint
 
 
 def time_stamp() -> str:
@@ -76,14 +76,10 @@ def fill_config_reference_inputs(config) -> dict:
     PPRINT(config['reference_files'])
 
     filled_config = deepcopy(config)
-    print('filled unfilled_config')
-    PPRINT(filled_config)
+
     # empty so we can fill with new inputs
     for mode in filled_config['modes']:
-        print(f"emptying: {mode}")
         filled_config['modes'][mode]['inputs'] = {} 
-
-    print(filled_config)
 
     for mode, mode_config in config['modes'].items():
         if not mode_config.get('inputs'):
