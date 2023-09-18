@@ -3,10 +3,10 @@ Functions related to querying and managing objects in DNAnexus, as well
 as running jobs.
 """
 from copy import deepcopy
+import concurrent.futures
 import json
 import os
 from pathlib import Path
-from pprint import pprint
 from pprint import PrettyPrinter
 import re
 from timeit import default_timer as timer
@@ -545,8 +545,7 @@ class DXExecute():
                     name=f"{workflow_details['name']}_{sample}_{codes}"
                 )  
             
-                job_details = job_handle.describe()
-                launched_jobs.append(job_details['id'])
+                launched_jobs.append(job_handle._dxid)
             
             samples_run += 1
             if samples_run == sample_limit:
@@ -714,10 +713,9 @@ class DXExecute():
                     detach=True,
                     name=f"{workflow_details['name']}_{sample}_{codes}",
                     folder=out_folder
-                )  
+                )
             
-                job_details = job_handle.describe()
-                launched_jobs.append(job_details['id'])
+                launched_jobs.append(job_handle._dxid)
                 
             samples_run += 1
             if samples_run == sample_limit:
@@ -744,8 +742,26 @@ class DXExecute():
         jobs : list
             list of job / analysis IDs
         """
-        for job in jobs:
+        def terminate_one(job) -> None:
+            """dx call to terminate single job"""
             if job.startswith('job'):
                 dxpy.bindings.dxjob.DXJob(dxid=job).terminate()
             else:
                 dxpy.bindings.dxanalysis.DXAnalysis(dxid=job).terminate()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+            concurrent_jobs = {
+                executor.submit(terminate_one, id): id for id in jobs
+            }
+            for future in concurrent.futures.as_completed(concurrent_jobs):
+                # access returned output as each is returned in any order
+                try:
+                    future.result()
+                except Exception as exc:
+                    # catch any errors that might get raised
+                    print(
+                        "Error terminating job "
+                        f"{concurrent_jobs[future]}: {exc}"
+                    )
+        
+        print(f"Terminated jobs.")

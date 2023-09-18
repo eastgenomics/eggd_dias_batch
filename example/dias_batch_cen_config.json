@@ -94,7 +94,7 @@
                 "stage-rpt_vep.config_file": {
                     "$dnanexus_link": {
                         "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
-                        "id": "file-GQGJ3Z84xyx0jp1q65K1Q1jY"
+                        "id": "file-GYX83Kj4z6jFbKy9fVj44BYK"
                     }
                 },
                 "stage-rpt_generate_workbook.exclude_columns": "BaseQRankSum ClippingRankSum DB ExcessHet FS MLEAC MLEAF MQ MQRankSum QD ReadPosRankSum SOR PL QUAL ID FILTER  CSQ_ClinVar_CLNSIGCONF  CSQ_Allele CSQ_HGNC_ID DP AC AF AN CSQ_SpliceAI_pred_DP_AL CSQ_SpliceAI_pred_DP_AG CSQ_SpliceAI_pred_DP_DG CSQ_SpliceAI_pred_DP_DL",
@@ -124,7 +124,7 @@
                 "stage-rpt_vep.config_file": {
                     "$dnanexus_link": {
                         "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
-                        "id": "file-GQGJ3Z84xyx0jp1q65K1Q1jY"
+                        "id": "file-GYX83Kj4z6jFbKy9fVj44BYK"
                     }
                 },
                 "stage-rpt_generate_workbook.exclude_columns": "BaseQRankSum ClippingRankSum DB ExcessHet FS MLEAC MLEAF MQ MQRankSum QD ReadPosRankSum SOR PL QUAL ID FILTER  CSQ_ClinVar_CLNSIGCONF  CSQ_Allele CSQ_HGNC_ID DP AC AF AN CSQ_SpliceAI_pred_DP_AL CSQ_SpliceAI_pred_DP_AG CSQ_SpliceAI_pred_DP_DG CSQ_SpliceAI_pred_DP_DL  AS_FilterStatus AS_SB_TABLE ECNT GERMQ MBQ MFRL MMQ MPOS POPAF ROQ TLOD F1R2 F2R1 SB",

@@ -260,6 +260,7 @@ def main(
             start=start_time,
             sample_limit=sample_limit
         )
+        launched_jobs['snv_reports'] = snv_reports
 
     if mosaic_reports:
         mosaic_reports = DXExecute().snv_reports(
@@ -272,6 +273,7 @@ def main(
             start=start_time,
             sample_limit=sample_limit
         )
+        launched_jobs['mosaic_reports'] = mosaic_reports
  
     print(
         f'All jobs launched:\n\t',
