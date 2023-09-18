@@ -487,7 +487,7 @@ class DXExecute():
             'stage-cnv_annotate_excluded_regions.excluded_regions'
         ] = excluded_intervals_bed
 
-        workflow_details = dxpy.describe(config.get('cnv_report_workflow_id'))
+        workflow_details = dxpy.describe(workflow_id)
 
         out_folder = make_path(
             single_output_dir, workflow_details['name']
@@ -641,7 +641,7 @@ class DXExecute():
             pattern=pattern
         )
 
-        workflow_details = dxpy.describe(config.get('snv_report_workflow_id'))
+        workflow_details = dxpy.describe(workflow_id)
 
         out_folder = make_path(
             single_output_dir, start, workflow_details['name']
@@ -668,7 +668,7 @@ class DXExecute():
                     f"test(s): {test_list}"
                 )
                 input = deepcopy(config)
-                input['stage-snv_vep.vcf'] = {
+                input['stage-rpt_vep.vcf'] = {
                     "$dnanexus_link": {
                         "project": sentieon_vcf['project'],
                         "id": sentieon_vcf['id']
