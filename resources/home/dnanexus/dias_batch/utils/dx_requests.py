@@ -378,7 +378,8 @@ class DXExecute():
             single_output_dir,
             manifest,
             manifest_source,
-            config
+            config,
+            sample_limit
         ) -> list:
         """
         Run Dias reports workflow on output of CNV calling.
