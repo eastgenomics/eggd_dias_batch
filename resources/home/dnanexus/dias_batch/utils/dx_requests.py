@@ -527,8 +527,6 @@ class DXExecute():
             
                 job_details = job_handle.describe()
                 launched_jobs.append(job_details['id'])
-                break
-            break
     
         end = timer()
         print(
