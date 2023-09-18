@@ -190,10 +190,18 @@ class DXManage():
         path = path.rstrip('/')  # I define these and not the user but just
         dir = dir.strip('/')     # incase I forget anywhere and have extra /
 
-        print(f"Searching for files in {path}/{dir} with pattern {pattern}")
+        print(f"Searching for files in {path}/{dir} with pattern '{pattern}'")
+
+        project = re.search(r'project-[\d\w]+')
+        if project:
+            project = project.group()
+        
+        path = re.sub(r'^project-[\d\w]+:', '', path)
+
         files = list(dxpy.find_data_objects(
             name=pattern,
             name_mode='regexp',
+            project=project,
             folder=path,
             describe=True
         ))

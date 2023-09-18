@@ -206,12 +206,6 @@ def main(
         genepanels=genepanels
     )
 
-    # populate workflow input config with reference and run level files
-    cnv_reports_config = fill_config_reference_inputs(
-        job_config=config['modes']['cnv_reports'],
-        reference_files=config['reference_files']
-    )
-
     launched_jobs = {}
     
     if cnv_call:
