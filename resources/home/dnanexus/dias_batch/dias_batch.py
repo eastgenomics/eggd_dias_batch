@@ -246,7 +246,7 @@ def main(
             single_output_dir=single_output_dir,
             manifest=manifest,
             manifest_source=manifest_source,
-            config=assay_config['mode']['cnv_reports']
+            config=assay_config['modes']['cnv_reports']
         )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
@@ -256,7 +256,7 @@ def main(
             single_output_dir=single_output_dir,
             manifest=manifest,
             manifest_source=manifest_source,
-            config=assay_config['mode']['snv_reports'],
+            config=assay_config['modes']['snv_reports'],
             start=start_time
         )
 
