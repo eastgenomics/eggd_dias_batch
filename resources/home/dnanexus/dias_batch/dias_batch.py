@@ -157,7 +157,7 @@ def main(
         [x.split('\t') for x in genepanels],
         columns=['gemini_name', 'panel_name', 'hgnc_id']
     )
-    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away gene symbol
+    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
     genepanels = genepanels[genepanels.duplicated()]
     genepanels = split_genepanels_test_codes(genepanels)
     
