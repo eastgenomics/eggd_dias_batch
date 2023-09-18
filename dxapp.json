@@ -96,7 +96,15 @@
             "class": "boolean",
             "optional": true,
             "help": "run in testing mode, will terminate all jobs",
-            "group": "mode"
+            "group": "test"
+          },
+          {
+            "name": "sample_limit",
+            "label": "sample limit",
+            "class": "boolean",
+            "optional": true,
+            "help": "no. of samples to limit launching reports workflow jobs for",
+            "group": "test"
           }
     ],
     "outputSpec": [

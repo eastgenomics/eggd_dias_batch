@@ -123,7 +123,8 @@ def main(
     cnv_reports=False,
     snv_reports=False,
     mosaic_reports=False,
-    testing=False
+    testing=False,
+    sample_limit=None
 ):
     check = CheckInputs(
         assay=assay,
@@ -208,7 +209,8 @@ def main(
             single_output_dir=single_output_dir,
             manifest=manifest,
             manifest_source=manifest_source,
-            config=assay_config
+            config=assay_config,
+            sample_limit=sample_limit
         )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs

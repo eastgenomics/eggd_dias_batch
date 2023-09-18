@@ -399,6 +399,8 @@ class DXExecute():
             pattern against sample name 
         config : dict
             config for assay, defining fixed inputs for workflow
+        sample_limit : int
+            no. of samples to launch jobs for
 
         Returns
         -------
@@ -481,6 +483,7 @@ class DXExecute():
         start = timer()
 
         launched_jobs = []
+        samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
             print(f"Launching jobs for {sample} with:")
@@ -527,6 +530,14 @@ class DXExecute():
             
                 job_details = job_handle.describe()
                 launched_jobs.append(job_details['id'])
+            
+            samples_run += 1
+            if sample_limit:
+                if samples_run == sample_limit:
+                    print(
+                        f"Sample limit hit, stopping launching further jobs"
+                    )
+                    break
     
         end = timer()
         print(
