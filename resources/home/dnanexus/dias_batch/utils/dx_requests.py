@@ -516,7 +516,7 @@ class DXExecute():
                     f"{len(all_test_lists)} for {sample} with "
                     f"test(s): {test_list}"
                 )
-                input = deepcopy(config)
+                input = deepcopy(config['inputs'])
                 input['stage-cnv_vep.vcf'] = {
                     "$dnanexus_link": {
                         "project": segment_vcf['project'],
@@ -549,12 +549,11 @@ class DXExecute():
                 launched_jobs.append(job_details['id'])
             
             samples_run += 1
-            if sample_limit:
-                if samples_run == sample_limit:
-                    print(
-                        f"Sample limit hit, stopping launching further jobs"
-                    )
-                    break
+            if samples_run == sample_limit:
+                print(
+                    f"Sample limit hit, stopping launching further jobs"
+                )
+                break
     
         end = timer()
         print(
@@ -658,7 +657,7 @@ class DXExecute():
         start = timer()
 
         launched_jobs = []
-        samples = 0
+        samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
             print(f"Launching jobs for {sample} with:")
@@ -674,7 +673,7 @@ class DXExecute():
                     f"{len(all_test_lists)} for {sample} with "
                     f"test(s): {test_list}"
                 )
-                input = deepcopy(config)
+                input = deepcopy(config['inputs'])
                 input['stage-rpt_vep.vcf'] = {
                     "$dnanexus_link": {
                         "project": sentieon_vcf['project'],
@@ -688,7 +687,7 @@ class DXExecute():
                         "project": file['project'],
                         "id": file['id']
                     }}
-                    for file in mosdepth_files
+                    for file in sample_config['mosdepth']
                 ]
                 input['stage-rpt_athena.mosdepth_files'] = mosdepth_links
 

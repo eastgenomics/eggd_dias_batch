@@ -340,7 +340,7 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
     -------
     dict
         subset of manifest mapping dict with samples removed that have
-        no files and with DXFile objects added under 'files' as a list
+        no files and with DXFile objects added under '{name}' as a list
         for each sample where one or more files were found
     """
     # build mapping of prefix using given pattern to matching files
