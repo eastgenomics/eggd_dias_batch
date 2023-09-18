@@ -77,8 +77,8 @@ def fill_config_reference_inputs(config) -> dict:
     filled_config = deepcopy(config)
     filled_config['modes'] = {}  # empty so we can fill with new inputs
 
-    for mode in config['mode'].keys():
-        for input, value in config[mode].items():
+    for mode, inputs in config['modes'].keys():
+        for input, value in inputs.items():
             match = False
             for reference, file_id in config['reference_files'].items():
                 if not value == f'INPUT-{reference}':
