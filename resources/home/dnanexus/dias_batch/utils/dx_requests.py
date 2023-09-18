@@ -540,7 +540,8 @@ class DXExecute():
         single_output_dir,
         manifest,
         manifest_source,
-        config
+        config,
+        start
         ) -> list:
         """
         Parameters
@@ -554,23 +555,30 @@ class DXExecute():
             pattern against sample name 
         config : dict
             config for assay, defining fixed inputs for workflow
+        start : str
+            start time of running app for naming output folders
 
         Returns
         -------
         list
             list of job IDs launched
         """
-        vcf_path = make_path(single_output_dir, 'sentieon')
-        vcf_files = list(dxpy.find_data_objects(
-            name="vcf.gz$",
-            name_mode='regexp',
-            folder=vcf_path,
-            describe=True
-        ))
+        vcf_files = DXManage().find_files(
+            path=single_output_dir,
+            dir='sentieon',
+            pattern="vcf.gz$"
+        )
+
+        mosdepth_files = DXManage().find_files(
+            path=single_output_dir,
+            dir='mosdepth',
+            pattern="per-base.bed.gz$|reference"
+        )
 
         print(
             f"Found {len(vcf_files)} sentieon vcf "
-            f"files from {vcf_path}"
+            f"files from {vcf_path} and {len(mosdepth_files)}"
+            f"from {mosdepth_path}"
         )
 
         # patterns of sample ID and sample file prefix to match on
@@ -579,7 +587,8 @@ class DXExecute():
         else:
             pattern = r'X[\d]+'
         
-        # ensure we have a vcf per sample, exclude those that don't have one
+        # ensure we have a vcf and mosdepth files per sample,
+        # exclude those that don't have one
         manifest = filter_manifest_samples_by_files(
             manifest=manifest,
             files=vcf_files,
@@ -587,10 +596,17 @@ class DXExecute():
             pattern=pattern
         )
 
+        manifest = filter_manifest_samples_by_files(
+            manifest=manifest,
+            files=mosdepth_files,
+            name='mosdepth',
+            pattern=pattern
+        )
+
         workflow_details = dxpy.describe(config.get('snv_report_workflow_id'))
 
         out_folder = make_path(
-            single_output_dir, workflow_details['name']
+            single_output_dir, start, workflow_details['name']
         )
 
         print("Launching SNV reports per sample...")
@@ -620,13 +636,27 @@ class DXExecute():
                     }
                 }
 
+                # build mosdepth files as a list of dx_links for athena
+                mosdepth_links = [
+                    {"$dnanexus_link": {
+                        "project": file['project'],
+                        "id": file['id']
+                    }}
+                    for file in mosdepth_files
+                ]
+                input['stage-rpt_athena.mosdepth_files'] = mosdepth_links
+
                 # add required string inputs of panels and indications
                 panels = ';'.join(sample_config['panels'][idx])
                 indications = ';'.join(sample_config['indications'][idx])
                 codes = '&&'.join(test_list)
 
-                #TODO add string inputs to job input
-
+                input['stage-rpt_generate_bed_athena.panel'] = indications
+                input['stage-rpt_generate_bed_athena.output_file_prefix'] = codes
+                input['stage-rpt_generate_bed_vep'] = indications
+                input['stage-rpt_generate_bed_vep.output_file_prefix'] = codes
+                input['stage-rpt_generate_workbook.clinical_indication'] = indications
+                input['stage-rpt_generate_workbook.panel'] = panels
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=config.get('snv_report_workflow_id')
@@ -634,7 +664,8 @@ class DXExecute():
                     workflow_input=input,
                     rerun_stages=['*'],
                     detach=True,
-                    name=f"{workflow_details['name']}_{sample}_{codes}"
+                    name=f"{workflow_details['name']}_{sample}_{codes}",
+                    folder=out_folder
                 )  
             
                 job_details = job_handle.describe()

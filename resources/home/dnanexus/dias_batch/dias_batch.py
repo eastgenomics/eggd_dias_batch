@@ -14,12 +14,14 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.dx_requests import DXExecute, DXManage
     from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
-        add_panels_and_indications_to_manifest, fill_config_reference_inputs
+        add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
+        time_stamp
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
-        add_panels_and_indications_to_manifest, fill_config_reference_inputs
+        add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
+        time_stamp
 
 import dxpy
 import pandas as pd
@@ -156,6 +158,9 @@ def main(
     # assign single out dir in case of missing /output prefix to path
     single_output_dir = check.inputs['single_output_dir']
 
+    # time of running for naming output folders
+    start_time = time_stamp()
+
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
     assay_config = DXManage().get_assay_config(
@@ -251,7 +256,8 @@ def main(
             single_output_dir=single_output_dir,
             manifest=manifest,
             manifest_source=manifest_source,
-            config=assay_config['mode']['snv_reports']
+            config=assay_config['mode']['snv_reports'],
+            start=start_time
         )
 
     if mosaic_reports:
