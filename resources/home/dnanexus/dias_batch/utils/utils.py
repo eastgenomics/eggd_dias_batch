@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime
 from pprint import PrettyPrinter
 import re
+import sys
 from typing import Union
 
 import pandas as pd
@@ -10,7 +11,7 @@ import pandas as pd
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
-PPRINT = PrettyPrinter(indent=1).pprint
+PPRINT = PrettyPrinter(indent=4, width=sys.maxsize).pprint
 
 
 def time_stamp() -> str:
@@ -75,10 +76,23 @@ def fill_config_reference_inputs(config) -> dict:
     PPRINT(config['reference_files'])
 
     filled_config = deepcopy(config)
-    filled_config['modes'] = {}  # empty so we can fill with new inputs
+    print('filled unfilled_config')
+    PPRINT(filled_config)
+    # empty so we can fill with new inputs
+    for mode in filled_config['modes']:
+        print(f"emptying: {mode}")
+        filled_config['modes'][mode]['inputs'] = {} 
 
-    for mode, inputs in config['modes'].keys():
-        for input, value in inputs.items():
+    print(filled_config)
+
+    for mode, mode_config in config['modes'].items():
+        if not mode_config['inputs']:
+            print(
+                f"WARNING: {mode} in the config does not appear to "
+                f"have an 'inputs' key, skipping adding reference files"
+            )
+            continue
+        for input, value in mode_config['inputs'].items():
             match = False
             for reference, file_id in config['reference_files'].items():
                 if not value == f'INPUT-{reference}':
@@ -91,7 +105,7 @@ def fill_config_reference_inputs(config) -> dict:
                 if isinstance(file_id, dict):
                     # being provided as $dnanexus_link format, use it
                     # as is and assume its formatted correctly
-                    filled_config[mode][input] = file_id
+                    filled_config['modes'][mode]['inputs'][input] = file_id
 
                 if isinstance(file_id, str):
                     # provided as string (i.e. project-xxx:file-xxx)
@@ -115,13 +129,13 @@ def fill_config_reference_inputs(config) -> dict:
                             f"valid: {reference} : {file_id}"
                         )
 
-                    filled_config[mode][input] = dx_link
+                    filled_config['modes'][mode]['inputs'][input] = dx_link
 
                 break
 
             if not match:
                 # this input isn't a reference file => add back as is   
-                filled_config[mode][input] = value
+                filled_config['modes'][mode]['inputs'][input] = value
 
     print(f"And now it's filled:")
     PPRINT(filled_config)
