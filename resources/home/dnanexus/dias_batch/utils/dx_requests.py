@@ -190,9 +190,12 @@ class DXManage():
         path = path.rstrip('/')  # I define these and not the user but just
         dir = dir.strip('/')     # incase I forget anywhere and have extra /
 
-        print(f"Searching for files in {path}/{dir} with pattern '{pattern}'")
+        print(
+            f"Searching for files in {path} and subdir {dir} with "
+            f"pattern '{pattern}'"
+        )
 
-        project = re.search(r'project-[\d\w]+')
+        project = re.search(r'project-[\d\w]+', path)
         if project:
             project = project.group()
         
@@ -597,9 +600,10 @@ class DXExecute():
         )
 
         print(
-            f"Found {len(vcf_files)} sentieon vcf "
-            f"files from {vcf_path} and {len(mosdepth_files)}"
-            f"from {mosdepth_path}"
+            f"Found {len(vcf_files)} sentieon vcf files from "
+            f"{single_output_dir} in subdir 'sentieon' and "
+            f"{len(mosdepth_files)} from {single_output_dir} "
+            "in subdir 'mosdepth'"
         )
 
         # patterns of sample ID and sample file prefix to match on
