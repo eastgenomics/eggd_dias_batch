@@ -237,6 +237,7 @@ def main(
                 "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
             )
         cnv_report_jobs = DXExecute().cnv_reports(
+            workflow_id=assay_config.get('cnv_report_workflow_id'),
             call_job_id=cnv_call_job_id,
             single_output_dir=single_output_dir,
             manifest=manifest,
@@ -249,6 +250,7 @@ def main(
     
     if snv_reports:
         snv_reports = DXExecute().snv_reports(
+            workflow_id=assay_config.get('snv_report_workflow_id'),
             single_output_dir=single_output_dir,
             manifest=manifest,
             manifest_source=manifest_source,

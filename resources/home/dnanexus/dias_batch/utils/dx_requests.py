@@ -216,6 +216,8 @@ class DXManage():
                 if x['describe']['folder'].startswith(f"{path}/{dir}")
             ]
         
+        print(f"Found {len(files)} files")
+        
         return files
 
 
@@ -385,6 +387,7 @@ class DXExecute():
 
     def cnv_reports(
             self,
+            workflow_id,
             call_job_id,
             single_output_dir,
             manifest,
@@ -400,6 +403,8 @@ class DXExecute():
 
         Parameters
         ----------
+        workflow_id : str
+            dxid of CNV reports workflow
         call_job_id : str
             job ID of CNV calling to use output from
         single_output_dir : str
@@ -529,7 +534,7 @@ class DXExecute():
                 input['stage-cnv_generate_workbook.panel'] = panels
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
-                    dxid=config.get('cnv_report_workflow_id')
+                    dxid=workflow_id
                 ).run(
                     workflow_input=input,
                     rerun_stages=['*'],
@@ -558,6 +563,7 @@ class DXExecute():
 
     def snv_reports(
         self,
+        workflow_id,
         single_output_dir,
         manifest,
         manifest_source,
@@ -568,6 +574,8 @@ class DXExecute():
         """
         Parameters
         ----------
+        workflow_id : str
+            dxid of Dias reports workflow
         single_output_dir : str
             dnanexus path to Dias single output
         manifest : dict
@@ -590,12 +598,12 @@ class DXExecute():
         vcf_files = DXManage().find_files(
             path=single_output_dir,
             dir='sentieon',
-            pattern="vcf.gz$"
+            pattern="^[^\.]*(?!\.g)\.vcf\.gz$"
         )
 
         mosdepth_files = DXManage().find_files(
             path=single_output_dir,
-            dir='mosdepth',
+            dir='eggd_mosdepth',
             pattern="per-base.bed.gz$|reference"
         )
 
@@ -605,6 +613,11 @@ class DXExecute():
             f"{len(mosdepth_files)} from {single_output_dir} "
             "in subdir 'mosdepth'"
         )
+
+        if not vcf_files or not mosdepth_files:
+            raise RuntimeError(
+                "Found no vcf_files or mosdepth files!"
+            )
 
         # patterns of sample ID and sample file prefix to match on
         if manifest_source == 'Epic':
@@ -685,7 +698,7 @@ class DXExecute():
                 input['stage-rpt_generate_workbook.panel'] = panels
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
-                    dxid=config.get('snv_report_workflow_id')
+                    dxid=workflow_id
                 ).run(
                     workflow_input=input,
                     rerun_stages=['*'],
@@ -710,8 +723,6 @@ class DXExecute():
             f"workflows in {round(end - start)}s"
         )
         return launched_jobs
-
-
 
 
     @staticmethod

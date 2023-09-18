@@ -349,8 +349,11 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
     """
     # build mapping of prefix using given pattern to matching files
     # i.e. {'124801362-23230R0131': DXFileObject{'id': ...}}
-    print("Filtering manifest samples against available files")
-    print(f"Total files before filtering against pattern: {len(files)}")
+    print(f"Filtering manifest samples against available {name} files")
+    print(
+        f"Total files before filtering against pattern "
+        f"'{pattern}' : {len(files)}"
+    )
     file_prefixes = defaultdict(list)
 
     for file in files:
