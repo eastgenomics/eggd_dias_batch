@@ -24,6 +24,7 @@
     - get_ci_and_panels_from_test_codes
         - need to go over all test codes and build list for each sample of test code, panel and CI strings
         - this will be 1+ lists of each for each sample depending on no. reports to generate
+    - naming of output reports
 
 
 
