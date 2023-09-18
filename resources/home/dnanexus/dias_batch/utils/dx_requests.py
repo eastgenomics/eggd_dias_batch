@@ -393,6 +393,7 @@ class DXExecute():
             manifest,
             manifest_source,
             config,
+            start,
             sample_limit
         ) -> list:
         """
@@ -416,6 +417,8 @@ class DXExecute():
             pattern against sample name 
         config : dict
             config for assay, defining fixed inputs for workflow
+        start : str
+            start time of running app for naming output folders
         sample_limit : int
             no. of samples to launch jobs for
 
@@ -490,7 +493,7 @@ class DXExecute():
         workflow_details = dxpy.describe(workflow_id)
 
         out_folder = make_path(
-            single_output_dir, workflow_details['name']
+            single_output_dir, workflow_details['name'], start
         )
 
         print("Launching CNV reports per sample...")
@@ -644,7 +647,7 @@ class DXExecute():
         workflow_details = dxpy.describe(workflow_id)
 
         out_folder = make_path(
-            single_output_dir, start, workflow_details['name']
+            single_output_dir, workflow_details['name'], start
         )
 
         print("Launching SNV reports per sample...")
