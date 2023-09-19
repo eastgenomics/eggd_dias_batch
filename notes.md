@@ -5,8 +5,7 @@
     - atm just exclude from manifest
 - what to do with samples with no required files (i.e vcfs)
     - what if they're all missing
-- what to do with 
-- anything weird with samplenames to handle
+- what to do with anything weird with samplenames to handle
 - need to check requested HGNC IDs are valid?
 - format of summary file with record of whats run
 - structure of output dirs
@@ -15,18 +14,6 @@
 
 
 # Running cnv reports
-
-# PLAN
-- functions needed:
-    - find_dx_files ###DONE###
-        - give it file pattern, single dir and some other part of path
-    - filter_manifest_against_file_list  DONE
-    - get_ci_and_panels_from_test_codes
-        - need to go over all test codes and build list for each sample of test code, panel and CI strings
-        - this will be 1+ lists of each for each sample depending on no. reports to generate
-    - naming of output reports
-
-
 
 ## Epic manifest
 - gather *segments.vcf files from cnv calling
