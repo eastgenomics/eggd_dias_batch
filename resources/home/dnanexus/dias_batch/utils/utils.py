@@ -143,8 +143,9 @@ def write_summary_report(output, manifest, **summary) -> None:
             outputs = {**outputs, **summary.get('mosaic_report_summary')}
 
         if outputs:
-            fancy_table = pd.DataFrame(outputs).to_markdown(tablefmt="grid")
+            fancy_table = pd.DataFrame(outputs)
             fancy_table.fillna(value='-', inplace=True)
+            fancy_table = fancy_table.to_markdown(tablefmt="grid")
             file_handle.write(
                 f"\nReports created per sample:\n\n{fancy_table}"
             )
