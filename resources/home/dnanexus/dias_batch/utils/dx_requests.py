@@ -676,6 +676,8 @@ class DXExecute():
         sample_limit
         ) -> list:
         """
+        Run Dias reports workflow for either SNV or mosaic reports
+
         Parameters
         ----------
         workflow_id : str
