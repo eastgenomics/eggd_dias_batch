@@ -6,6 +6,7 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
+from prettier_print import PrettyPrinter
 import re
 from timeit import default_timer as timer
 
@@ -62,7 +63,7 @@ class DXManage():
 
             config = json.loads(dxpy.bindings.dxfile.DXFile(
                 project=file_details['project'], dxid=file_details['id']).read())
-            
+
             print(f"Assay config file contents:")
             prettier_print(config)
             return config
@@ -72,7 +73,7 @@ class DXManage():
             f'path to assay configs appears invalid: {path}'
         )
 
-        log.info(f"\nSearching following path for assay configs: {path}")
+        print(f"\nSearching following path for assay configs: {path}")
 
         project, project_path = path.split(':')
 
@@ -90,13 +91,13 @@ class DXManage():
         files_ids='\n\t'.join([
             f"{x['describe']['name']} ({x['id']} - "
             f"{x['describe']['archivalState']})" for x in files])
-        log.info(f"\nAssay config files found:\n\t{files_ids}")
+        print(f"\nAssay config files found:\n\t{files_ids}")
 
         highest_config = {}
 
         for file in files:
             if not file['describe']['archivalState'] == 'live':
-                log.info(
+                print(
                     "Config file not in live state - will not be used:"
                     f"{file['describe']['name']} ({file['id']}"
                 )
@@ -113,12 +114,12 @@ class DXManage():
                 config_data['dxid'] = file['id']
                 highest_config = config_data
         
-        log.info(
+        print(
             f"Highest version config found for {assay} was "
             f"{highest_config.get('version')} from {highest_config.get('dxid')}"
         )
 
-        print(f"Assay config file contents:")
+        print("Assay config file contents:")
         prettier_print(highest_config)
 
         return highest_config
