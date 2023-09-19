@@ -108,7 +108,13 @@
           }
     ],
     "outputSpec": [
-
+      {
+        "name": "summary_report",
+        "label": "summary report",
+        "class": "file",
+        "optional": true,
+        "help": "text file with summary of jobs launched and any errors encountered"
+      }
     ],
     "runSpec": {
         "timeoutPolicy": {

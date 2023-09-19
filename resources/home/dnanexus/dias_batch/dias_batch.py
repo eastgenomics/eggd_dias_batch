@@ -326,12 +326,20 @@ def main(
             prettier_print(mosaic_reports_errors)
 
     project_name = dxpy.describe(os.environ.get('DX_PROJECT_CONTEXT_ID'))['name']
-    summary_file = open(f'{project_name}_{start_time}_job_summary.txt', 'w')
+    summary_file = f"{project_name}_{start_time}_job_summary.txt"
 
     write_summary_report(
         summary_file,
         manifest=manifest,
         launched_jobs=launched_jobs
     )
+
+    url_file = dxpy.upload_local_file(
+        summary_file,
+        folder=dxpy.bindings.dxjob.DXJob(
+            os.environ.get('DX_JOB_ID')).describe()['folder']
+    )
+
+    return {"summary_report": dxpy.dxlink(url_file)}
 
 dxpy.run()

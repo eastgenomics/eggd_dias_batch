@@ -72,7 +72,8 @@ def write_summary_report(output, manifest, **summary) -> None:
         if summary.get('cnv_report'):
             pass
 
-        fh.seek()
+        # dump written file into logs
+        fh.seek(0)
         print(fh.read().splitlines())
 
 
