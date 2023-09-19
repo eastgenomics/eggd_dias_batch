@@ -579,7 +579,6 @@ class DXExecute():
         samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
-            print(f"Launching jobs for {sample}")
 
             all_test_lists = sample_config['tests']
             indication_lists = sample_config['indications']
@@ -808,7 +807,6 @@ class DXExecute():
         samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
-            print(f"Launching jobs for {sample}")
 
             all_test_lists = sample_config['tests']
             indication_lists = sample_config['indications']
