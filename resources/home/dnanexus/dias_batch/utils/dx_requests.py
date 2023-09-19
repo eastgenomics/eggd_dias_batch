@@ -2,6 +2,7 @@
 Functions related to querying and managing objects in DNAnexus, as well
 as running jobs.
 """
+from collections import defaultdict
 from copy import deepcopy
 import concurrent.futures
 import json
@@ -561,6 +562,7 @@ class DXExecute():
         start = timer()
 
         launched_jobs = []
+        sample_summary = defaultdict(lambda: defaultdict(list))
         samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
@@ -602,6 +604,14 @@ class DXExecute():
                 input['stage-cnv_generate_workbook.clinical_indication'] = indications
                 input['stage-cnv_generate_workbook.panel'] = panels
 
+                # set prefix for naming output report
+                name = (
+                    f"{segment_vcf['describe']['name'].split('_')[0]}_"
+                    f"{'_'.join(test_list)}_CNV"
+                )
+
+                input['stage-cnv_generate_workbook.output_prefix'] = name
+
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=workflow_id
                 ).run(
@@ -613,6 +623,7 @@ class DXExecute():
                 )
 
                 launched_jobs.append(job_handle._dxid)
+                sample_summary['CNV'][sample].append(name)
 
             samples_run += 1
             if samples_run == sample_limit:
@@ -624,7 +635,10 @@ class DXExecute():
             f"Successfully launched {len(launched_jobs)} CNV reports "
             f"workflows in {round(end - start)}s"
         )
-        return launched_jobs, errors
+
+        prettier_print(sample_summary)
+
+        return launched_jobs, errors, sample_summary
 
 
     def snv_reports(
@@ -846,3 +860,4 @@ class DXExecute():
                     )
 
         print("Terminated jobs.")
+
