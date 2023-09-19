@@ -620,7 +620,7 @@ class DXExecute():
                 # set prefix for naming output report with integer suffix
                 name = (
                     f"{segment_vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list)}_CNV"
+                    f"{'_'.join(test_list).replace('__', '_')}_CNV"
                 )
                 suffix = check_report_index(name=name, reports=xlsx_reports)
                 name = f"{name}_{suffix}"
@@ -642,6 +642,11 @@ class DXExecute():
                     sample_summary['CNV'][sample] = [name]
                 else:
                     sample_summary['CNV'][sample].append(name)
+
+            # join up multiple outputs for nicer output viewing
+            sample_summary['CNV'][sample] = '\n'.join(
+                sample_summary['CNV'][sample]
+            )
 
             samples_run += 1
             if samples_run == sample_limit:
@@ -835,7 +840,7 @@ class DXExecute():
                 # set prefix for naming output report with integer suffix
                 name = (
                     f"{sentieon_vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list)}_SNV"
+                    f"{'_'.join(test_list).replace('__', '_')}_SNV"
                 )
                 suffix = check_report_index(name=name, reports=xlsx_reports)
                 name = f"{name}_{suffix}"
