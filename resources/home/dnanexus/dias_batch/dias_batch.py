@@ -225,7 +225,7 @@ def main(
     )
 
     launched_jobs = {}
-    cnv_reports_errors = snv_reports_errors = mosaic_reports_errors = \
+    cnv_report_errors = snv_report_errors = mosaic_report_errors = \
         cnv_report_summary = snv_report_summary = mosaic_report_summary = None
 
     if cnv_call:
@@ -250,7 +250,7 @@ def main(
             launched_jobs['CNV calling'] = [cnv_call_job_id]
 
     if cnv_reports:
-        cnv_report_jobs, cnv_reports_errors, cnv_report_summary = \
+        cnv_report_jobs, cnv_report_errors, cnv_report_summary = \
             DXExecute().cnv_reports(
                 workflow_id=assay_config.get('cnv_report_workflow_id'),
                 call_job_id=cnv_call_job_id,
@@ -265,7 +265,7 @@ def main(
         launched_jobs['cnv_reports'] = cnv_report_jobs
 
     if snv_reports:
-        snv_reports, snv_reports_errors, snv_report_summary = \
+        snv_reports, snv_report_errors, snv_report_summary = \
             DXExecute().snv_reports(
                 workflow_id=assay_config.get('snv_report_workflow_id'),
                 single_output_dir=single_output_dir,
@@ -279,7 +279,7 @@ def main(
         launched_jobs['snv_reports'] = snv_reports
 
     if mosaic_reports:
-        mosaic_reports, mosaic_reports_errors, mosaic_report_summary = \
+        mosaic_reports, mosaic_report_errors, mosaic_report_summary = \
             DXExecute().snv_reports(
                 workflow_id=assay_config.get('snv_report_workflow_id'),
                 single_output_dir=single_output_dir,
@@ -312,9 +312,9 @@ def main(
         manifest=manifest,
         launched_jobs=launched_jobs,
         invalid_tests=invalid_tests,
-        snv_reports_errors=snv_reports_errors,
-        cnv_reports_errors=cnv_reports_errors,
-        mosaic_reports_errors=mosaic_reports_errors,
+        snv_report_errors=snv_report_errors,
+        cnv_report_errors=cnv_report_errors,
+        mosaic_report_errors=mosaic_report_errors,
         cnv_report_summary=cnv_report_summary,
         snv_report_summary=snv_report_summary,
         mosaic_report_summary=mosaic_report_summary

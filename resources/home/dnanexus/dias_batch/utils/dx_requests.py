@@ -585,6 +585,10 @@ class DXExecute():
             indication_lists = sample_config['indications']
             segment_vcf = sample_config['segment_vcf'][0]
 
+            # mapping for current sample name -> index suffix to handle
+            # edge case of same test code on same run
+            sample_name_to_suffix = {}
+
             for idx, test_list in enumerate(all_test_lists):
                 print(
                     f"Launching CNV reports workflow {idx+1}/"
@@ -623,6 +627,13 @@ class DXExecute():
                     f"{'_'.join(test_list).replace('__', '_')}_CNV"
                 )
                 suffix = check_report_index(name=name, reports=xlsx_reports)
+
+                if sample_name_to_suffix.get(name):
+                    # we have already launched a report for this sample in
+                    # this current job => increment from this
+                    suffix = sample_name_to_suffix.get(name) + 1
+
+                sample_name_to_suffix[name] = suffix
                 name = f"{name}_{suffix}"
 
                 input['stage-cnv_generate_workbook.output_prefix'] = name
@@ -803,6 +814,10 @@ class DXExecute():
             indication_lists = sample_config['indications']
             sentieon_vcf = sample_config['sentieon_vcf'][0]
 
+            # mapping for current sample name -> index suffix to handle
+            # edge case of same test code on same run
+            sample_name_to_suffix = {}
+
             for idx, test_list in enumerate(all_test_lists):
                 print(
                     f"Launching SNV reports workflow {idx+1}/"
@@ -845,6 +860,13 @@ class DXExecute():
                     f"{'_'.join(test_list).replace('__', '_')}_SNV"
                 )
                 suffix = check_report_index(name=name, reports=xlsx_reports)
+                
+                if sample_name_to_suffix.get(name):
+                    # we have already launched a report for this sample in
+                    # this current job => increment from this
+                    suffix = sample_name_to_suffix.get(name) + 1
+
+                sample_name_to_suffix[name] = suffix
                 name = f"{name}_{suffix}"
 
                 input['stage-rpt_generate_workbook.output_prefix'] = name
