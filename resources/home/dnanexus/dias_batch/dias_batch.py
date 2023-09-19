@@ -15,13 +15,13 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        make_path, prettier_print, time_stamp
+        make_path, prettier_print, time_stamp, write_summary_report
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        make_path, prettier_print, time_stamp
+        make_path, prettier_print, time_stamp, write_summary_report
 
 import dxpy
 import pandas as pd
@@ -324,5 +324,14 @@ def main(
         if mosaic_reports_errors:
             print("Errors launching mosaic reports:")
             prettier_print(mosaic_reports_errors)
+
+    project_name = dxpy.describe(os.environ.get('DX_PROJECT_CONTEXT_ID'))['name']
+    summary_file = open(f'{project_name}_{start_time}_job_summary.txt', 'w')
+
+    write_summary_report(
+        summary_file,
+        manifest=manifest,
+        launched_jobs=launched_jobs
+    )
 
 dxpy.run()

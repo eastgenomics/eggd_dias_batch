@@ -42,6 +42,40 @@ def prettier_print(thing) -> None:
     print(json.dumps(thing, indent=4))
 
 
+def write_summary_report(output, manifest, **summary) -> None:
+    """
+    Write output summary file with jobs launched and any errors
+
+    Parameters
+    ----------
+    output : str
+        name for output file
+    manifest : dict
+        mapping of samples in manifest -> requested test codes
+    summary : kwargs
+        all possible named summary metrics to write
+    
+    Outputs
+    -------
+    {output}.txt file of launched job summary
+    """
+    print(f"Writing summary report to {output}")
+    with open(output, mode='w', encoding='utf8') as fh:
+        fh.write(
+            f"Total number of samples in manifest: {len(manifest.keys())}\n"
+        )
+        launched_jobs = '\n\t'.join([
+            f"{k} : {v}" for k,v in summary.get('launched_jobs').items()
+        ])
+        fh.write(f"Total jobs launched:\n\t{launched_jobs}")
+
+        if summary.get('cnv_report'):
+            pass
+
+        fh.seek()
+        print(fh.read().splitlines())
+
+
 def make_path(*path) -> str:
     """
     Generate path-like string (i.e. for searching in DNAnexus) or
