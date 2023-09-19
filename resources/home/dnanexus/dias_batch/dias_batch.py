@@ -336,7 +336,8 @@ def main(
         invalid_tests=invalid_tests,
         snv_reports_errors=snv_reports_errors,
         cnv_report_errors=cnv_reports_errors,
-        mosaic_reports_errors=mosaic_reports_errors
+        mosaic_reports_errors=mosaic_reports_errors,
+        cnv_report_summary=cnv_report_summary
     )
 
     url_file = dxpy.upload_local_file(

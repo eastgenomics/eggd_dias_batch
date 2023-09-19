@@ -761,6 +761,7 @@ class DXExecute():
         start = timer()
 
         launched_jobs = []
+        sample_summary = defaultdict(lambda: defaultdict(list))
         samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():

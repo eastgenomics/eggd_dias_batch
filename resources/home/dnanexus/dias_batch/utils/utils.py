@@ -72,7 +72,7 @@ def write_summary_report(output, manifest, **summary) -> None:
             f"{k} : {len(v)} jobs" for k,v
             in summary.get('launched_jobs').items()
         ])
-        file_handle.write(f"Total jobs launched:\n\t{launched_jobs}\n")
+        file_handle.write(f"\nTotal jobs launched:\n\t{launched_jobs}\n")
 
         if summary.get('invalid_tests'):
             invalid_tests = '\n\t'.join([
@@ -98,34 +98,9 @@ def write_summary_report(output, manifest, **summary) -> None:
                     f"\nErrors in launching {word} reports:\n\t{errors}\n"
                 )
 
-        # if summary.get('snv_report_errors'):
-        #     snv_report_errors = '\n\t'.join([
-        #         f"{k} : {v}" for k,v
-        #         in summary.get('snv_report_errors').items()
-        #     ])
-        #     file_handle.write(
-        #         f"\nErrors in launching SNV reports:\n\t{snv_report_errors}\n"
-        #     )
+        
 
-        # if summary.get('mosaic_report_errors'):
-        #     mosaic_report_errors = '\n\t'.join([
-        #         f"{k} : {v}" for k,v
-        #         in summary.get('mosaic_report_errors').items()
-        #     ])
-        #     file_handle.write(
-        #         "\nErrors in launching mosaic reports:"
-        #         f"\n\t{mosaic_report_errors}\n"
-        #     )
-
-        # if summary.get('cnv_report_errors'):
-        #     cnv_report_errors = '\n\t'.join([
-        #         f"{k} : {v}" for k,v
-        #         in summary.get('cnv_report_errors').items()
-        #     ])
-        #     file_handle.write(
-        #         f"\nErrors in launching CNV reports:\n\t{cnv_report_errors}\n"
-        #     )
-
+       
     # dump written file into logs
     print('\n'.join(open(output, 'r').read().splitlines()))
 
