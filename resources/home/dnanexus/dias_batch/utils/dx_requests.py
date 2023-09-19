@@ -64,6 +64,9 @@ class DXManage():
             config = json.loads(dxpy.bindings.dxfile.DXFile(
                 project=file_details['project'], dxid=file_details['id']).read())
 
+            config['name'] = file_details['describe']['name']
+            config['dxid'] = file_details['id']
+
             print("Assay config file contents:")
             prettier_print(config)
             return config
@@ -112,6 +115,7 @@ class DXManage():
 
             if config_data.get('version') > highest_config.get('version'):
                 config_data['dxid'] = file['id']
+                config_data['name'] = file['describe']['name']
                 highest_config = config_data
 
         print(
@@ -225,7 +229,7 @@ class DXManage():
                 f"a live state: {prettier_print(not_live)}"
             )
 
-        print(f"Found {len(files)} files")
+        print(f"Found {len(files)} files in {path}")
 
         return files
 

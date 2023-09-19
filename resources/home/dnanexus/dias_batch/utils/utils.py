@@ -62,13 +62,17 @@ def write_summary_report(output, manifest, **summary) -> None:
     print(f"Writing summary report to {output}")
     with open(output, 'w') as file_handle:
         file_handle.write(
-            f"Total number of samples in manifest: {len(manifest.keys())}\n"
+            f"Assay config file used {summary.get('assay_config')['name']} "
+            f"({summary.get('assay_config')['dxid']})\n"
+        )
+        file_handle.write(
+            f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
         )
         launched_jobs = '\n\t'.join([
             f"{k} : {len(v)} jobs" for k,v
             in summary.get('launched_jobs').items()
         ])
-        file_handle.write(f"Total jobs launched:\n\t{launched_jobs}")
+        file_handle.write(f"Total jobs launched:\n\t{launched_jobs}\n")
 
         if summary.get('invalid_tests'):
             invalid_tests = '\n\t'.join([
@@ -76,11 +80,51 @@ def write_summary_report(output, manifest, **summary) -> None:
                 in summary.get('invalid_tests').items()
             ])
             file_handle.write(
-                f"Invalid tests exlcuded from manifest:\n\{invalid_tests}"
+                f"\nInvalid tests excluded from manifest:\n\t{invalid_tests}\n"
             )
 
-        if summary.get('cnv_report'):
-            pass
+        report_summaries = {
+            "snv_report_errors" : "SNV",
+            "cnv_report_errors" : "CNV",
+            "mosaic_report_errors": "mosaic"
+        }
+
+        for key, word in report_summaries.items():
+            if summary.get(key):
+                errors = '\n\t'.join([
+                    f"{k} : {v}" for k,v in summary.get(key).items()
+                ])
+                file_handle.write(
+                    f"\nErrors in launching {word} reports:\n\t{errors}\n"
+                )
+
+        # if summary.get('snv_report_errors'):
+        #     snv_report_errors = '\n\t'.join([
+        #         f"{k} : {v}" for k,v
+        #         in summary.get('snv_report_errors').items()
+        #     ])
+        #     file_handle.write(
+        #         f"\nErrors in launching SNV reports:\n\t{snv_report_errors}\n"
+        #     )
+
+        # if summary.get('mosaic_report_errors'):
+        #     mosaic_report_errors = '\n\t'.join([
+        #         f"{k} : {v}" for k,v
+        #         in summary.get('mosaic_report_errors').items()
+        #     ])
+        #     file_handle.write(
+        #         "\nErrors in launching mosaic reports:"
+        #         f"\n\t{mosaic_report_errors}\n"
+        #     )
+
+        # if summary.get('cnv_report_errors'):
+        #     cnv_report_errors = '\n\t'.join([
+        #         f"{k} : {v}" for k,v
+        #         in summary.get('cnv_report_errors').items()
+        #     ])
+        #     file_handle.write(
+        #         f"\nErrors in launching CNV reports:\n\t{cnv_report_errors}\n"
+        #     )
 
     # dump written file into logs
     print('\n'.join(open(output, 'r').read().splitlines()))

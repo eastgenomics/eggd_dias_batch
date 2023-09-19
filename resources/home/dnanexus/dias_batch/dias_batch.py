@@ -330,9 +330,13 @@ def main(
 
     write_summary_report(
         summary_file,
+        assay_config=assay_config,
         manifest=manifest,
         launched_jobs=launched_jobs,
-        invalid_tests=invalid_tests
+        invalid_tests=invalid_tests,
+        snv_reports_errors=snv_reports_errors,
+        cnv_report_errors=cnv_reports_errors,
+        mosaic_reports_errors=mosaic_reports_errors
     )
 
     url_file = dxpy.upload_local_file(
