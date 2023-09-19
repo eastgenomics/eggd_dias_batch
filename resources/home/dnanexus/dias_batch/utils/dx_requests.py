@@ -673,8 +673,6 @@ class DXExecute():
             f"workflows in {round(end - start)}s"
         )
 
-        prettier_print(sample_summary)
-
         return launched_jobs, errors, sample_summary
 
 
@@ -826,9 +824,9 @@ class DXExecute():
 
             for idx, test_list in enumerate(all_test_lists):
                 print(
-                    f"Launching {mode} reports workflow {idx+1}/"
-                    f"{len(all_test_lists)} for {sample} with "
-                    f"test(s): {test_list}"
+                    f"[{samples_run+1}/{len(manifest)}] Launching {mode} "
+                    f"reports workflow {idx+1}/{len(all_test_lists)} for "
+                    f"{sample} with test(s): {test_list}"
                 )
                 input = deepcopy(config['inputs'])
                 input['stage-rpt_vep.vcf'] = {
