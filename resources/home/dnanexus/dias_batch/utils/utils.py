@@ -42,6 +42,40 @@ def prettier_print(thing) -> None:
     print(json.dumps(thing, indent=4))
 
 
+def check_report_index(name, reports) -> int:
+    """
+    Check for a given output name prefix if there are any previous reports
+    and increase the suffix index to +1
+
+    Parameters
+    ----------
+    name : str
+        prefix of sample name + test code + [SNV|CNV|mosaic]
+    reports : list
+        list of previous reports found
+
+    Returns
+    -------
+    int
+        suffix to add to report name
+    """
+    suffix = 0
+    previous_reports = [x for x in reports if x.startswith(name)]
+
+    if previous_reports:
+        # some previous reports, try get highest suffix
+        suffixes = [
+            re.search(r'[\d]{1,2}.xlsx$', x) for x in previous_reports
+        ]
+        if suffixes:
+            # found something useful, if not we're just going to use 1
+            suffix = max([
+                x.group().replace('.xlsx', '') for x in suffixes if x
+            ])
+
+    return suffix + 1
+
+
 def write_summary_report(output, manifest, **summary) -> None:
     """
     Write output summary file with jobs launched and any errors etc.
@@ -98,15 +132,16 @@ def write_summary_report(output, manifest, **summary) -> None:
                 file_handle.write(
                     f"\nErrors in launching {word} reports:\n\t{errors}\n"
                 )
-
+        print('here')
+        print(summary.get('cnv_report_summary'))
         # mush the report summary dicts together to make a pretty table
         outputs = {}
         if summary.get('cnv_report_summary'):
-            outputs = {**output, **summary.get('cnv_report_summary')}
+            outputs = {**outputs, **summary.get('cnv_report_summary')}
         if summary.get('snv_report_summary'):
-            outputs = {**output, **summary.get('snv_report_summary')}
+            outputs = {**outputs, **summary.get('snv_report_summary')}
         if summary.get('mosaic_report_summary'):
-            outputs = {**output, **summary.get('mosaic_report_summary')}
+            outputs = {**outputs, **summary.get('mosaic_report_summary')}
 
         if outputs:
             fancy_table = pd.DataFrame(outputs).to_markdown(tablefmt="grid")
@@ -503,10 +538,6 @@ def filter_manifest_samples_by_files(
                 manifest_no_files.append(sample)
             else:
                 # sample matches pattern and matches some file(s)
-                print(
-                    f"Found {len(sample_files)} files for {sample}\n"
-                    f"{[x['describe']['name'] for x in sample_files]}"
-                )
                 manifest_with_files[sample] = manifest[sample]
                 manifest_with_files[sample][name] = sample_files
 

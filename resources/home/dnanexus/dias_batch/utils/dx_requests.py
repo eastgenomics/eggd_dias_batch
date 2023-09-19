@@ -14,7 +14,7 @@ import dxpy
 import pandas as pd
 
 from .utils import filter_manifest_samples_by_files, make_path, \
-    prettier_print, time_stamp
+    prettier_print, time_stamp, check_report_index
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
@@ -510,6 +510,15 @@ class DXExecute():
             pattern="_excluded_intervals.bed$"
         ))
 
+        # find all previous xlsx reports to use for indexing report names
+        xlsx_reports = DXManage().find_files(
+            path=single_output_dir,
+            pattern=r".xlsx$"
+        )
+        xlsx_reports = [
+            x['describe']['name'] for x in xlsx_reports
+        ]
+
         if not excluded_intervals_bed:
             raise RuntimeError(
                 f"Failed to find exlcuded intervals bed file from {call_job_id}"
@@ -566,7 +575,7 @@ class DXExecute():
         start = timer()
 
         launched_jobs = []
-        sample_summary = defaultdict(lambda: defaultdict(list))
+        sample_summary = {'CNV': {}}
         samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
@@ -608,11 +617,13 @@ class DXExecute():
                 input['stage-cnv_generate_workbook.clinical_indication'] = indications
                 input['stage-cnv_generate_workbook.panel'] = panels
 
-                # set prefix for naming output report
+                # set prefix for naming output report with integer suffix
                 name = (
                     f"{segment_vcf['describe']['name'].split('_')[0]}_"
                     f"{'_'.join(test_list)}_CNV"
                 )
+                suffix = check_report_index(name=name, reports=xlsx_reports)
+                name = f"{name}_{suffix}"
 
                 input['stage-cnv_generate_workbook.output_prefix'] = name
 
@@ -627,7 +638,10 @@ class DXExecute():
                 )
 
                 launched_jobs.append(job_handle._dxid)
-                sample_summary['CNV'][sample].append(name)
+                if not sample_summary['CNV'].get(sample):
+                    sample_summary['CNV'][sample] = [name]
+                else:
+                    sample_summary['CNV'][sample].append(name)
 
             samples_run += 1
             if samples_run == sample_limit:
@@ -697,6 +711,15 @@ class DXExecute():
             pattern=r"per-base.bed.gz$|reference.txt$"
         )
 
+        # find all previous xlsx reports to use for indexing report names
+        xlsx_reports = DXManage().find_files(
+            path=single_output_dir,
+            pattern=r".xlsx$"
+        )
+        xlsx_reports = [
+            x['describe']['name'] for x in xlsx_reports
+        ]
+
         print(
             f"Found {len(vcf_files)} sentieon vcf files from "
             f"{single_output_dir} in subdir 'sentieon' and "
@@ -762,7 +785,7 @@ class DXExecute():
         start = timer()
 
         launched_jobs = []
-        sample_summary = defaultdict(lambda: defaultdict(list))
+        sample_summary = {'SNV': {}}
         samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
@@ -808,13 +831,16 @@ class DXExecute():
                 input['stage-rpt_generate_workbook.clinical_indication'] = indications
                 input['stage-rpt_generate_workbook.panel'] = panels
 
-                # set prefix for naming output report
+                # set prefix for naming output report with integer suffix
                 name = (
                     f"{sentieon_vcf['describe']['name'].split('_')[0]}_"
                     f"{'_'.join(test_list)}_SNV"
                 )
+                suffix = check_report_index(name=name, reports=xlsx_reports)
+                name = f"{name}_{suffix}"
 
                 input['stage-rpt_generate_workbook.output_prefix'] = name
+                input['stage-rpt_athena.name'] = name
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=workflow_id
@@ -827,7 +853,11 @@ class DXExecute():
                 )
 
                 launched_jobs.append(job_handle._dxid)
-                sample_summary['SNV'][sample].append(name)
+
+                if not sample_summary['SNV'].get(sample):
+                    sample_summary['SNV'][sample] = [name]
+                else:
+                    sample_summary['SNV'][sample].append(name)
 
             samples_run += 1
             if samples_run == sample_limit:

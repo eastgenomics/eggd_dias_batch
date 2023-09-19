@@ -225,8 +225,8 @@ def main(
     )
 
     launched_jobs = {}
-    cnv_reports_errors = snv_reports_errors = mosaic_reports_errors, \
-        cnv_report_summary, snv_report_summary, mosaic_report_summary = None
+    cnv_reports_errors = snv_reports_errors = mosaic_reports_errors = \
+        cnv_report_summary = snv_report_summary = mosaic_report_summary = None
 
     if cnv_call:
         if cnv_call_job_id:
@@ -313,7 +313,7 @@ def main(
         launched_jobs=launched_jobs,
         invalid_tests=invalid_tests,
         snv_reports_errors=snv_reports_errors,
-        cnv_report_errors=cnv_reports_errors,
+        cnv_reports_errors=cnv_reports_errors,
         mosaic_reports_errors=mosaic_reports_errors,
         cnv_report_summary=cnv_report_summary,
         snv_report_summary=snv_report_summary,
