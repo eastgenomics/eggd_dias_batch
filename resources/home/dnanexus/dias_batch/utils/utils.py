@@ -132,8 +132,7 @@ def write_summary_report(output, manifest, **summary) -> None:
                 file_handle.write(
                     f"\nErrors in launching {word} reports:\n\t{errors}\n"
                 )
-        print('here')
-        print(summary.get('cnv_report_summary'))
+
         # mush the report summary dicts together to make a pretty table
         outputs = {}
         if summary.get('cnv_report_summary'):
@@ -145,7 +144,6 @@ def write_summary_report(output, manifest, **summary) -> None:
 
         if outputs:
             fancy_table = pd.DataFrame(outputs).to_markdown(tablefmt="grid")
-            print(fancy_table)
             file_handle.write(
                 f"\nReports created per sample:\n\n{fancy_table}"
             )

@@ -272,7 +272,7 @@ def main(
                 manifest=manifest,
                 manifest_source=manifest_source,
                 config=assay_config['modes']['snv_reports'],
-                mosaic=False,
+                mode='SNV',
                 start=start_time,
                 sample_limit=sample_limit
             )
@@ -286,7 +286,7 @@ def main(
                 manifest=manifest,
                 manifest_source=manifest_source,
                 config=assay_config['modes']['mosaic_reports'],
-                mosaic=True,
+                mode='SNV',
                 start=start_time,
                 sample_limit=sample_limit
             )

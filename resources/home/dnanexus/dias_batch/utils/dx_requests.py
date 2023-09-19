@@ -666,7 +666,7 @@ class DXExecute():
         manifest,
         manifest_source,
         config,
-        mosaic,
+        mode,
         start,
         sample_limit
         ) -> list:
@@ -684,8 +684,9 @@ class DXExecute():
             pattern against sample name 
         config : dict
             config for assay, defining fixed inputs for workflow
-        mosaic : bool
-            controls if running reports on mosaic (mutect2) output
+        mode : str
+            controls if running reports on mosaic (mutect2) output or
+            for SNVs
         start : str
             start time of running app for naming output folders
         sample_limit : int
@@ -721,8 +722,8 @@ class DXExecute():
         ]
 
         print(
-            f"Found {len(vcf_files)} sentieon vcf files from "
-            f"{single_output_dir} in subdir 'sentieon' and "
+            f"Found {len(vcf_files)} vcf files from "
+            f"{single_output_dir} in subdir {config.get('vcf_subdir')} and "
             f"{len(mosdepth_files)} from {single_output_dir} "
             "in subdir 'mosdepth'"
         )
@@ -854,10 +855,15 @@ class DXExecute():
 
                 launched_jobs.append(job_handle._dxid)
 
-                if not sample_summary['SNV'].get(sample):
-                    sample_summary['SNV'][sample] = [name]
+                if not sample_summary[mode].get(sample):
+                    sample_summary[mode][sample] = [name]
                 else:
-                    sample_summary['SNV'][sample].append(name)
+                    sample_summary[mode][sample].append(name)
+
+            # join up multiple outputs for nicer output viewing
+            sample_summary[mode][sample] = '\n'.join(
+                sample_summary[mode][sample]
+            )
 
             samples_run += 1
             if samples_run == sample_limit:
@@ -866,7 +872,7 @@ class DXExecute():
 
         end = timer()
         print(
-            f"Successfully launched {len(launched_jobs)} SNV reports "
+            f"Successfully launched {len(launched_jobs)} {mode} reports "
             f"workflows in {round(end - start)}s"
         )
         return launched_jobs, errors, sample_summary
@@ -905,4 +911,3 @@ class DXExecute():
                     )
 
         print("Terminated jobs.")
-
