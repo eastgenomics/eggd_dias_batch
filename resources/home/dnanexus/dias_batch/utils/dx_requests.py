@@ -558,12 +558,12 @@ class DXExecute():
 
         if manifest_no_match:
             errors[
-                f"Samples in manifest not matching pattern: {pattern}"
+                f"Samples in manifest not matching pattern ({len(manifest_no_match)}) {pattern}:"
             ] = manifest_no_match
 
         if manifest_no_vcf:
             errors[
-                "Samples in manifest with no VCF found"
+                f"Samples in manifest with no VCF found ({len(manifest_no_vcf)}): "
             ] = manifest_no_vcf
 
         workflow_details = dxpy.describe(workflow_id)
@@ -584,7 +584,6 @@ class DXExecute():
         for sample, sample_config in manifest.items():
 
             all_test_lists = sample_config['tests']
-            indication_lists = sample_config['indications']
             segment_vcf = sample_config['segment_vcf'][0]
 
             # mapping for current sample name -> index suffix to handle
@@ -784,17 +783,17 @@ class DXExecute():
 
         if manifest_no_match:
             errors[
-                f"Samples in manifest not matching pattern ({len(manifest_no_match)}): {pattern}"
+                f"Samples in manifest not matching pattern ({len(manifest_no_match)}) {pattern}:"
             ] = manifest_no_match
 
         if manifest_no_vcf:
             errors[
-                f"Samples in manifest with no VCF found ({len(manifest_no_vcf)})"
+                f"Samples in manifest with no VCF found ({len(manifest_no_vcf)}):"
             ] = manifest_no_vcf
 
         if manifest_no_mosdepth:
             errors[
-                f"Samples in manifest with no mosdepth files found ({len(manifest_no_mosdepth)})"
+                f"Samples in manifest with no mosdepth files found ({len(manifest_no_mosdepth)}):"
             ] = manifest_no_mosdepth
 
         workflow_details = dxpy.describe(workflow_id)
