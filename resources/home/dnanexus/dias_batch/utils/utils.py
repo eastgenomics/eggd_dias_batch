@@ -60,21 +60,30 @@ def write_summary_report(output, manifest, **summary) -> None:
     {output}.txt file of launched job summary
     """
     print(f"Writing summary report to {output}")
-    with open(output, mode='w', encoding='utf8') as fh:
-        fh.write(
+    with open(output, 'w') as file_handle:
+        file_handle.write(
             f"Total number of samples in manifest: {len(manifest.keys())}\n"
         )
         launched_jobs = '\n\t'.join([
-            f"{k} : {v}" for k,v in summary.get('launched_jobs').items()
+            f"{k} : {len(v)} jobs" for k,v
+            in summary.get('launched_jobs').items()
         ])
-        fh.write(f"Total jobs launched:\n\t{launched_jobs}")
+        file_handle.write(f"Total jobs launched:\n\t{launched_jobs}")
+
+        if summary.get('invalid_tests'):
+            invalid_tests = '\n\t'.join([
+                f"{k} : {v}" for k,v
+                in summary.get('invalid_tests').items()
+            ])
+            file_handle.write(
+                f"Invalid tests exlcuded from manifest:\n\{invalid_tests}"
+            )
 
         if summary.get('cnv_report'):
             pass
 
-        # dump written file into logs
-        fh.seek(0)
-        print(fh.read().splitlines())
+    # dump written file into logs
+    print('\n'.join(open(output, 'r').read().splitlines()))
 
 
 def make_path(*path) -> str:

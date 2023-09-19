@@ -331,7 +331,8 @@ def main(
     write_summary_report(
         summary_file,
         manifest=manifest,
-        launched_jobs=launched_jobs
+        launched_jobs=launched_jobs,
+        invalid_tests=invalid_tests
     )
 
     url_file = dxpy.upload_local_file(
