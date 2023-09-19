@@ -373,13 +373,6 @@ class DXExecute():
             pattern=cnv_config['inputs']['bambais']['name'],
             path=f"{os.environ.get('DX_PROJECT_CONTEXT_ID')}:{bam_dir}"
         )
-        # files = list(dxpy.find_data_objects(
-        #     name=cnv_config['inputs']['bambais']['name'],
-        #     name_mode='regexp',
-        #     project=os.environ.get("DX_PROJECT_CONTEXT_ID"),
-        #     folder=bam_dir,
-        #     describe=True
-        # ))
 
         print(f"Found {len(files)} .bam/.bai files in {bam_dir}")
 
