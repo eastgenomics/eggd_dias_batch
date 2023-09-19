@@ -717,12 +717,13 @@ class DXExecute():
 
         # ensure we have a vcf and mosdepth files per sample,
         # exclude those that don't have one
-        manifest, manifest_no_match, manifest_no_vcf = filter_manifest_samples_by_files(
-            manifest=manifest,
-            files=vcf_files,
-            name='sentieon_vcf',
-            pattern=pattern
-        )
+        manifest, manifest_no_match, manifest_no_vcf = \
+            filter_manifest_samples_by_files(
+                manifest=manifest,
+                files=vcf_files,
+                name='sentieon_vcf',
+                pattern=pattern
+            )
 
         manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
             manifest=manifest,
@@ -731,7 +732,7 @@ class DXExecute():
             pattern=pattern
         )
 
-        # gather errors to display later
+        # gather errors to display in summary report
         errors = {}
 
         if manifest_no_match:
@@ -807,6 +808,14 @@ class DXExecute():
                 input['stage-rpt_generate_workbook.clinical_indication'] = indications
                 input['stage-rpt_generate_workbook.panel'] = panels
 
+                # set prefix for naming output report
+                name = (
+                    f"{sentieon_vcf['describe']['name'].split('_')[0]}_"
+                    f"{'_'.join(test_list)}_SNV"
+                )
+
+                input['stage-rpt_generate_workbook.output_prefix'] = name
+
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=workflow_id
                 ).run(
@@ -818,6 +827,7 @@ class DXExecute():
                 )
 
                 launched_jobs.append(job_handle._dxid)
+                sample_summary['SNV'][sample].append(name)
 
             samples_run += 1
             if samples_run == sample_limit:
@@ -829,7 +839,7 @@ class DXExecute():
             f"Successfully launched {len(launched_jobs)} SNV reports "
             f"workflows in {round(end - start)}s"
         )
-        return launched_jobs, errors
+        return launched_jobs, errors, sample_summary
 
 
     @staticmethod

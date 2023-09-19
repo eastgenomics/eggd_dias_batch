@@ -44,7 +44,7 @@ def prettier_print(thing) -> None:
 
 def write_summary_report(output, manifest, **summary) -> None:
     """
-    Write output summary file with jobs launched and any errors
+    Write output summary file with jobs launched and any errors etc.
 
     Parameters
     ----------
@@ -89,6 +89,7 @@ def write_summary_report(output, manifest, **summary) -> None:
             "mosaic_report_errors": "mosaic"
         }
 
+        # write summary of errors from each report stage if present
         for key, word in report_summaries.items():
             if summary.get(key):
                 errors = '\n\t'.join([
@@ -98,9 +99,22 @@ def write_summary_report(output, manifest, **summary) -> None:
                     f"\nErrors in launching {word} reports:\n\t{errors}\n"
                 )
 
-        
+        # mush the report summary dicts together to make a pretty table
+        outputs = {}
+        if summary.get('cnv_report_summary'):
+            outputs = {**output, **summary.get('cnv_report_summary')}
+        if summary.get('snv_report_summary'):
+            outputs = {**output, **summary.get('snv_report_summary')}
+        if summary.get('mosaic_report_summary'):
+            outputs = {**output, **summary.get('mosaic_report_summary')}
 
-       
+        if outputs:
+            fancy_table = pd.DataFrame(outputs).to_markdown(tablefmt="grid")
+            print(fancy_table)
+            file_handle.write(
+                f"\nReports created per sample:\n\n{fancy_table}"
+            )
+
     # dump written file into logs
     print('\n'.join(open(output, 'r').read().splitlines()))
 

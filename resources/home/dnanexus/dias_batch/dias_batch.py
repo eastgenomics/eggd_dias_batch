@@ -15,13 +15,13 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        make_path, prettier_print, time_stamp, write_summary_report
+        make_path, time_stamp, write_summary_report
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        make_path, prettier_print, time_stamp, write_summary_report
+        make_path, time_stamp, write_summary_report
 
 import dxpy
 import pandas as pd
@@ -55,7 +55,7 @@ class CheckInputs():
 
     def check_assay(self):
         """Check assay string passed is valid"""
-        if self.inputs['assay'] not in ['CEN', 'FH', 'TSOE', 'WES']:
+        if self.inputs['assay'] not in ['CEN', 'TWE']:
             self.errors.append(
                 f"Invalid assay passed: {self.inputs['assay']}"
             )
@@ -225,7 +225,8 @@ def main(
     )
 
     launched_jobs = {}
-    cnv_reports_errors = snv_reports_errors = mosaic_reports_errors = None
+    cnv_reports_errors = snv_reports_errors = mosaic_reports_errors, \
+        cnv_report_summary, snv_report_summary, mosaic_report_summary = None
 
     if cnv_call:
         if cnv_call_job_id:
@@ -264,29 +265,31 @@ def main(
         launched_jobs['cnv_reports'] = cnv_report_jobs
 
     if snv_reports:
-        snv_reports, snv_reports_errors = DXExecute().snv_reports(
-            workflow_id=assay_config.get('snv_report_workflow_id'),
-            single_output_dir=single_output_dir,
-            manifest=manifest,
-            manifest_source=manifest_source,
-            config=assay_config['modes']['snv_reports'],
-            mosaic=False,
-            start=start_time,
-            sample_limit=sample_limit
-        )
+        snv_reports, snv_reports_errors, snv_report_summary = \
+            DXExecute().snv_reports(
+                workflow_id=assay_config.get('snv_report_workflow_id'),
+                single_output_dir=single_output_dir,
+                manifest=manifest,
+                manifest_source=manifest_source,
+                config=assay_config['modes']['snv_reports'],
+                mosaic=False,
+                start=start_time,
+                sample_limit=sample_limit
+            )
         launched_jobs['snv_reports'] = snv_reports
 
     if mosaic_reports:
-        mosaic_reports, mosaic_reports_errors = DXExecute().snv_reports(
-            workflow_id=assay_config.get('snv_report_workflow_id'),
-            single_output_dir=single_output_dir,
-            manifest=manifest,
-            manifest_source=manifest_source,
-            config=assay_config['modes']['mosaic_reports'],
-            mosaic=True,
-            start=start_time,
-            sample_limit=sample_limit
-        )
+        mosaic_reports, mosaic_reports_errors, mosaic_report_summary = \
+            DXExecute().snv_reports(
+                workflow_id=assay_config.get('snv_report_workflow_id'),
+                single_output_dir=single_output_dir,
+                manifest=manifest,
+                manifest_source=manifest_source,
+                config=assay_config['modes']['mosaic_reports'],
+                mosaic=True,
+                start=start_time,
+                sample_limit=sample_limit
+            )
         launched_jobs['mosaic_reports'] = mosaic_reports
 
     print(
@@ -300,31 +303,6 @@ def main(
         DXExecute().terminate(list(chain(*launched_jobs.values())))
 
 
-    if any([
-        invalid_tests, snv_reports_errors,
-        cnv_reports_errors, mosaic_reports_errors
-    ]):
-        # some kind of error occured
-        print("WARNING: one or more errors occured during launching of jobs:")
-        if invalid_tests:
-            print(
-                "The following test codes provided were invalid "
-                "and were excluded from analysis:"
-            )
-            prettier_print(invalid_tests)
-
-        if snv_reports_errors:
-            print("Errors launching SNV reports:")
-            prettier_print(snv_reports_errors)
-
-        if cnv_reports_errors:
-            print("Errors launching CNV reports:")
-            prettier_print(cnv_reports_errors)
-
-        if mosaic_reports_errors:
-            print("Errors launching mosaic reports:")
-            prettier_print(mosaic_reports_errors)
-
     project_name = dxpy.describe(os.environ.get('DX_PROJECT_CONTEXT_ID'))['name']
     summary_file = f"{project_name}_{start_time}_job_summary.txt"
 
@@ -337,7 +315,9 @@ def main(
         snv_reports_errors=snv_reports_errors,
         cnv_report_errors=cnv_reports_errors,
         mosaic_reports_errors=mosaic_reports_errors,
-        cnv_report_summary=cnv_report_summary
+        cnv_report_summary=cnv_report_summary,
+        snv_report_summary=snv_report_summary,
+        mosaic_report_summary=mosaic_report_summary
     )
 
     url_file = dxpy.upload_local_file(
