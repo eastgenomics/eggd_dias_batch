@@ -170,7 +170,7 @@ class DXManage():
         return files[0]
 
 
-    def find_files(self, path, subdir=None, pattern=None) -> list:
+    def find_files(self, path, subdir='', pattern=None) -> list:
         """
         Search given path in DNAnexus, optionally in a sub directory
         and with a pattern
@@ -194,7 +194,7 @@ class DXManage():
             subdir = subdir.strip('/')
 
         print(
-            f"Searching for files in {path} and subdir {dir} with "
+            f"Searching for files in {path} and subdir {subdir} with "
             f"pattern '{pattern}'"
         )
 
@@ -229,7 +229,7 @@ class DXManage():
                 f"a live state: {prettier_print(not_live)}"
             )
 
-        print(f"Found {len(files)} files in {path}")
+        print(f"Found {len(files)} files in {path}/{subdir}")
 
         return files
 
@@ -456,7 +456,8 @@ class DXExecute():
             manifest_source,
             config,
             start,
-            sample_limit
+            sample_limit,
+            parent
         ) -> list:
         """
         Run Dias reports workflow on output of CNV calling.
@@ -483,6 +484,8 @@ class DXExecute():
             start time of running app for naming output folders
         sample_limit : int
             no. of samples to launch jobs for
+        parent : str
+            job ID of parent batch job to use when testing to stop jobbs running
 
         Returns
         -------
@@ -590,9 +593,9 @@ class DXExecute():
 
             for idx, test_list in enumerate(all_test_lists):
                 print(
-                    f"Launching CNV reports workflow {idx+1}/"
-                    f"{len(all_test_lists)} for {sample} with "
-                    f"test(s): {test_list}"
+                    f"[{samples_run+1}/{len(manifest)}] Launching CNV "
+                    f"reports workflow {idx+1}/{len(all_test_lists)} for "
+                    f"{sample} with test(s): {test_list}"
                 )
 
                 input = deepcopy(config['inputs'])
@@ -644,7 +647,8 @@ class DXExecute():
                     rerun_stages=['*'],
                     detach=True,
                     name=f"{workflow_details['name']}_{sample}_{codes}",
-                    stage_folders=stage_folders
+                    stage_folders=stage_folders,
+                    depends_on=parent
                 )
 
                 launched_jobs.append(job_handle._dxid)
@@ -683,7 +687,8 @@ class DXExecute():
         config,
         mode,
         start,
-        sample_limit
+        sample_limit,
+        parent
         ) -> list:
         """
         Run Dias reports workflow for either SNV or mosaic reports
@@ -708,6 +713,8 @@ class DXExecute():
             start time of running app for naming output folders
         sample_limit : int
             no. of samples to launch jobs for
+        parent : str
+            job ID of parent batch job to use when testing to stop jobs running
 
         Returns
         -------
@@ -716,6 +723,7 @@ class DXExecute():
         dict
             dict of any errors found (i.e samples with no files)
         """
+        print(f"Configuring inputs for {mode} reports")
         # find .vcf or .vcf.gz but NOT .g.vcf
         vcf_files = DXManage().find_files(
             path=single_output_dir,
@@ -762,7 +770,7 @@ class DXExecute():
             filter_manifest_samples_by_files(
                 manifest=manifest,
                 files=vcf_files,
-                name='sentieon_vcf',
+                name='vcf',
                 pattern=pattern
             )
 
@@ -778,17 +786,17 @@ class DXExecute():
 
         if manifest_no_match:
             errors[
-                f"Samples in manifest not matching pattern: {pattern}"
+                f"Samples in manifest not matching pattern ({len(manifest_no_match)}): {pattern}"
             ] = manifest_no_match
 
         if manifest_no_vcf:
             errors[
-                "Samples in manifest with no VCF found"
+                f"Samples in manifest with no VCF found ({len(manifest_no_vcf)})"
             ] = manifest_no_vcf
 
         if manifest_no_mosdepth:
             errors[
-                "Samples in manifest with no mosdepth files found"
+                f"Samples in manifest with no mosdepth files found ({len(manifest_no_mosdepth)})"
             ] = manifest_no_mosdepth
 
         workflow_details = dxpy.describe(workflow_id)
@@ -799,18 +807,18 @@ class DXExecute():
             time_stamp=start
         )
 
-        print("Launching SNV reports per sample...")
+        print(f"Launching {mode} reports per sample...")
         start = timer()
 
         launched_jobs = []
-        sample_summary = {'SNV': {}}
+        sample_summary = {mode: {}}
         samples_run = 0
+
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
 
             all_test_lists = sample_config['tests']
-            indication_lists = sample_config['indications']
-            sentieon_vcf = sample_config['sentieon_vcf'][0]
+            vcf = sample_config['vcf'][0]
 
             # mapping for current sample name -> index suffix to handle
             # edge case of same test code on same run
@@ -818,15 +826,15 @@ class DXExecute():
 
             for idx, test_list in enumerate(all_test_lists):
                 print(
-                    f"Launching SNV reports workflow {idx+1}/"
+                    f"Launching {mode} reports workflow {idx+1}/"
                     f"{len(all_test_lists)} for {sample} with "
                     f"test(s): {test_list}"
                 )
                 input = deepcopy(config['inputs'])
                 input['stage-rpt_vep.vcf'] = {
                     "$dnanexus_link": {
-                        "project": sentieon_vcf['project'],
-                        "id": sentieon_vcf['id']
+                        "project": vcf['project'],
+                        "id": vcf['id']
                     }
                 }
 
@@ -854,11 +862,11 @@ class DXExecute():
 
                 # set prefix for naming output report with integer suffix
                 name = (
-                    f"{sentieon_vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list).replace('__', '_')}_SNV"
+                    f"{vcf['describe']['name'].split('_')[0]}_"
+                    f"{'_'.join(test_list).replace('__', '_')}_{mode}"
                 )
                 suffix = check_report_index(name=name, reports=xlsx_reports)
-                
+
                 if sample_name_to_suffix.get(name):
                     # we have already launched a report for this sample in
                     # this current job => increment from this
@@ -876,8 +884,9 @@ class DXExecute():
                     workflow_input=input,
                     rerun_stages=['*'],
                     detach=True,
-                    name=f"{workflow_details['name']}_{sample}_{codes}",
-                    stage_folders=stage_folders
+                    name=f"{workflow_details['name']}_{sample}_{codes} ({mode})",
+                    stage_folders=stage_folders,
+                    depends_on=parent
                 )
 
                 launched_jobs.append(job_handle._dxid)
@@ -922,7 +931,7 @@ class DXExecute():
             else:
                 dxpy.bindings.dxanalysis.DXAnalysis(dxid=job).terminate()
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
             concurrent_jobs = {
                 executor.submit(terminate_one, id): id for id in jobs
             }

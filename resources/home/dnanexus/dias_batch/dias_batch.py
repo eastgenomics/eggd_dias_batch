@@ -228,6 +228,14 @@ def main(
     cnv_report_errors = snv_report_errors = mosaic_report_errors = \
         cnv_report_summary = snv_report_summary = mosaic_report_summary = None
 
+    # set downstream jobs to be dependent on parent batch job, wonderfully
+    # hacky way to not actually start any downstream jobs in testing mode and
+    # having to clean up after jobs that managed to complete during launching
+    if testing:
+        parent = [os.environ.get("DX_JOB_ID")]
+    else:
+        parent = None
+
     if cnv_call:
         if cnv_call_job_id:
             print(
@@ -259,7 +267,8 @@ def main(
                 manifest_source=manifest_source,
                 config=assay_config['modes']['cnv_reports'],
                 start=start_time,
-                sample_limit=sample_limit
+                sample_limit=sample_limit,
+                parent=parent
             )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
@@ -274,7 +283,8 @@ def main(
                 config=assay_config['modes']['snv_reports'],
                 mode='SNV',
                 start=start_time,
-                sample_limit=sample_limit
+                sample_limit=sample_limit,
+                parent=parent
             )
         launched_jobs['snv_reports'] = snv_reports
 
@@ -286,9 +296,10 @@ def main(
                 manifest=manifest,
                 manifest_source=manifest_source,
                 config=assay_config['modes']['mosaic_reports'],
-                mode='SNV',
+                mode='mosaic',
                 start=start_time,
-                sample_limit=sample_limit
+                sample_limit=sample_limit,
+                parent=parent
             )
         launched_jobs['mosaic_reports'] = mosaic_reports
 
@@ -301,7 +312,6 @@ def main(
         # testing => terminate launched jobs
         print("Terminating launched jobs...")
         DXExecute().terminate(list(chain(*launched_jobs.values())))
-
 
     project_name = dxpy.describe(os.environ.get('DX_PROJECT_CONTEXT_ID'))['name']
     summary_file = f"{project_name}_{start_time}_job_summary.txt"
