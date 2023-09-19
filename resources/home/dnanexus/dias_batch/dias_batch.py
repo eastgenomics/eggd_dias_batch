@@ -53,7 +53,7 @@ class CheckInputs():
     
     def check_assay(self):
         """Check assay string passed is valid"""
-        if self.inputs['assay'] not in ['CEN', 'FH', 'TSOE', 'WES']:
+        if self.inputs['assay'] not in ['CEN', 'TWE']:
             self.errors.append(
                 f"Invalid assay passed: {self.inputs['assay']}"
             )
@@ -155,12 +155,12 @@ def main(
     )
     genepanels = pd.DataFrame(
         [x.split('\t') for x in genepanels],
-        columns=['gemini_name', 'panel_name', 'hgnc_id']
+        columns=['indication', 'panel_name', 'hgnc_id']
     )
     genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
     genepanels = genepanels[genepanels.duplicated()]
     genepanels = split_genepanels_test_codes(genepanels)
-    
+
     # parse manifest and format into a mapping of sampleID -> test codes
     manifest_data = DXManage().read_dxfile(manifest_file)
     manifest, manifest_source = parse_manifest(manifest_data)
@@ -181,7 +181,7 @@ def main(
     )
 
     launched_jobs = {}
-    
+
     if cnv_call:
         if cnv_call_job_id:
             print(
@@ -214,15 +214,15 @@ def main(
         )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
-    
+
     if snv_reports:
         pass
 
     if mosaic_reports:
         pass
- 
+
     print(
-        f'All jobs launched:\n\t',
+        'All jobs launched:\n\t',
         "\n\t".join([f"{x[0]}: {x[1]}" for x in launched_jobs.items()])
     )
 
@@ -230,6 +230,6 @@ def main(
         # testing => terminate launched jobs
         print("Terminating launched jobs")
         DXExecute().terminate(list(chain(*launched_jobs.values())))
-   
+
 
 dxpy.run()
