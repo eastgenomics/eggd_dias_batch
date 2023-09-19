@@ -166,7 +166,7 @@ class DXManage():
         return files[0]
 
 
-    def find_files(self, path, dir=None, pattern=None) -> list:
+    def find_files(self, path, subdir=None, pattern=None) -> list:
         """
         Search given path in DNAnexus, optionally in a sub directory
         and with a pattern
@@ -175,7 +175,7 @@ class DXManage():
         ----------
         path : str
             path to where to search
-        dir : str (optional)
+        subdir : str (optional)
             sub directory to search, will partially match as /path/dir.*
         pattern : str (optional)
             regex file pattern to search for
@@ -186,7 +186,7 @@ class DXManage():
             list of files found
         """
         path = path.rstrip('/')  # I define these and not the user but just
-        dir = dir.strip('/')     # incase I forget anywhere and have extra /
+        subdir = subdir.strip('/')     # incase I forget anywhere and have extra /
 
         print(
             f"Searching for files in {path} and subdir {dir} with "
@@ -196,7 +196,7 @@ class DXManage():
         project = re.search(r'project-[\d\w]+', path)
         if project:
             project = project.group()
-        
+
         path = re.sub(r'^project-[\d\w]+:', '', path)
 
         files = list(dxpy.find_data_objects(
@@ -207,15 +207,15 @@ class DXManage():
             describe=True
         ))
 
-        if dir:
+        if subdir:
             # filter down to just those in the given sub dir
             files = [
                 x for x in files
-                if x['describe']['folder'].startswith(f"{path}/{dir}")
+                if x['describe']['folder'].startswith(f"{path}/{subdir}")
             ]
-        
+
         print(f"Found {len(files)} files")
-        
+
         return files
 
 
@@ -655,14 +655,14 @@ class DXExecute():
         # find .vcf or .vcf.gz but NOT .g.vcf
         vcf_files = DXManage().find_files(
             path=single_output_dir,
-            dir=config.get('vcf_subdir'),
-            pattern="^[^\.]*(?!\.g)\.vcf(\.gz)?$"
+            subdir=config.get('vcf_subdir'),
+            pattern=r"^[^\.]*(?!\.g)\.vcf(\.gz)?$"
         )
 
         mosdepth_files = DXManage().find_files(
             path=single_output_dir,
-            dir='eggd_mosdepth',
-            pattern="per-base.bed.gz$|reference"
+            subdir='eggd_mosdepth',
+            pattern=r"per-base.bed.gz$|reference.txt$"
         )
 
         print(
