@@ -4,7 +4,7 @@ General utils for parsing config, genepanels and manifest files
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
-from pprint import PrettyPrinter
+import json
 import re
 from typing import Union
 
@@ -13,7 +13,6 @@ import pandas as pd
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
-PPRINT = PrettyPrinter(indent=4, width=1000).pprint
 
 
 def time_stamp() -> str:
@@ -26,6 +25,19 @@ def time_stamp() -> str:
         String of current date and time as YYMMDD_HHMM
     """
     return datetime.now().strftime("%y%m%d_%H%M")
+
+
+def prettier_print(thing) -> None:
+    """
+    Pretty print for nicer viewing in the logs since pprint does not
+    do an amazing job visualising big dicts and long strings
+
+    Parameters
+    ----------
+    thing : anything json dumpable
+        thing to print
+    """
+    print(json.dumps(thing, indent=4))
 
 
 def make_path(*path) -> str:
@@ -72,10 +84,10 @@ def fill_config_reference_inputs(config) -> dict:
         Raised when provided reference in assay config has no file-[\d\w]+ ID
     """
     print("Filling config file with reference files, before:")
-    PPRINT(config)
+    prettier_print(config)
 
     print("Reference files to add:")
-    PPRINT(config['reference_files'])
+    prettier_print(config['reference_files'])
 
     filled_config = deepcopy(config)
 
@@ -136,7 +148,7 @@ def fill_config_reference_inputs(config) -> dict:
                 filled_config['modes'][mode]['inputs'][input] = value
 
     print("And now it's filled:")
-    PPRINT(filled_config)
+    prettier_print(filled_config)
 
     return filled_config
 
@@ -601,7 +613,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     """
     print("Finding panels and clinical indications for tests")
     print("Manifest before")
-    PPRINT(manifest)
+    prettier_print(manifest)
 
     manifest_with_panels = {}
 
@@ -643,6 +655,6 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
         manifest_with_panels[sample] = sample_tests
 
     print("Manifest after")
-    PPRINT(manifest_with_panels)
+    prettier_print(manifest_with_panels)
 
     return manifest_with_panels

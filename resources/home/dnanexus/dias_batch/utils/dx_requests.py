@@ -6,19 +6,18 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
-from pprint import PrettyPrinter
 import re
 from timeit import default_timer as timer
 
 import dxpy
 import pandas as pd
 
-from .utils import filter_manifest_samples_by_files, make_path, time_stamp
+from .utils import filter_manifest_samples_by_files, make_path, \
+    prettier_print, time_stamp
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
-PPRINT = PrettyPrinter(indent=1).pprint
 
 
 class DXManage():
@@ -65,7 +64,7 @@ class DXManage():
                 project=file_details['project'], dxid=file_details['id']).read())
             
             print(f"Assay config file contents:")
-            PPRINT(config)
+            prettier_print(config)
             return config
 
         # searching dir for configs, check for valid project:path structure
@@ -120,7 +119,7 @@ class DXManage():
         )
 
         print(f"Assay config file contents:")
-        PPRINT(highest_config)
+        prettier_print(highest_config)
 
         return highest_config
 
@@ -322,7 +321,7 @@ class DXManage():
             stage_folders[stage['id']] = path
 
         print("Output folders created:")
-        PPRINT(stage_folders)
+        prettier_print(stage_folders)
 
         return stage_folders
    
@@ -556,7 +555,7 @@ class DXExecute():
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
             print(f"Launching jobs for {sample} with:")
-            PPRINT(sample_config)
+            prettier_print(sample_config)
 
             all_test_lists = sample_config['tests']
             indication_lists = sample_config['indications']
@@ -715,7 +714,7 @@ class DXExecute():
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
             print(f"Launching jobs for {sample} with:")
-            PPRINT(sample_config)
+            prettier_print(sample_config)
 
             all_test_lists = sample_config['tests']
             indication_lists = sample_config['indications']
@@ -758,7 +757,7 @@ class DXExecute():
                 input['stage-rpt_generate_workbook.panel'] = panels
 
                 print(f"Inputs for {sample}:")
-                PPRINT(input)
+                prettier_print(input)
 
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=workflow_id
