@@ -232,10 +232,24 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         contents = [x.split(';') for x in contents if x]
         manifest = pd.DataFrame(contents[2:], columns=contents[1])
 
+        # sense check we have columns we need
+        required = [
+            'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
+            'Re-analysis Specimen ID', 'Test Codes'
+        ]
+
+        assert not set(required) - set(manifest.columns.tolist()), (
+            "Missing one or more required columns from Epic manifest"
+        )
+
         # make sure we don't have any spaces from pesky humans
         # and their fat fingers
-        manifest['SampleID'] = manifest['SampleID'].str.replace(' ', '')
-        manifest['ReanalysisID'] = manifest['ReanalysisID'].str.replace(' ', '')
+        columns = [
+            'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
+            'Re-analysis Specimen ID'
+        ]
+        manifest[columns] = manifest[columns].applymap(
+            lambda x: x.replace(' ', ''))
 
         # sample id may be split between 'Specimen ID' and 'Instrument ID' or
         # Re-analysis Specimen ID and Re-analysis Instrument ID columns, join
@@ -257,8 +271,9 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             if not all([
                 re.match(r"[RC][\d]+\.[\d]+|_HGNC", x) for x in test_codes
             ]):
+                #TODO - do we want to raise an error here or just throw it out?
                 raise RuntimeError(
-                    f'Invalid test code provided for sample {row}'
+                    f'Badly formatted test code provided for sample {row}'
                 )
 
             # prefentially use ReanalysisID if present
@@ -287,6 +302,7 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             if not all([
                 re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
             ]):
+                #TODO - as above, error or throw out
                 raise RuntimeError(
                     'Invalid test code(s) provided for sample '
                     f'{sample[0]} : {sample[1]}'
