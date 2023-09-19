@@ -12,10 +12,14 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
-    from dias_batch.utils.utils import parse_manifest, split_tests
+    from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
+        split_genepanels_test_codes, check_manifest_valid_test_codes, \
+        add_panels_and_indications_to_manifest
 else:
     from .utils.dx_requests import DXExecute, DXManage
-    from .utils.utils import parse_manifest, split_tests
+    from .utils.utils import parse_manifest, split_manifest_tests, \
+        split_genepanels_test_codes, check_manifest_valid_test_codes, \
+        add_panels_and_indications_to_manifest
 
 import dxpy
 import pandas as pd
@@ -31,7 +35,7 @@ class CheckInputs():
         Raised if one or more inputs is invalid
     """
     def __init__(self, **inputs) -> None:
-        print("Validating inputs")
+        print("Validating inputs...")
         self.inputs = inputs
         self.errors = []
         self.check_assay()
@@ -49,7 +53,7 @@ class CheckInputs():
     
     def check_assay(self):
         """Check assay string passed is valid"""
-        if self.inputs['assay'] not in ['CEN', 'FH', 'TSOE', 'WES']:
+        if self.inputs['assay'] not in ['CEN', 'TWE']:
             self.errors.append(
                 f"Invalid assay passed: {self.inputs['assay']}"
             )
@@ -101,7 +105,7 @@ class CheckInputs():
         """Check at least one running mode set"""
         if not any(
             self.inputs.get(x) for x in 
-            ['cnv_call', 'cnv_report', 'snv_report', 'mosaic_report']):
+            ['cnv_call', 'cnv_reports', 'snv_reports', 'mosaic_reports']):
                 self.errors.append('No mode specified to run in')
 
 
@@ -116,10 +120,11 @@ def main(
     single_output_dir=None,
     cnv_call_job_id=None,
     cnv_call=False,
-    cnv_report=False,
-    snv_report=False,
-    mosaic_report=False,
-    testing=False
+    cnv_reports=False,
+    snv_reports=False,
+    mosaic_reports=False,
+    testing=False,
+    sample_limit=None
 ):
     check = CheckInputs(
         assay=assay,
@@ -128,9 +133,9 @@ def main(
         manifest_file=manifest_file,
         single_output_dir=single_output_dir,
         cnv_call=cnv_call,
-        cnv_report=cnv_report,
-        snv_report=snv_report,
-        mosaic_report=mosaic_report
+        cnv_reports=cnv_reports,
+        snv_reports=snv_reports,
+        mosaic_reports=mosaic_reports
     )
 
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
@@ -144,49 +149,80 @@ def main(
     if exclude_samples:
         exclude_samples = exclude_samples.split(',')
 
-    manifest_data = DXManage().read_dxfile(manifest_file)
-    manifest = parse_manifest(manifest_data)
-    if split_tests:
-        manifest = split_tests(manifest)
-
+    # parse and format genepanels file
     genepanels = DXManage().read_dxfile(
         file=assay_config.get('reference_files', {}).get('genepanels'),
     )
     genepanels = pd.DataFrame(
         [x.split('\t') for x in genepanels],
-        columns=['gemini_name', 'panel_name', 'hgnc_id'],
-        dtype='category'
+        columns=['indication', 'panel_name', 'hgnc_id']
+    )
+    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
+    genepanels = genepanels[genepanels.duplicated()]
+    genepanels = split_genepanels_test_codes(genepanels)
+
+    # parse manifest and format into a mapping of sampleID -> test codes
+    manifest_data = DXManage().read_dxfile(manifest_file)
+    manifest, manifest_source = parse_manifest(manifest_data)
+    if split_tests:
+        manifest = split_manifest_tests(manifest)
+
+    # filter manifest tests against genepanels to ensure what has been
+    # requested are test codes or HGNC IDs we recognise
+    manifest, invalid_tests = check_manifest_valid_test_codes(
+        manifest=manifest,
+        genepanels=genepanels
+    )
+
+    # add in panel and clinical indication strings to manifest dict
+    manifest = add_panels_and_indications_to_manifest(
+        manifest=manifest,
+        genepanels=genepanels
     )
 
     launched_jobs = {}
-    
+
     if cnv_call:
-        if cnv_report:
-            # going to run some reports after calling finishes,
-            # hold app until calling completes
-            wait=True
+        if cnv_call_job_id:
+            print(
+                "WARNING: both 'cnv_call' set and cnv_call_job_id "
+                "specified.\nWill use output of specified job "
+                f"({cnv_call_job_id}) instead of running CNV calling."
+            )
         else:
-            wait=False
+            # check if we're running reports after and to hold app
+            # until CNV calling completes
+            wait = True if cnv_reports else False
 
-        job_id = DXExecute().cnv_calling(
-            config=assay_config,
+            cnv_call_job_id = DXExecute().cnv_calling(
+                config=assay_config,
+                single_output_dir=single_output_dir,
+                exclude=exclude_samples,
+                wait=wait
+            )
+
+            launched_jobs['CNV calling'] = [cnv_call_job_id]
+
+    if cnv_reports:
+        cnv_report_jobs = DXExecute().cnv_reports(
+            call_job_id=cnv_call_job_id,
             single_output_dir=single_output_dir,
-            exclude=exclude_samples,
-            wait=wait
+            manifest=manifest,
+            manifest_source=manifest_source,
+            config=assay_config,
+            sample_limit=sample_limit
         )
-        launched_jobs['CNV calling'] = [job_id]
 
-    if cnv_report:
-        pass
-    
-    if snv_report:
+        launched_jobs['cnv_reports'] = cnv_report_jobs
+
+    if snv_reports:
         pass
 
-    if mosaic_report:
+    if mosaic_reports:
         pass
- 
+
     print(
-        f'All jobs launched:\n\t',
+        'All jobs launched:\n\t',
         "\n\t".join([f"{x[0]}: {x[1]}" for x in launched_jobs.items()])
     )
 
@@ -194,6 +230,6 @@ def main(
         # testing => terminate launched jobs
         print("Terminating launched jobs")
         DXExecute().terminate(list(chain(*launched_jobs.values())))
-   
+
 
 dxpy.run()

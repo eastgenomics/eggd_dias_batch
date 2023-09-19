@@ -10,7 +10,7 @@
             "label": "assay",
             "class": "string",
             "optional": false,
-            "help": "string of assay to run analysis for (CEN or WES)",
+            "help": "string of assay to run analysis for (CEN or TWE)",
             "group": ""
           },
           {
@@ -33,7 +33,7 @@
             "name": "split_tests",
             "label": "split tests",
             "class": "boolean",
-            "optional": "true",
+            "optional": true,
             "help": "controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one"
           },
           {
@@ -67,24 +67,24 @@
             "group": "mode"
           },
           {
-            "name": "cnv_report",
-            "label": "cnv report",
+            "name": "cnv_reports",
+            "label": "cnv reports",
             "class": "boolean",
             "optional": true,
             "help": "run cnv reports",
             "group": "mode"
           },
           {
-            "name": "snv_report",
-            "label": "snv report",
+            "name": "snv_reports",
+            "label": "snv reports",
             "class": "boolean",
             "optional": true,
             "help": "run snv reports",
             "group": "mode"
           },
           {
-            "name": "mosaic_report",
-            "label": "mosaic report",
+            "name": "mosaic_reports",
+            "label": "mosaic reports",
             "class": "boolean",
             "optional": true,
             "help": "run mosaic reports",
@@ -96,7 +96,15 @@
             "class": "boolean",
             "optional": true,
             "help": "run in testing mode, will terminate all jobs",
-            "group": "mode"
+            "group": "test"
+          },
+          {
+            "name": "sample_limit",
+            "label": "sample limit",
+            "class": "int",
+            "optional": true,
+            "help": "no. of samples to limit launching reports workflow jobs for",
+            "group": "test"
           }
     ],
     "outputSpec": [
