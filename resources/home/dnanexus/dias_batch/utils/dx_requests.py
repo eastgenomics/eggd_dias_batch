@@ -318,7 +318,7 @@ class DXManage():
                     'app-', '', 1).replace('/', '-')
             
             path = make_path(
-                single_output_dir, workflow['name'], folder_name, time_stamp
+                single_output, workflow['name'], folder_name, time_stamp
             )
 
             stage_folders['stage']['id'] = path
@@ -676,7 +676,7 @@ class DXExecute():
 
         if not vcf_files or not mosdepth_files:
             raise RuntimeError(
-                "Found no vcf_files or mosdepth files!"
+                "Found no vcf_files and / or mosdepth files!"
             )
 
         # patterns of sample ID and sample file prefix to match on
