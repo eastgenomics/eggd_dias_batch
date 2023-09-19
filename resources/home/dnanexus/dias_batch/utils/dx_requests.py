@@ -6,7 +6,6 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
-from pathlib import Path
 from pprint import PrettyPrinter
 import re
 from timeit import default_timer as timer
@@ -14,8 +13,7 @@ from timeit import default_timer as timer
 import dxpy
 import pandas as pd
 
-from .utils import fill_config_reference_inputs, \
-    filter_manifest_samples_by_files, make_path, time_stamp
+from .utils import filter_manifest_samples_by_files, make_path, time_stamp
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
@@ -316,18 +314,18 @@ class DXManage():
             else:
                 folder_name = stage['executable'].replace(
                     'app-', '', 1).replace('/', '-')
-            
+
             path = make_path(
                 single_output, workflow['name'], time_stamp, folder_name
             )
 
             stage_folders[stage['id']] = path
-        
+
         print("Output folders created:")
         PPRINT(stage_folders)
-        
+
         return stage_folders
-                
+   
 
 class DXExecute():
     """
@@ -684,7 +682,7 @@ class DXExecute():
             pattern = r'^[\d\w]+-[\d\w]+'
         else:
             pattern = r'X[\d]+'
-        
+
         # ensure we have a vcf and mosdepth files per sample,
         # exclude those that don't have one
         manifest = filter_manifest_samples_by_files(
@@ -707,10 +705,6 @@ class DXExecute():
             workflow=workflow_details,
             single_output=single_output_dir,
             time_stamp=start
-        )
-
-        out_folder = make_path(
-            single_output_dir, workflow_details['name'], start
         )
 
         print("Launching SNV reports per sample...")
@@ -775,16 +769,14 @@ class DXExecute():
                     name=f"{workflow_details['name']}_{sample}_{codes}",
                     stage_folders=stage_folders
                 )
-            
+
                 launched_jobs.append(job_handle._dxid)
-                
+
             samples_run += 1
             if samples_run == sample_limit:
-                print(
-                    f"Sample limit hit, stopping launching further jobs"
-                )
+                print("Sample limit hit, stopping launching further jobs")
                 break
-    
+
         end = timer()
         print(
             f"Successfully launched {len(launched_jobs)} SNV reports "
@@ -824,5 +816,5 @@ class DXExecute():
                         "Error terminating job "
                         f"{concurrent_jobs[future]}: {exc}"
                     )
-        
-        print(f"Terminated jobs.")
+
+        print("Terminated jobs.")

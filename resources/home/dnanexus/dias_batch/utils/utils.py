@@ -1,9 +1,11 @@
+"""
+General utils for parsing config, genepanels and manifest files
+"""
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from pprint import PrettyPrinter
 import re
-import sys
 from typing import Union
 
 import pandas as pd
@@ -69,10 +71,10 @@ def fill_config_reference_inputs(config) -> dict:
     RuntimeError
         Raised when provided reference in assay config has no file-[\d\w]+ ID
     """
-    print(f"Filling config file with reference files, before:")
+    print("Filling config file with reference files, before:")
     PPRINT(config)
 
-    print(f"Reference files to add:")
+    print("Reference files to add:")
     PPRINT(config['reference_files'])
 
     filled_config = deepcopy(config)
@@ -133,7 +135,7 @@ def fill_config_reference_inputs(config) -> dict:
                 # this input isn't a reference file => add back as is   
                 filled_config['modes'][mode]['inputs'][input] = value
 
-    print(f"And now it's filled:")
+    print("And now it's filled:")
     PPRINT(filled_config)
 
     return filled_config
@@ -237,7 +239,7 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             '-' + manifest['Specimen ID']
         manifest['ReanalysisID'] = manifest['Re-analysis Instrument ID'] + \
             '-' + manifest['Re-analysis Specimen ID']
-        
+
         manifest = manifest[['SampleID', 'ReanalysisID', 'Test Codes']]
         manifest_source = 'Epic'
 
@@ -291,14 +293,12 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
                 re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
                 for x in test_codes
             ])
-        
+
         manifest_source = 'Gemini'
 
     else:
         # throw an error here as something is up with the file
-        raise RuntimeError(
-            f"Manifest file provided does not seem valid"
-        )
+        raise RuntimeError("Manifest file provided does not seem valid")
 
     samples = ('\n\t').join([
         f"{x[0]} -> {x[1]['tests']}" for x in data.items()
@@ -392,7 +392,7 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
                 )
                 manifest_with_files[sample] = manifest[sample]
                 manifest_with_files[sample][name] = sample_files
-    
+
     if manifest_no_match:
         print(
             f"{len(manifest_no_match)} samples in manifest didn't match "
@@ -453,7 +453,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
         if sample_invalid_test:
             # sample had one or more invalid test code
             invalid[sample].extend(sample_invalid_test)
-    
+
     if invalid:
         print(
             "WARNING: one or more samples had an invalid test "
@@ -461,7 +461,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
         )
     else:
         print("All sample test codes valid!")
-    
+
     # check if any samples only had test codes that are invalid -> won't
     # have any reports generated
     no_tests = set(manifest.keys()) - set(valid.keys())
@@ -470,7 +470,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
             "WARNING: samples with invalid test codes resulting in having "
             f"no tests to run reports for: {no_tests}"
         )
-    
+
     return valid, invalid
 
 
@@ -517,16 +517,16 @@ def split_manifest_tests(data) -> dict:
             for idx, sub_test in enumerate(test_list):
                 if re.match(r"[RC][\d]+\.[\d]+", sub_test):
                     # it's a panel => split it out
-                    all_split_test_codes.append([test])
+                    all_split_test_codes.append([sub_test])
                 else:
                     # it's a gene, add these back to a list to group
                     test_genes.append(sub_test)
             if test_genes:
                 # there were some single genes to test
                 all_split_test_codes.append(list(set(test_genes)))
-        
+
         split_data[sample]['tests'].extend(all_split_test_codes)
-    
+
     return split_data
 
 
@@ -618,11 +618,10 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     )
             sample_tests['panels'].append(panels)
             sample_tests['indications'].append(indications)
-        
+
         manifest_with_panels[sample] = sample_tests
-    
+
     print("Manifest after")
     PPRINT(manifest_with_panels)
 
     return manifest_with_panels
-

@@ -52,14 +52,14 @@ class CheckInputs():
             )
         else:
             print("Inputs valid, continuing...")
-    
+
     def check_assay(self):
         """Check assay string passed is valid"""
         if self.inputs['assay'] not in ['CEN', 'FH', 'TSOE', 'WES']:
             self.errors.append(
                 f"Invalid assay passed: {self.inputs['assay']}"
             )
-    
+
     def check_assay_config_dir(self):
         """Check that assay config dir is not empty"""
         if not self.inputs.get('assay_config_dir'):
@@ -79,7 +79,7 @@ class CheckInputs():
                 "Given assay config dir appears to contain no config "
                 f"files: {self.inputs['assay_config_dir']}"
             )
-    
+
     def check_single_output_dir(self):
         """Check single output dir is not empty"""
         if not self.inputs.get('single_output_dir'):
@@ -118,13 +118,12 @@ class CheckInputs():
                 "Given Dias single output dir appears to be empty: "
                 f"{self.inputs['single_output_dir']}"
             )
-    
+
     def check_mode_set(self):
         """Check at least one running mode set"""
-        if not any(
-            self.inputs.get(x) for x in 
-            ['cnv_call', 'cnv_reports', 'snv_reports', 'mosaic_reports']):
-                self.errors.append('No mode specified to run in')
+        modes = ['cnv_call', 'cnv_reports', 'snv_reports', 'mosaic_reports']
+        if not any(self.inputs.get(x) for x in modes):
+            self.errors.append('No mode specified to run in')
 
 
 @dxpy.entry_point('main')
@@ -207,7 +206,7 @@ def main(
     )
 
     launched_jobs = {}
-    
+
     if cnv_call:
         if cnv_call_job_id:
             print(
@@ -248,7 +247,7 @@ def main(
         )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
-    
+
     if snv_reports:
         snv_reports = DXExecute().snv_reports(
             workflow_id=assay_config.get('snv_report_workflow_id'),
@@ -274,9 +273,9 @@ def main(
             sample_limit=sample_limit
         )
         launched_jobs['mosaic_reports'] = mosaic_reports
- 
+
     print(
-        f'All jobs launched:\n\t',
+        'All jobs launched:\n\t',
         "\n\t".join([f"{x[0]}: {len(x[1])}" for x in launched_jobs.items()])
     )
 
@@ -284,6 +283,6 @@ def main(
         # testing => terminate launched jobs
         print("Terminating launched jobs...")
         DXExecute().terminate(list(chain(*launched_jobs.values())))
-   
+
 
 dxpy.run()
