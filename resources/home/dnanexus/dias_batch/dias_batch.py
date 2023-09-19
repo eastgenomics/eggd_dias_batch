@@ -130,6 +130,20 @@ class CheckInputs():
                 'Reports argument specified with no manifest file'
             )
 
+    def check_cnv_calling_for_cnv_reports(self):
+        """
+        Check if running CNV reports that either a job ID is given
+        or running CNV calling at the same time
+        """
+        if self.inputs.get('cnv_reports') and not (
+            self.inputs.get('cnv_call') or self.inputs.get('cnv_call_job_id')
+        ):
+            self.errors.append(
+                "Running CNV reports without first running CNV calling and "
+                "cnv_call_job_ID not specified. Please rerun with "
+                "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
+            )
+
 
 @dxpy.entry_point('main')
 def main(
@@ -211,6 +225,7 @@ def main(
     )
 
     launched_jobs = {}
+    cnv_reports_errors = snv_reports_errors = mosaic_reports_errors = None
 
     if cnv_call:
         if cnv_call_job_id:
@@ -234,22 +249,17 @@ def main(
             launched_jobs['CNV calling'] = [cnv_call_job_id]
 
     if cnv_reports:
-        if not cnv_call_job_id:
-            raise RuntimeError(
-                "Running CNV reports without first running CNV calling and "
-                "cnv_call_job_ID not specified. Please rerun with "
-                "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
+        cnv_report_jobs, cnv_reports_errors, cnv_report_summary = \
+            DXExecute().cnv_reports(
+                workflow_id=assay_config.get('cnv_report_workflow_id'),
+                call_job_id=cnv_call_job_id,
+                single_output_dir=single_output_dir,
+                manifest=manifest,
+                manifest_source=manifest_source,
+                config=assay_config['modes']['cnv_reports'],
+                start=start_time,
+                sample_limit=sample_limit
             )
-        cnv_report_jobs, cnv_reports_errors = DXExecute().cnv_reports(
-            workflow_id=assay_config.get('cnv_report_workflow_id'),
-            call_job_id=cnv_call_job_id,
-            single_output_dir=single_output_dir,
-            manifest=manifest,
-            manifest_source=manifest_source,
-            config=assay_config['modes']['cnv_reports'],
-            start=start_time,
-            sample_limit=sample_limit
-        )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
 
@@ -289,26 +299,30 @@ def main(
         print("Terminating launched jobs...")
         DXExecute().terminate(list(chain(*launched_jobs.values())))
 
+
     if any([
         invalid_tests, snv_reports_errors,
         cnv_reports_errors, mosaic_reports_errors
     ]):
         # some kind of error occured
-        print("One or more errors occured during launching of jobs:")
+        print("WARNING: one or more errors occured during launching of jobs:")
         if invalid_tests:
-            print("The following test codes provided were invalid:")
+            print(
+                "The following test codes provided were invalid "
+                "and were excluded from analysis:"
+            )
             prettier_print(invalid_tests)
 
         if snv_reports_errors:
-            print("The following errors occured when launching SNV reports:")
+            print("Errors launching SNV reports:")
             prettier_print(snv_reports_errors)
 
         if cnv_reports_errors:
-            print("The following errors occured when launching CNV reports:")
+            print("Errors launching CNV reports:")
             prettier_print(cnv_reports_errors)
 
         if mosaic_reports_errors:
-            print("The following errors occured when launching mosaic reports:")
+            print("Errors launching mosaic reports:")
             prettier_print(mosaic_reports_errors)
 
 dxpy.run()
