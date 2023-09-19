@@ -425,7 +425,7 @@ class DXExecute():
             project=os.environ.get('DX_PROJECT_CONTEXT_ID'),
             folder=folder,
             priority='high',
-            # detach=True,
+            detach=True,
             instance_type=cnv_config.get('instance_type')
         )
 
@@ -502,24 +502,11 @@ class DXExecute():
 
         # get required files
         job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
-        # segment_vcfs = list(dxpy.find_data_objects(
-        #     name="segments.vcf$",
-        #     name_mode='regexp',
-        #     project=job_details.get('project'),
-        #     folder=job_details.get('folder'),
-        #     describe=True
-        # ))
+
         segment_vcfs = list(DXManage().find_files(
             path=f"{job_details.get('project')}:{job_details.get('folder')}",
             pattern="segments.vcf$"
         ))
-        # excluded_intervals_bed = list(dxpy.find_data_objects(
-        #     name="_excluded_intervals.bed$",
-        #     name_mode='regexp',
-        #     project=job_details.get('project'),
-        #     folder=job_details.get('folder'),
-        #     describe=True
-        # ))
         excluded_intervals_bed = list(DXManage().find_files(
             path=f"{job_details.get('project')}:{job_details.get('folder')}",
             pattern="_excluded_intervals.bed$"
@@ -584,8 +571,7 @@ class DXExecute():
         samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
-            print(f"Launching jobs for {sample} with:")
-            prettier_print(sample_config)
+            print(f"Launching jobs for {sample}")
 
             all_test_lists = sample_config['tests']
             indication_lists = sample_config['indications']
@@ -628,7 +614,7 @@ class DXExecute():
                 ).run(
                     workflow_input=input,
                     rerun_stages=['*'],
-                    # detach=True,
+                    detach=True,
                     name=f"{workflow_details['name']}_{sample}_{codes}",
                     stage_folders=stage_folders
                 )
@@ -767,8 +753,7 @@ class DXExecute():
         samples_run = 0
         # launch reports workflow, once per sample - set of test codes
         for sample, sample_config in manifest.items():
-            print(f"Launching jobs for {sample} with:")
-            prettier_print(sample_config)
+            print(f"Launching jobs for {sample}")
 
             all_test_lists = sample_config['tests']
             indication_lists = sample_config['indications']
@@ -810,15 +795,12 @@ class DXExecute():
                 input['stage-rpt_generate_workbook.clinical_indication'] = indications
                 input['stage-rpt_generate_workbook.panel'] = panels
 
-                print(f"Inputs for {sample}:")
-                prettier_print(input)
-
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=workflow_id
                 ).run(
                     workflow_input=input,
                     rerun_stages=['*'],
-                    # detach=True,
+                    detach=True,
                     name=f"{workflow_details['name']}_{sample}_{codes}",
                     stage_folders=stage_folders
                 )
