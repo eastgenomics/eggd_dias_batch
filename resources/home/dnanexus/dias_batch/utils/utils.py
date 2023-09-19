@@ -232,6 +232,11 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         contents = [x.split(';') for x in contents if x]
         manifest = pd.DataFrame(contents[2:], columns=contents[1])
 
+        # make sure we don't have any spaces from pesky humans
+        # and their fat fingers
+        manifest['SampleID'] = manifest['SampleID'].str.replace(' ', '')
+        manifest['ReanalysisID'] = manifest['ReanalysisID'].str.replace(' ', '')
+
         # sample id may be split between 'Specimen ID' and 'Instrument ID' or
         # Re-analysis Specimen ID and Re-analysis Instrument ID columns, join
         # these as {InstrumentID-SpecimenID} to get a mapping of sample ID -> CI
