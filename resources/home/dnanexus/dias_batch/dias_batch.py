@@ -1,9 +1,9 @@
+"""Main entry point script for the app"""
 from glob import glob
 from itertools import chain
-from pathlib import Path
 import os
+import re
 import subprocess
-import sys
 
 if os.path.exists('/home/dnanexus'):
     # running in DNAnexus
@@ -15,13 +15,13 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        time_stamp
+        make_path, prettier_print, time_stamp
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, split_manifest_tests, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        time_stamp
+        make_path, prettier_print, time_stamp
 
 import dxpy
 import pandas as pd
@@ -99,7 +99,7 @@ class CheckInputs():
 
         if not files:
             # dir appears empty, try again if not prefixed with /output/
-            if not re.match(r'/output'):
+            if not re.match(r'/output', path):
                 prefix_path = make_path('/output', path)
                 files = list(dxpy.find_data_objects(
                     project=project,
@@ -120,10 +120,15 @@ class CheckInputs():
             )
 
     def check_mode_set(self):
-        """Check at least one running mode set"""
+        """Check at least one running mode set and manifest passed if running reports"""
         modes = ['cnv_call', 'cnv_reports', 'snv_reports', 'mosaic_reports']
         if not any(self.inputs.get(x) for x in modes):
             self.errors.append('No mode specified to run in')
+
+        if any(modes.pop(0)) and not self.inputs.get('manifest_file'):
+            self.errors.append(
+                'Reports argument specified with no manifest file'
+            )
 
 
 @dxpy.entry_point('main')
@@ -185,7 +190,7 @@ def main(
     genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
     genepanels = genepanels[genepanels.duplicated()]
     genepanels = split_genepanels_test_codes(genepanels)
-    
+
     # parse manifest and format into a mapping of sampleID -> test codes
     manifest_data = DXManage().read_dxfile(manifest_file)
     manifest, manifest_source = parse_manifest(manifest_data)
@@ -235,7 +240,7 @@ def main(
                 "cnv_call_job_ID not specified. Please rerun with "
                 "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
             )
-        cnv_report_jobs = DXExecute().cnv_reports(
+        cnv_report_jobs, cnv_reports_errors = DXExecute().cnv_reports(
             workflow_id=assay_config.get('cnv_report_workflow_id'),
             call_job_id=cnv_call_job_id,
             single_output_dir=single_output_dir,
@@ -249,7 +254,7 @@ def main(
         launched_jobs['cnv_reports'] = cnv_report_jobs
 
     if snv_reports:
-        snv_reports = DXExecute().snv_reports(
+        snv_reports, snv_reports_errors = DXExecute().snv_reports(
             workflow_id=assay_config.get('snv_report_workflow_id'),
             single_output_dir=single_output_dir,
             manifest=manifest,
@@ -262,7 +267,7 @@ def main(
         launched_jobs['snv_reports'] = snv_reports
 
     if mosaic_reports:
-        mosaic_reports = DXExecute().snv_reports(
+        mosaic_reports, mosaic_reports_errors = DXExecute().snv_reports(
             workflow_id=assay_config.get('snv_report_workflow_id'),
             single_output_dir=single_output_dir,
             manifest=manifest,
@@ -284,5 +289,26 @@ def main(
         print("Terminating launched jobs...")
         DXExecute().terminate(list(chain(*launched_jobs.values())))
 
+    if any([
+        invalid_tests, snv_reports_errors,
+        cnv_reports_errors, mosaic_reports_errors
+    ]):
+        # some kind of error occured
+        print("One or more errors occured during launching of jobs:")
+        if invalid_tests:
+            print("The following test codes provided were invalid:")
+            prettier_print(invalid_tests)
+
+        if snv_reports_errors:
+            print("The following errors occured when launching SNV reports:")
+            prettier_print(snv_reports_errors)
+
+        if cnv_reports_errors:
+            print("The following errors occured when launching CNV reports:")
+            prettier_print(cnv_reports_errors)
+
+        if mosaic_reports_errors:
+            print("The following errors occured when launching mosaic reports:")
+            prettier_print(mosaic_reports_errors)
 
 dxpy.run()

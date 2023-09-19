@@ -5,14 +5,16 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 import json
+from pprint import PrettyPrinter
 import re
-from typing import Union
+from typing import Tuple
 
 import pandas as pd
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
+PPRINT = PrettyPrinter(indent=2, width=1000).pprint
 
 
 def time_stamp() -> str:
@@ -341,7 +343,8 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     return data, manifest_source
 
 
-def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
+def filter_manifest_samples_by_files(
+        manifest, files, name, pattern) -> Tuple[dict, list, list]:
     """
     Filter samples in manifest against those where required per sample
     files have been found with DXManage.find_files().
@@ -362,12 +365,12 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
             (Gemini naming)
             manifest name : X12345
             vcf name      : X12345-GM12345_much_suffix.vcf.gz
-            pattern       : '^X[\d]+'
+            pattern       : r'^X[\d]+'
 
             (Epic naming)
             manifest_name : 124801362-23230R0131
             vcf name      : 124801362-23230R0131-23NGSCEN15-8128-M-96527.vcf.gz
-            pattern       : '^[\d\w]+-[\d\w]+'
+            pattern       : r'^[\d\w]+-[\d\w]+'
 
     Returns
     -------
@@ -375,6 +378,10 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
         subset of manifest mapping dict with samples removed that have
         no files and with DXFile objects added under '{name}' as a list
         for each sample where one or more files were found
+    list
+        list of sample IDs that didn't match the specified pattern
+    list
+        list of sample IDs that didn't match a file
     """
     # build mapping of prefix using given pattern to matching files
     # i.e. {'124801362-23230R0131': DXFileObject{'id': ...}}
@@ -438,10 +445,10 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
             f"have any matching files: {manifest_no_files}"
         )
 
-    return manifest_with_files
+    return manifest_with_files, manifest_no_match, manifest_no_files
 
 
-def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
+def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     """
     Parse through manifest dict of sampleID -> test codes to check
     all codes are valid and exlcude those that are invalid against
@@ -456,7 +463,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
 
     Returns
     -------
-    Union[dict, dict]
+    Tuple[dict, dict]
         2 dicts of manifest with valid test codes and those that are invalid
     """
     print("Checking test codes in manifest are valid...")
@@ -613,7 +620,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     """
     print("Finding panels and clinical indications for tests")
     print("Manifest before")
-    prettier_print(manifest)
+    PPRINT(manifest)
 
     manifest_with_panels = {}
 
@@ -655,6 +662,6 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
         manifest_with_panels[sample] = sample_tests
 
     print("Manifest after")
-    prettier_print(manifest_with_panels)
+    PPRINT(manifest_with_panels)
 
     return manifest_with_panels

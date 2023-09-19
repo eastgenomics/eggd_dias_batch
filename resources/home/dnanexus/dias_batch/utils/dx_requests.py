@@ -6,7 +6,6 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
-from prettier_print import PrettyPrinter
 import re
 from timeit import default_timer as timer
 
@@ -64,7 +63,7 @@ class DXManage():
             config = json.loads(dxpy.bindings.dxfile.DXFile(
                 project=file_details['project'], dxid=file_details['id']).read())
 
-            print(f"Assay config file contents:")
+            print("Assay config file contents:")
             prettier_print(config)
             return config
 
@@ -113,7 +112,7 @@ class DXManage():
             if config_data.get('version') > highest_config.get('version'):
                 config_data['dxid'] = file['id']
                 highest_config = config_data
-        
+
         print(
             f"Highest version config found for {assay} was "
             f"{highest_config.get('version')} from {highest_config.get('dxid')}"
@@ -185,8 +184,9 @@ class DXManage():
         list
             list of files found
         """
-        path = path.rstrip('/')  # I define these and not the user but just
-        subdir = subdir.strip('/')     # incase I forget anywhere and have extra /
+        path = path.rstrip('/')
+        if subdir:
+            subdir = subdir.strip('/')
 
         print(
             f"Searching for files in {path} and subdir {dir} with "
@@ -213,6 +213,16 @@ class DXManage():
                 x for x in files
                 if x['describe']['folder'].startswith(f"{path}/{subdir}")
             ]
+
+        not_live = [
+            f"{x['describe']['name']} ({x['id']})" for x in files
+            if x['describe']['archivalState'] != 'live'
+        ]
+        if not_live:
+            raise RuntimeError(
+                f"WARNING: one or more files found in {path} are not in "
+                f"a live state: {prettier_print(not_live)}"
+            )
 
         print(f"Found {len(files)} files")
 
@@ -304,7 +314,7 @@ class DXManage():
         dict
             mapping of stage ID -> output folder path
         """
-        print("Creating output folder structure")
+        print("Generating output folder structure")
         stage_folders = {}
 
         for stage in workflow['stages']:
@@ -321,7 +331,7 @@ class DXManage():
 
             stage_folders[stage['id']] = path
 
-        print("Output folders created:")
+        print("Output folders to use:")
         prettier_print(stage_folders)
 
         return stage_folders
@@ -359,13 +369,17 @@ class DXExecute():
             single_output_dir, cnv_config['inputs']['bambais']['folder']
         )
 
-        files = list(dxpy.find_data_objects(
-            name=cnv_config['inputs']['bambais']['name'],
-            name_mode='regexp',
-            project=os.environ.get("DX_PROJECT_CONTEXT_ID"),
-            folder=bam_dir,
-            describe=True
-        ))
+        files = DXManage().find_files(
+            pattern=cnv_config['inputs']['bambais']['name'],
+            path=f"{os.environ.get('DX_PROJECT_CONTEXT_ID')}:{bam_dir}"
+        )
+        # files = list(dxpy.find_data_objects(
+        #     name=cnv_config['inputs']['bambais']['name'],
+        #     name_mode='regexp',
+        #     project=os.environ.get("DX_PROJECT_CONTEXT_ID"),
+        #     folder=bam_dir,
+        #     describe=True
+        # ))
 
         print(f"Found {len(files)} .bam/.bai files in {bam_dir}")
 
@@ -386,16 +400,16 @@ class DXExecute():
                     f"bam files found for CNV calling:\n\t{exclude_not_present}"
                     "\nIgnoring these and continuing..."
                 )
-            
+
             files = [
                 file for file in files
                 if not file['describe']['name'].split('_')[0] in exclude
             ]
             print(f"{len(files)} .bam/.bai files after exlcuding")
-        
+
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['inputs']['bambais'] = files
-        
+
         # set output folder relative to single dir
         app_details = dxpy.describe(config.get('cnv_call_app_id'))
         folder = make_path(
@@ -411,7 +425,7 @@ class DXExecute():
             project=os.environ.get('DX_PROJECT_CONTEXT_ID'),
             folder=folder,
             priority='high',
-            detach=True,
+            # detach=True,
             instance_type=cnv_config.get('instance_type')
         )
 
@@ -476,6 +490,8 @@ class DXExecute():
         -------
         list
             list of job IDs launched
+        dict
+            dict of any errors found (i.e. samples missing files)
         
         Raises
         ------
@@ -486,19 +502,27 @@ class DXExecute():
 
         # get required files
         job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
-        segment_vcfs = list(dxpy.find_data_objects(
-            name="segments.vcf$",
-            name_mode='regexp',
-            project=job_details.get('project'),
-            folder=job_details.get('folder'),
-            describe=True
+        # segment_vcfs = list(dxpy.find_data_objects(
+        #     name="segments.vcf$",
+        #     name_mode='regexp',
+        #     project=job_details.get('project'),
+        #     folder=job_details.get('folder'),
+        #     describe=True
+        # ))
+        segment_vcfs = list(DXManage().find_files(
+            path=f"{job_details.get('project')}:{job_details.get('folder')}",
+            pattern="segments.vcf$"
         ))
-        excluded_intervals_bed = list(dxpy.find_data_objects(
-            name="_excluded_intervals.bed$",
-            name_mode='regexp',
-            project=job_details.get('project'),
-            folder=job_details.get('folder'),
-            describe=True
+        # excluded_intervals_bed = list(dxpy.find_data_objects(
+        #     name="_excluded_intervals.bed$",
+        #     name_mode='regexp',
+        #     project=job_details.get('project'),
+        #     folder=job_details.get('folder'),
+        #     describe=True
+        # ))
+        excluded_intervals_bed = list(DXManage().find_files(
+            path=f"{job_details.get('project')}:{job_details.get('folder')}",
+            pattern="_excluded_intervals.bed$"
         ))
 
         if not excluded_intervals_bed:
@@ -525,20 +549,25 @@ class DXExecute():
             pattern = r'X[\d]+'
 
         # ensure we have a vcf per sample, exclude those that don't have one
-        manifest = filter_manifest_samples_by_files(
+        manifest, manifest_no_match, manifest_no_vcf = filter_manifest_samples_by_files(
             manifest=manifest,
             files=segment_vcfs,
             name='segment_vcf',
             pattern=pattern
         )
 
-        #TODO - decide what to do if no samples have a vcf - exit?
-        #TODO - return samples exlcuded for no vcf for summary
+        # gather errors to display later
+        errors = {}
 
-        # add run level file(s) to workflow config
-        config[
-            'stage-cnv_annotate_excluded_regions.excluded_regions'
-        ] = excluded_intervals_bed
+        if manifest_no_match:
+            errors[
+                f"Samples in manifest not matching pattern: {pattern}"
+            ] = manifest_no_match
+
+        if manifest_no_vcf:
+            errors[
+                "Samples in manifest with no VCF found"
+            ] = manifest_no_vcf
 
         workflow_details = dxpy.describe(workflow_id)
 
@@ -568,6 +597,7 @@ class DXExecute():
                     f"{len(all_test_lists)} for {sample} with "
                     f"test(s): {test_list}"
                 )
+
                 input = deepcopy(config['inputs'])
                 input['stage-cnv_vep.vcf'] = {
                     "$dnanexus_link": {
@@ -575,6 +605,11 @@ class DXExecute():
                         "id": segment_vcf['id']
                     }
                 }
+
+                # add run level excluded regions file to input
+                input[
+                    'stage-cnv_annotate_excluded_regions.excluded_regions'
+                ] = excluded_intervals_bed
 
                 # add required string inputs of panels and indications
                 panels = ';'.join(sample_config['panels'][idx])
@@ -593,26 +628,24 @@ class DXExecute():
                 ).run(
                     workflow_input=input,
                     rerun_stages=['*'],
-                    detach=True,
+                    # detach=True,
                     name=f"{workflow_details['name']}_{sample}_{codes}",
                     stage_folders=stage_folders
-                )  
-            
+                )
+
                 launched_jobs.append(job_handle._dxid)
-            
+
             samples_run += 1
             if samples_run == sample_limit:
-                print(
-                    f"Sample limit hit, stopping launching further jobs"
-                )
+                print("Sample limit hit, stopping launching further jobs")
                 break
-    
+
         end = timer()
         print(
             f"Successfully launched {len(launched_jobs)} CNV reports "
             f"workflows in {round(end - start)}s"
         )
-        return launched_jobs
+        return launched_jobs, errors
 
 
     def snv_reports(
@@ -651,6 +684,8 @@ class DXExecute():
         -------
         list
             list of job IDs launched
+        dict
+            dict of any errors found (i.e samples with no files)
         """
         # find .vcf or .vcf.gz but NOT .g.vcf
         vcf_files = DXManage().find_files(
@@ -685,19 +720,37 @@ class DXExecute():
 
         # ensure we have a vcf and mosdepth files per sample,
         # exclude those that don't have one
-        manifest = filter_manifest_samples_by_files(
+        manifest, manifest_no_match, manifest_no_vcf = filter_manifest_samples_by_files(
             manifest=manifest,
             files=vcf_files,
             name='sentieon_vcf',
             pattern=pattern
         )
 
-        manifest = filter_manifest_samples_by_files(
+        manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
             manifest=manifest,
             files=mosdepth_files,
             name='mosdepth',
             pattern=pattern
         )
+
+        # gather errors to display later
+        errors = {}
+
+        if manifest_no_match:
+            errors[
+                f"Samples in manifest not matching pattern: {pattern}"
+            ] = manifest_no_match
+
+        if manifest_no_vcf:
+            errors[
+                "Samples in manifest with no VCF found"
+            ] = manifest_no_vcf
+
+        if manifest_no_mosdepth:
+            errors[
+                "Samples in manifest with no mosdepth files found"
+            ] = manifest_no_mosdepth
 
         workflow_details = dxpy.describe(workflow_id)
 
@@ -765,7 +818,7 @@ class DXExecute():
                 ).run(
                     workflow_input=input,
                     rerun_stages=['*'],
-                    detach=True,
+                    # detach=True,
                     name=f"{workflow_details['name']}_{sample}_{codes}",
                     stage_folders=stage_folders
                 )
@@ -782,7 +835,7 @@ class DXExecute():
             f"Successfully launched {len(launched_jobs)} SNV reports "
             f"workflows in {round(end - start)}s"
         )
-        return launched_jobs
+        return launched_jobs, errors
 
 
     @staticmethod
