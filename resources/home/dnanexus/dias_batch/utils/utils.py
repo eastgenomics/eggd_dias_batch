@@ -224,7 +224,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     against manifest
 
     +-----------------------+--------------------------+
-    |      gemini_name      |        panel_name        |
+    |      indication      |        panel_name        |
     +-----------------------+--------------------------+
     | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
     | C2.1_INSR             | CUH_INSR_1.0             |
@@ -234,7 +234,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
                                     ▼
                                         
     +-----------+-----------------------+---------------------------+
-    | test_code |      gemini_name      |        panel_name         |
+    | test_code |      indication      |        panel_name         |
     +-----------+-----------------------+---------------------------+
     | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
     | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
@@ -251,10 +251,10 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     pd.DataFrame
         genepanels with test code split to separate column
     """
-    genepanels['test_code'] = genepanels['gemini_name'].apply(
+    genepanels['test_code'] = genepanels['indication'].apply(
         lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
     )
-    genepanels = genepanels[['test_code', 'gemini_name', 'panel_name']]
+    genepanels = genepanels[['test_code', 'indication', 'panel_name']]
 
     print(f"Genepanels file: \n{genepanels}")
 
@@ -707,7 +707,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     )
 
                     panels.append(genepanels_row.iloc[0].panel_name)
-                    indications.append(genepanels_row.iloc[0].gemini_name)
+                    indications.append(genepanels_row.iloc[0].indication)
                 elif re.fullmatch(r'_HGNC:[\d]+', test):
                     # add gene IDs as is to all lists
                     panels.append(test)

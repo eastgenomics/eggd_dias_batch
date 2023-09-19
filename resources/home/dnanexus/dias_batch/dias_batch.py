@@ -199,7 +199,7 @@ def main(
     )
     genepanels = pd.DataFrame(
         [x.split('\t') for x in genepanels],
-        columns=['gemini_name', 'panel_name', 'hgnc_id']
+        columns=['indication', 'panel_name', 'hgnc_id']
     )
     genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
     genepanels = genepanels[genepanels.duplicated()]
