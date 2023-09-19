@@ -393,15 +393,17 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
                 manifest_with_files[sample] = manifest[sample]
                 manifest_with_files[sample][name] = sample_files
     
-    print(
-        f"{len(manifest_no_match)} samples in manifest didn't match expected "
-        f"pattern of {pattern}: {manifest_no_match}"
-    )
+    if manifest_no_match:
+        print(
+            f"{len(manifest_no_match)} samples in manifest didn't match "
+            f"expected pattern of {pattern}: {manifest_no_match}"
+        )
 
-    print(
-        f"{len(manifest_no_files)} samples in manifest didn't have any "
-        f"matching files: {manifest_no_files}"
-    )
+    if manifest_no_files:
+        print(
+            f"{len(manifest_no_files)} samples in manifest didn't "
+            f"have any matching files: {manifest_no_files}"
+        )
 
     return manifest_with_files
 
