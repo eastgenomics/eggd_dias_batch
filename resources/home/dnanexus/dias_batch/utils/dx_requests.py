@@ -318,10 +318,10 @@ class DXManage():
                     'app-', '', 1).replace('/', '-')
             
             path = make_path(
-                single_output, workflow['name'], folder_name, time_stamp
+                single_output, workflow['name'], time_stamp, folder_name
             )
 
-            stage_folders['stage']['id'] = path
+            stage_folders[stage['id']] = path
         
         print("Output folders created:")
         PPRINT(stage_folders)
