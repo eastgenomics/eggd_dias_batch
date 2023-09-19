@@ -144,6 +144,7 @@ def write_summary_report(output, manifest, **summary) -> None:
 
         if outputs:
             fancy_table = pd.DataFrame(outputs).to_markdown(tablefmt="grid")
+            fancy_table.fillna(value='-', inplace=True)
             file_handle.write(
                 f"\nReports created per sample:\n\n{fancy_table}"
             )
