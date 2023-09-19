@@ -277,6 +277,58 @@ class DXManage():
             project=project, dxid=file_id).read().split('\n')
 
 
+    def format_output_folders(self, workflow, single_output, time_stamp) -> dict:
+        """
+        Generate dict of output folders for each stage of given workflow
+        for passing to dxpy.bindings.dxworkflow.DXWorkflow().run()
+
+        Will be formatted as: {
+            # for apps
+            "stage-xxx": 
+                "/{single_output}/{workflow_name}/{timestamp}/{app_name}-{version}
+            
+            # for applets
+            "stage-xxx": 
+                "/{single_output}/{workflow_name}/{timestamp}/{applet_name}
+        }
+
+        Parameters
+        ----------
+        workflow : dict
+            describe output of workflow from dxpy.describe()
+        single_output : str
+            path to single output dir
+        time_stamp : str
+            time app launched to add to folder path
+
+        Returns
+        -------
+        dict
+            mapping of stage ID -> output folder path
+        """
+        print("Creating output folder structure")
+        stage_folders = {}
+
+        for stage in workflow['stages']:
+            if stage['executable'].startswith('applet-'):
+                applet_details = dxpy.describe(stage['executable'])
+                folder_name = applet_details['name']
+            else:
+                folder_name = stage['executable'].replace(
+                    'app-', '', 1).replace('/', '-')
+            
+            path = make_path(
+                single_output_dir, workflow['name'], folder_name, time_stamp
+            )
+
+            stage_folders['stage']['id'] = path
+        
+        print("Output folders created:")
+        PPRINT(stage_folders)
+        
+        return stage_folders
+                
+
 class DXExecute():
     """
     Methods for handling exeuction of apps / worklfows
@@ -492,8 +544,10 @@ class DXExecute():
 
         workflow_details = dxpy.describe(workflow_id)
 
-        out_folder = make_path(
-            single_output_dir, workflow_details['name'], start
+        stage_folders = DXManage().format_output_folders(
+            workflow=workflow_details,
+            single_output=single_output_dir,
+            time_stamp=start
         )
 
         print("Launching CNV reports per sample...")
@@ -542,7 +596,8 @@ class DXExecute():
                     workflow_input=input,
                     rerun_stages=['*'],
                     detach=True,
-                    name=f"{workflow_details['name']}_{sample}_{codes}"
+                    name=f"{workflow_details['name']}_{sample}_{codes}",
+                    stage_folders=stage_folders
                 )  
             
                 launched_jobs.append(job_handle._dxid)
@@ -648,6 +703,12 @@ class DXExecute():
 
         workflow_details = dxpy.describe(workflow_id)
 
+        stage_folders = DXManage().format_output_folders(
+            workflow=workflow_details,
+            single_output=single_output_dir,
+            time_stamp=start
+        )
+
         out_folder = make_path(
             single_output_dir, workflow_details['name'], start
         )
@@ -712,7 +773,7 @@ class DXExecute():
                     rerun_stages=['*'],
                     detach=True,
                     name=f"{workflow_details['name']}_{sample}_{codes}",
-                    folder=out_folder
+                    stage_folders=stage_folders
                 )
             
                 launched_jobs.append(job_handle._dxid)
