@@ -325,7 +325,7 @@ class DXManage():
         prettier_print(stage_folders)
 
         return stage_folders
-   
+
 
 class DXExecute():
     """
