@@ -19,13 +19,28 @@
                     "name": ".bam$|.bam.bai$"
                 },
                 "GATK_docker": {
-                    "$dnanexus_link": "file-GBBP9JQ433GxV97xBpQkzYZx"
+                    "$dnanexus_link": {
+                        "$dnanexus_link": {
+                            "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                            "id": "file-GBBP9JQ433GxV97xBpQkzYZx"
+                        }
+                    }
                 },
                 "annotation_tsv": {
-                    "$dnanexus_link": "file-GFPxzPQ4V50z4pv230p82G0q"
+                    "$dnanexus_link": {
+                        "$dnanexus_link": {
+                            "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                            "id": "file-GFPxzPQ4V50z4pv230p82G0q"
+                        }
+                    }
                 },
                 "interval_list": {
-                    "$dnanexus_link": "file-GFPxzKj4V50pJX3F4vV58yyg"
+                    "$dnanexus_link": {
+                        "$dnanexus_link": {
+                            "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                            "id": "file-GFPxzKj4V50pJX3F4vV58yyg"
+                        }
+                    }
                 }
             }
         },
