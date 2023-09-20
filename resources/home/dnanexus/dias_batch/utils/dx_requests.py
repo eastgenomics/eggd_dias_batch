@@ -214,9 +214,10 @@ class DXManage():
 
         if subdir:
             # filter down to just those in the given sub dir
+            sub_path = f"{path}/{subdir}".lower()
             files = [
                 x for x in files
-                if x['describe']['folder'].startswith(f"{path}/{subdir}")
+                if x['describe']['folder'].lower().startswith(sub_path)
             ]
 
         not_live = [
@@ -732,14 +733,16 @@ class DXExecute():
         # find .vcf or .vcf.gz but NOT .g.vcf
         vcf_files = DXManage().find_files(
             path=single_output_dir,
-            subdir=config.get('vcf_subdir'),
-            pattern=r"^[^\.]*(?!\.g)\.vcf(\.gz)?$"
+            subdir=config.get('inputs').get('stage-rpt_vep.vcf').get('folder'),
+            pattern=config.get('inputs').get('stage-rpt_vep.vcf').get('name')
         )
 
         mosdepth_files = DXManage().find_files(
             path=single_output_dir,
-            subdir='eggd_mosdepth',
-            pattern=r"per-base.bed.gz$|reference.txt$"
+            subdir=config.get(
+                'inputs').get('stage-rpt_athena.mosdepth_files').get('folder'),
+            pattern=config.get(
+                'inputs').get('stage-rpt_athena.mosdepth_files').get('name')
         )
 
         # find all previous xlsx reports to use for indexing report names
