@@ -13,6 +13,15 @@
 - passing job ID vs output path of cnv call
 
 
+
+
+    
+
+    # print a pretty summary
+    df = pd.DataFrame(cnv_report_summary)
+    df['CNV'] = df['CNV'].str.join('\n')
+    print(df.to_markdown(tablefmt="grid"))
+
 # Running cnv reports
 
 ## Epic manifest
