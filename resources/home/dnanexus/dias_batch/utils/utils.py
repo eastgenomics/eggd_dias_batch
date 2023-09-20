@@ -143,6 +143,8 @@ def write_summary_report(output, manifest=None, **summary) -> None:
             outputs = {**outputs, **summary.get('cnv_report_summary')}
         if summary.get('snv_report_summary'):
             outputs = {**outputs, **summary.get('snv_report_summary')}
+        if summary.get('mosaic_report_summary'):
+            outputs = {**outputs, **summary.get('mosaic_report_summary')}
 
         if outputs:
             fancy_table = pd.DataFrame(outputs)
