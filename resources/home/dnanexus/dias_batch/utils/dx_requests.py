@@ -449,19 +449,19 @@ class DXExecute():
 
 
     def reports_workflow(
-        self,
-        mode,
-        workflow_id,
-        single_output_dir,
-        manifest,
-        manifest_source,
-        config,
-        start,
-        sample_limit=None,
-        exclude_samples=None,
-        call_job_id=None,
-        parent=None
-        ) -> Tuple(list, dict):
+            self,
+            mode,
+            workflow_id,
+            single_output_dir,
+            manifest,
+            manifest_source,
+            config,
+            start,
+            sample_limit=None,
+            exclude_samples=None,
+            call_job_id=None,
+            parent=None
+        ) -> Tuple[list, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
         CNV,SNV or mosaic reports
