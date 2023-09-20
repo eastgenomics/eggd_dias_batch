@@ -208,6 +208,7 @@ def main(
     )
     genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
     genepanels.drop_duplicates(keep='first', inplace=True)
+    genepanels.reset_index(inplace=True)
     genepanels = split_genepanels_test_codes(genepanels)
 
     # parse manifest and format into a mapping of sampleID -> test codes

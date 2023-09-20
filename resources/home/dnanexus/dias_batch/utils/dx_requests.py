@@ -651,7 +651,7 @@ class DXExecute():
                     workflow_input=input,
                     rerun_stages=['*'],
                     detach=True,
-                    name=f"{workflow_details['name']}_{sample}_{codes}",
+                    name=f"{workflow_details['name']}_{sample}_{codes} (CNV)",
                     stage_folders=stage_folders,
                     depends_on=parent
                 )

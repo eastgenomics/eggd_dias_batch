@@ -589,9 +589,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
         # dependent on what genes / panels have been requested
         for test_list in test_codes['tests']:
             valid_tests = []
-            print(f"test list: {test_list}")
             for test in test_list:
-                print(f"single test: {test}")
                 if test in genepanels_test_codes or re.match(r'_HGNC:[\d]+', test):
                     #TODO: should we check that we have a transcript assigned
                     # to this HGNC ID?
