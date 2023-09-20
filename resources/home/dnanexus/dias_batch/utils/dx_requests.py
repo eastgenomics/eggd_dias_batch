@@ -297,11 +297,11 @@ class DXManage():
 
         Will be formatted as: {
             # for apps
-            "stage-xxx": 
+            "stage-xxx":
                 "/{single_output}/{workflow_name}/{timestamp}/{app_name}-{version}
-            
+
             # for applets
-            "stage-xxx": 
+            "stage-xxx":
                 "/{single_output}/{workflow_name}/{timestamp}/{applet_name}
         }
 
@@ -706,7 +706,7 @@ class DXExecute():
             mapping of sampleID -> testCodes parsed from manifest
         manifest_source : str
             source of manifest (Epic or Gemini), required for filtering
-            pattern against sample name 
+            pattern against sample name
         config : dict
             config for assay, defining fixed inputs for workflow
         mode : str

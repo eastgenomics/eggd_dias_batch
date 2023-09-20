@@ -91,7 +91,7 @@ def write_summary_report(output, manifest, **summary) -> None:
         mapping of samples in manifest -> requested test codes
     summary : kwargs
         all possible named summary metrics to write
-    
+
     Outputs
     -------
     {output}.txt file of launched job summary
@@ -106,14 +106,14 @@ def write_summary_report(output, manifest, **summary) -> None:
             f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
         )
         launched_jobs = '\n\t'.join([
-            f"{k} : {len(v)} jobs" for k,v
+            f"{k} : {len(v)} jobs" for k, v
             in summary.get('launched_jobs').items()
         ])
         file_handle.write(f"\nTotal jobs launched:\n\t{launched_jobs}\n")
 
         if summary.get('invalid_tests'):
             invalid_tests = '\n\t'.join([
-                f"{k} : {v}" for k,v
+                f"{k} : {v}" for k, v
                 in summary.get('invalid_tests').items()
             ])
             file_handle.write(
@@ -121,8 +121,8 @@ def write_summary_report(output, manifest, **summary) -> None:
             )
 
         report_summaries = {
-            "snv_report_errors" : "SNV",
-            "cnv_report_errors" : "CNV",
+            "snv_report_errors": "SNV",
+            "cnv_report_errors": "CNV",
             "mosaic_report_errors": "mosaic"
         }
 
@@ -130,7 +130,7 @@ def write_summary_report(output, manifest, **summary) -> None:
         for key, word in report_summaries.items():
             if summary.get(key):
                 errors = '\n\t'.join([
-                    f"{k} : {v}" for k,v in summary.get(key).items()
+                    f"{k} : {v}" for k, v in summary.get(key).items()
                 ])
                 file_handle.write(
                     f"\nErrors in launching {word} reports:\n\t{errors}\n"
@@ -208,7 +208,7 @@ def fill_config_reference_inputs(config) -> dict:
 
     # empty so we can fill with new inputs
     for mode in filled_config['modes']:
-        filled_config['modes'][mode]['inputs'] = {} 
+        filled_config['modes'][mode]['inputs'] = {}
 
     for mode, mode_config in config['modes'].items():
         if not mode_config.get('inputs'):
@@ -259,7 +259,7 @@ def fill_config_reference_inputs(config) -> dict:
                 break
 
             if not match:
-                # this input isn't a reference file => add back as is   
+                # this input isn't a reference file => add back as is
                 filled_config['modes'][mode]['inputs'][input] = value
 
     print("And now it's filled:")
@@ -356,7 +356,7 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         contents = [x.split('\t') for x in contents if x]
 
         # sense check data does only have 2 columns
-        assert all([len(x)==2 for x in contents]), (
+        assert all([len(x) == 2 for x in contents]), (
             f"Gemini manifest has more than 2 columns:\n\t{contents}"
         )
 
@@ -365,13 +365,13 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             if not all([
                 re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
             ]):
-                #TODO - as above, error or throw out
+                # TODO - as above, error or throw out
                 raise RuntimeError(
                     'Invalid test code(s) provided for sample '
                     f'{sample[0]} : {sample[1]}'
                 )
             # add test codes to samples list, keeping just the code part
-            # and not full string (i.e. R134.2 from 
+            # and not full string (i.e. R134.2 from
             # R134.1_Familialhypercholesterolaemia_P)
             data[sample[0]]['tests'].append([
                 re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
@@ -433,7 +433,7 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             if not all([
                 re.match(r"[RC][\d]+\.[\d]+|_HGNC", x) for x in test_codes
             ]):
-                #TODO - do we want to raise an error here or just throw it out?
+                # TODO - do we want to raise an error here or just throw it out?
                 raise RuntimeError(
                     f'Badly formatted test code provided for sample {row}'
                 )
