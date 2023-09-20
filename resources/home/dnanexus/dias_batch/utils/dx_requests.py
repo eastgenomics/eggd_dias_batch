@@ -637,7 +637,7 @@ class DXExecute():
 
                     print(
                         f"Already launched report for current sample, "
-                        f"will now use suffix {suffix}"
+                        f"will now use suffix _{suffix}"
                     )
 
                 sample_name_to_suffix[name] = suffix

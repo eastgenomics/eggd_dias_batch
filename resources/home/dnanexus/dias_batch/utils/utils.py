@@ -70,7 +70,7 @@ def check_report_index(name, reports) -> int:
         if suffixes:
             # found something useful, if not we're just going to use 1
             suffix = max([
-                x.group().replace('.xlsx', '') for x in suffixes if x
+                int(x.group().replace('.xlsx', '')) for x in suffixes if x
             ])
 
     print(f"Previous xlsx reports found for {name}: {bool(previous_reports)}")
@@ -404,8 +404,14 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
             'Re-analysis Specimen ID'
         ]
+
+        # remove any spaces and SP- from specimen columns
         manifest[columns] = manifest[columns].applymap(
             lambda x: x.replace(' ', ''))
+        manifest['Re-analysis Specimen ID'] = \
+            manifest['Re-analysis Specimen ID'].str.replace('SP-', '')
+        manifest['Specimen ID'] = \
+            manifest['Specimen ID'].str.replace('SP-', '')
 
         # sample id may be split between 'Specimen ID' and 'Instrument ID' or
         # Re-analysis Specimen ID and Re-analysis Instrument ID columns, join
