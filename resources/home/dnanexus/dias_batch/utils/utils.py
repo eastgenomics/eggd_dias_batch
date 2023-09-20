@@ -73,6 +73,9 @@ def check_report_index(name, reports) -> int:
                 x.group().replace('.xlsx', '') for x in suffixes if x
             ])
 
+    print(f"Previous xlsx reports found for {name}: {bool(previous_reports)}")
+    print(f"Using suffix: {suffix + 1}")
+
     return suffix + 1
 
 
@@ -139,8 +142,6 @@ def write_summary_report(output, manifest, **summary) -> None:
             outputs = {**outputs, **summary.get('cnv_report_summary')}
         if summary.get('snv_report_summary'):
             outputs = {**outputs, **summary.get('snv_report_summary')}
-        if summary.get('mosaic_report_summary'):
-            outputs = {**outputs, **summary.get('mosaic_report_summary')}
 
         if outputs:
             fancy_table = pd.DataFrame(outputs)
@@ -350,7 +351,36 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     # {'sample1': {'tests': [['panel1', 'gene1'], ['panel2']]}}
     data = defaultdict(lambda: defaultdict(list))
 
-    if all(';' in x for x in contents[1:] if x):
+    if all('\t' in x for x in contents if x):
+        # this is an old Gemini manifest => should just have sampleID -> CI
+        contents = [x.split('\t') for x in contents if x]
+
+        # sense check data does only have 2 columns
+        assert all([len(x)==2 for x in contents]), (
+            f"Gemini manifest has more than 2 columns:\n\t{contents}"
+        )
+
+        for sample in contents:
+            test_codes = sample[1].replace(' ', '').split(',')
+            if not all([
+                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
+            ]):
+                #TODO - as above, error or throw out
+                raise RuntimeError(
+                    'Invalid test code(s) provided for sample '
+                    f'{sample[0]} : {sample[1]}'
+                )
+            # add test codes to samples list, keeping just the code part
+            # and not full string (i.e. R134.2 from 
+            # R134.1_Familialhypercholesterolaemia_P)
+            data[sample[0]]['tests'].append([
+                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
+                for x in test_codes
+            ])
+
+        manifest_source = 'Gemini'
+
+    elif all(';' in x for x in contents[1:] if x):
         # csv file => Epic style manifest
         # (not actually a csv file even though they call it .csv since it
         # has ; as a delimeter and everything is a lie)
@@ -413,36 +443,6 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
                     f"Error in sample formatting of row {idx + 1} in manifest:"
                     f"\n\t{row}"
                 )
-
-    elif all('\t' in x for x in contents if x):
-        # this is an old Gemini manifest => should just have sampleID -> CI
-        contents = [x.split('\t') for x in contents if x]
-
-        # sense check data does only have 2 columns
-        assert all([len(x)==2 for x in contents]), (
-            f"Gemini manifest has more than 2 columns:\n\t{contents}"
-        )
-
-        for sample in contents:
-            test_codes = sample[1].replace(' ', '').split(',')
-            if not all([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
-            ]):
-                #TODO - as above, error or throw out
-                raise RuntimeError(
-                    'Invalid test code(s) provided for sample '
-                    f'{sample[0]} : {sample[1]}'
-                )
-            # add test codes to samples list, keeping just the code part
-            # and not full string (i.e. R134.2 from 
-            # R134.1_Familialhypercholesterolaemia_P)
-            data[sample[0]]['tests'].append([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
-                for x in test_codes
-            ])
-
-        manifest_source = 'Gemini'
-
     else:
         # throw an error here as something is up with the file
         raise RuntimeError("Manifest file provided does not seem valid")
@@ -617,6 +617,11 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
         print(
             "WARNING: samples with invalid test codes resulting in having "
             f"no tests to run reports for: {no_tests}"
+        )
+
+    if not manifest:
+        raise RuntimeError(
+            "All samples had invalid test codes resulting in an empty manifest"
         )
 
     return valid, invalid
