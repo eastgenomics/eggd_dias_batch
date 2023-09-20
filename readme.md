@@ -7,17 +7,26 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 
 ## What inputs are required for this app to run?
 
-- `-iassay` (`str`): string of assay to run analysis for (CEN or TWE), used for searching of config files
-- `-iassay_config_file` (`file`): Config file for assay, if not provided will search assay_config_dir for files
+**Required**
+- `-iassay` (`str`): string of assay to run analysis for (CEN or TWE), used for searching of config files automatically (if `-iassay_config_file` not specified)
+- `-iassay_config_file` (`file`): Config file for assay, if not provided will search assay_config_dir for files (using `-iassay`)
 - `-isingle_output_dir` (`str`): path to output directory of Dias single to use as input files
-- `-imanifest_file` (`file`): manifest file from Epic or Gemini, maps sample ID -> required test codes / HGNC IDs
-- `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
+- `-imanifest_file` (`file`): manifest file from Epic or Gemini, maps sample ID -> required test codes / HGNC IDs (required for running any reports mode)
+
+**Useful ones**
+
 - `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run
 - `-iexclude_samples` (`str`): comma separated string of samples to exclude from analysis
+- `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
+
+
+**Running modes**
 - `-icnv_call` (`bool`): controls if to run CNV calling
 - `-icnv_reports` (`bool`): controls if to run CNV reports workflows
 - `-isnv_reports` (`bool`): controls if to run SNV reports workflows
 - `-imosaic_reports` (`bool`): controls if to run mosaic reports workflow
+
+**Testing**
 - `-itesting` (`bool`): controls if to run in testing mode and terminate all launched jobs after launching
 - `-isample_limit` (`int`): no. of samples to launch jobs for, used during testing to speed up running of app
 
