@@ -92,7 +92,7 @@ n.b.
 
 ## Config file design
 
-The config file for an assay is written in JSON format and specifies the majority of inputs for running each type of analysis. A populated example config file may be found here[TODO].
+The config file for an assay is written in JSON format and specifies the majority of inputs for running each type of analysis. A populated example config file may be found [here](example/dias_batch_example_config.json).
 
 The top level section should be structured as follows:
 ```
