@@ -436,12 +436,12 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
 
         for idx, row in manifest.iterrows():
             # split test codes to list and sense check they're valid format
-            # will be formatted as 'R211.1, , , ,' or '_HGNC:1234, , , ,' etc.
+            # will be formatted as 'R211.1, , , ,' or 'HGNC:1234, , , ,' etc.
             test_codes = [
                 x for x in row['Test Codes'].replace(' ', '').split(',') if x
             ]
             if not all([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC", x) for x in test_codes
+                re.match(r"[RC][\d]+\.[\d]+|HGNC", x) for x in test_codes
             ]):
                 # TODO - do we want to raise an error here or just throw it out?
                 raise RuntimeError(
