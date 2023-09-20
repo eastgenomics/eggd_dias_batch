@@ -279,7 +279,7 @@ class DXManage():
             project, file_id = file.split(':')
             file_details = dxpy.bindings.dxfile.DXFile(
                 project=project, dxid=file_id).describe()
-            file_name = file_details['name'] 
+            file_name = file_details['name']
         else:
             # who knows what's happened, not for me to deal with
             raise RuntimeError(
@@ -635,6 +635,11 @@ class DXExecute():
                     # this current job => increment from this
                     suffix = sample_name_to_suffix.get(name) + 1
 
+                    print(
+                        f"Already launched report for current sample, "
+                        f"will now use suffix {suffix}"
+                    )
+
                 sample_name_to_suffix[name] = suffix
                 name = f"{name}_{suffix}"
 
@@ -869,6 +874,11 @@ class DXExecute():
                     # we have already launched a report for this sample in
                     # this current job => increment from this
                     suffix = sample_name_to_suffix.get(name) + 1
+
+                    print(
+                        f"Already launched report for current sample, "
+                        f"will now use suffix {suffix}"
+                    )
 
                 sample_name_to_suffix[name] = suffix
                 name = f"{name}_{suffix}"

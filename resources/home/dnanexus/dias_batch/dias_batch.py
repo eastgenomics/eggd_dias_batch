@@ -27,6 +27,11 @@ import dxpy
 import pandas as pd
 
 
+# for prettier viewing in the logs
+pd.set_option('display.max_rows', 200)
+pd.set_option('max_colwidth', 1500)
+
+
 class CheckInputs():
     """
     Basic methods for validating app inputs
@@ -50,8 +55,8 @@ class CheckInputs():
             raise RuntimeError(
                 f"Errors in inputs passed:\n\t{errors}"
             )
-        else:
-            print("Inputs valid, continuing...")
+
+        print("Inputs valid, continuing...")
 
     def check_assay(self):
         """Check assay string passed is valid"""
@@ -202,7 +207,7 @@ def main(
         columns=['indication', 'panel_name', 'hgnc_id']
     )
     genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
-    genepanels = genepanels[genepanels.duplicated()]
+    genepanels.drop_duplicates(keep='first', inplace=True)
     genepanels = split_genepanels_test_codes(genepanels)
 
     # parse manifest and format into a mapping of sampleID -> test codes

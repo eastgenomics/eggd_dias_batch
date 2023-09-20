@@ -12,7 +12,7 @@ from typing import Tuple
 import pandas as pd
 
 # for prettier viewing in the logs
-pd.set_option('display.max_rows', 100)
+pd.set_option('display.max_rows', 200)
 pd.set_option('max_colwidth', 1500)
 PPRINT = PrettyPrinter(indent=2, width=1000).pprint
 
@@ -578,7 +578,9 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     invalid = defaultdict(list)
     valid = defaultdict(lambda: defaultdict(list))
 
-    genepanels_test_codes = set(genepanels['test_code'].tolist())
+    genepanels_test_codes = sorted(set(genepanels['test_code'].tolist()))
+
+    print(f"Current valid test codes:\n\t{genepanels_test_codes}")
 
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
@@ -587,7 +589,9 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
         # dependent on what genes / panels have been requested
         for test_list in test_codes['tests']:
             valid_tests = []
+            print(f"test list: {test_list}")
             for test in test_list:
+                print(f"single test: {test}")
                 if test in genepanels_test_codes or re.match(r'_HGNC:[\d]+', test):
                     #TODO: should we check that we have a transcript assigned
                     # to this HGNC ID?
@@ -619,7 +623,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
             f"no tests to run reports for: {no_tests}"
         )
 
-    if not manifest:
+    if not valid:
         raise RuntimeError(
             "All samples had invalid test codes resulting in an empty manifest"
         )
