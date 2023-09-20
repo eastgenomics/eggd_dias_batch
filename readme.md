@@ -24,9 +24,124 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 
 ## How does this app work?
 
+The app takes as a minimum input a path to Dias single output and an assay config. The assay config file may be passed directly (with `-iassay_config_file`) or an assay string specified to run for (with `-iassay`) which will search DNAnexus for the highest version config file and use this for analysis. If running a reports workflow a manifest file must also be specified.
+
+The general behaviour of each mode is as follows:
+
+### CNV calling
+
+Minimum inputs:
+- `-iassay` or `-iassay_config_file`
+- `-isingle_output_dir`
+
+
+### Reports workflows
+
+
+
+## Config file design
+
+The config file for an assay is written in JSON format and specifies the majority of inputs for running each type of analysis. A populated example config file may be found here[TODO].
+
+The top level section should be structured as follows:
+```
+{
+    "assay": "CEN",
+    "version": "2.2.0",
+    "cnv_call_app_id": "app-GJZVB2840KK0kxX998QjgXF0",
+    "snv_report_workflow_id": "workflow-GXzkfYj4QPQp9z4Jz4BF09y6",
+    "cnv_report_workflow_id": "workflow-GXzvJq84XZB1fJk9fBfG88XJ",
+    "reference_files": {
+        "genepanels": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562",
+        "exons_nirvana": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gk7gZ47gypK7ZZ",
+        "genes2transcripts": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GV4P970433Gj6812zGVBZvB4",
+        "exonsfile": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gf99pBPbJkV7bq"
+    },
+    ...
+```
+- `assay` (`str`) : assay type the config is for, used  for finding highest version config file when `-iassay` is specified
+- `version` (`str`) : the version of this config file
+- `{cnv_call_app|_report_workflow}_id` (`str`) : the IDs of CNV calling and reports workflows to use
+- `reference_files` (`dict`) : mapping of reference file name : DNAnexus file ID, reference file name _must_ be given as shown above, and DNAnexus file ID should be provided as `project-xxx:file-xxx`
+
+The definitions of inputs for CNV calling and each reports workflow should be defined under the key `modes`, containing a mapping of all inputs and other inputs for controlling running of analyses.
+
+Example format of CNV call app structure:
+```
+"modes": {
+    "cnv_call": {
+        "instance_type": "mem2_ssd1_v2_x8",
+        "inputs": {
+            "bambais": {
+                "folder": "/sentieon-dnaseq-4.2.1/",
+                "name": ".bam$|.bam.bai$"
+            },
+            "GATK_docker": {
+                "$dnanexus_link": {
+                    "$dnanexus_link": {
+                        "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                        "id": "file-GBBP9JQ433GxV97xBpQkzYZx"
+                    }
+                }
+            },
+            ...
+```
+- `instance_type` (`str`; optional) : instance type to use when running CNV calling app
+- `inputs` (`dict`) : mapping of each app input field to required input
+    - `bambais` is a dynamic input and BAM files are parsed at run time using the `folder` and `name` keys, `folder` will be used as a sub folder under the `-isingle_output_dir` specified, and `name` will be used as a regex pattern for finding files
+    - other inputs should be specified in the standard `$dnanexus_link` mapping format to be passed directly to the underlying run API call
+
+
+Example format of a reports workflow structure:
+```
+"cnv_reports": {
+        "instance_type": {
+            "stage-cnv_vep.vcf": "mem2_ssd2_v2_x72"
+        },
+        "inputs": {
+            "stage-cnv_generate_bed_vep.exons_nirvana": "INPUT-exons_nirvana",
+            "stage-cnv_generate_bed_vep.nirvana_genes2transcripts": "INPUT-genes2transcripts",
+            "stage-cnv_generate_bed_vep.gene_panels": "INPUT-genepanels",
+            "stage-cnv_generate_bed_vep.flank": 495,
+            "stage-cnv_generate_bed_vep.additional_regions": {
+                "$dnanexus_link": {
+                    "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                    "id": "file-GJZQvg0433GkyFZg13K6VV6p"
+                }
+            },
+            "stage-cnv_vep.config_file": {
+                "$dnanexus_link": {
+                    "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                    "id": "file-GQGJ3Z84xyx0jp1q65K1Q1jY"
+                }
+            },
+            "stage-cnv_vep.vcf": {
+                "folder": "CNV_vcfs",
+                "name": "_segments.vcf$"
+            },
+```
+- `instance_type` (`dict`; optional) : mapping of stage-name to instance type to use, this will override the app and workflow defaults
+- `inputs` (`dict`) : mapping of each stage input field to required input
+    - inputs may be defined as regular integers / strings / booleans, `$dnanexus_link` file mappings or using `INPUT-` placeholders
+    - `INPUT-` placeholders are followed by a reference key from the `reference_files` mapping in the top level of the config file, and are parsed at run time into the inputs for the workflow (i.e. use of `"stage-cnv_generate_bed_vep.gene_panels": "INPUT-genepanels"` would result be replace by `project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562`, correctly formatted as a `$dnanexus_link` mapping)
+    - inputs for the following stages follow the same behaviour as the `bambais` input for the CNV calling app of being provided as a "folder" and "name" key for searching:
+        - cnv_reports: 
+            - `stage-cnv_vep.vcf`
+        - snv_reports and mosaic_reports
+            - `stage-rpt_vep.vcf`
+            - `stage-rpt_athena.mosdepth_files`
+    - example format of the above:
+        ```
+        # example of finding VCFs from Sentieon
+        # this will find any vcf|vcf.gz but NOT .g.vcf
+        "stage-rpt_vep.vcf" :{
+            "folder": "sentieon-dnaseq",
+            "name": "^[^\.]*(?!\.g)\.vcf(\.gz)?$"
+        }
+        ```
 
 
 ## What does this app output
 
+- `summary_report` (`file`) - text summary file with details on jobs run and any samples / tests excluded from analysis
 
-## Notes
