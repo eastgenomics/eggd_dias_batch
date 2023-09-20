@@ -535,8 +535,9 @@ class DXExecute():
             }
 
         print(
-            f"Found {len(segment_vcfs)} segments.vcf "
-            f"files from {job_details.get('folder')}"
+            f"Found {len(segment_vcfs)} segments.vcf files from "
+            f"{job_details.get('folder')} and {len(xlsx_reports)} "
+            f"previous xlsx reports"
         )
 
         # patterns of sample ID and sample file prefix to match on
@@ -745,9 +746,9 @@ class DXExecute():
 
         print(
             f"Found {len(vcf_files)} vcf files from "
-            f"{single_output_dir} in subdir {config.get('vcf_subdir')} and "
-            f"{len(mosdepth_files)} from {single_output_dir} "
-            "in subdir 'mosdepth'"
+            f"{single_output_dir} in subdir {config.get('vcf_subdir')}, "
+            f"{len(mosdepth_files)} from {single_output_dir} in subdir "
+            f"'mosdepth' and {len(xlsx_reports)} previous xlsx reports"
         )
 
         if not vcf_files or not mosdepth_files:
