@@ -500,6 +500,8 @@ class DXExecute():
             list of job IDs launched
         dict
             dict of any errors found (i.e samples with no files)
+        dict
+            dict of per sample summary of names used for jobs
         """
         print(f"Configuring inputs for {mode} reports")
 
@@ -546,6 +548,13 @@ class DXExecute():
                     f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
             )
 
+            excluded_intervals_bed = {
+                "$dnanexus_link": {
+                    "project": excluded_intervals_bed[0]['project'],
+                    "id": excluded_intervals_bed[0]['id']
+                }
+            }
+
             # ensure we have vcf files per sample,
             # exclude those that don't have one
             manifest, manifest_no_match, manifest_no_vcf = \
@@ -584,10 +593,30 @@ class DXExecute():
                 pattern=mosdepth_name
             )
 
-            if not vcf_files or not mosdepth_files:
-                raise RuntimeError(
-                    "Found no vcf_files and / or mosdepth files!"
-            )
+            if not vcf_files:
+                errors = {
+                    "Found no vcf files!": (
+                        f"{mode} reports in {single_output_dir} and "
+                        f"subdir {vcf_dir} with pattern {vcf_name}"
+                    )
+                }
+
+                return [], errors, None
+
+            if not mosdepth_files:
+                errors = {
+                    "Found no mosdepth files!": (
+                        f"{mode} reports in {single_output_dir} and subdir "
+                        f"{mosdepth_dir} with pattern {mosdepth_name}"
+                    )
+                }
+
+                return [], errors, None
+
+            # if not vcf_files or not mosdepth_files:
+            #     raise RuntimeError(
+            #         "Found no vcf_files and / or mosdepth files!"
+            # )
 
             print(
                 f"Found {len(vcf_files)} vcf files from "
