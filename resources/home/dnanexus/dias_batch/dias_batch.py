@@ -214,23 +214,24 @@ def main(
     genepanels.reset_index(inplace=True)
     genepanels = split_genepanels_test_codes(genepanels)
 
-    # parse manifest and format into a mapping of sampleID -> test codes
-    manifest_data = DXManage().read_dxfile(manifest_file)
-    manifest, manifest_source = parse_manifest(manifest_data)
+    if manifest_file:
+        # parse manifest and format into a mapping of sampleID -> test codes
+        manifest_data = DXManage().read_dxfile(manifest_file)
+        manifest, manifest_source = parse_manifest(manifest_data)
 
 
-    # filter manifest tests against genepanels to ensure what has been
-    # requested are test codes or HGNC IDs we recognise
-    manifest, invalid_tests = check_manifest_valid_test_codes(
-        manifest=manifest,
-        genepanels=genepanels
-    )
+        # filter manifest tests against genepanels to ensure what has been
+        # requested are test codes or HGNC IDs we recognise
+        manifest, invalid_tests = check_manifest_valid_test_codes(
+            manifest=manifest,
+            genepanels=genepanels
+        )
 
-    # add in panel and clinical indication strings to manifest dict
-    manifest = add_panels_and_indications_to_manifest(
-        manifest=manifest,
-        genepanels=genepanels
-    )
+        # add in panel and clinical indication strings to manifest dict
+        manifest = add_panels_and_indications_to_manifest(
+            manifest=manifest,
+            genepanels=genepanels
+        )
 
     launched_jobs = {}
     cnv_report_errors = snv_report_errors = mosaic_report_errors = \

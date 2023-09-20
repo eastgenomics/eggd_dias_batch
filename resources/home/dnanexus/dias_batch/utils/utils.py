@@ -79,7 +79,7 @@ def check_report_index(name, reports) -> int:
     return suffix + 1
 
 
-def write_summary_report(output, manifest, **summary) -> None:
+def write_summary_report(output, manifest=None, **summary) -> None:
     """
     Write output summary file with jobs launched and any errors etc.
 
@@ -102,9 +102,10 @@ def write_summary_report(output, manifest, **summary) -> None:
             f"Assay config file used {summary.get('assay_config')['name']} "
             f"({summary.get('assay_config')['dxid']})\n"
         )
-        file_handle.write(
-            f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
-        )
+        if manifest:
+            file_handle.write(
+                f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
+            )
         launched_jobs = '\n\t'.join([
             f"{k} : {len(v)} jobs" for k, v
             in summary.get('launched_jobs').items()
