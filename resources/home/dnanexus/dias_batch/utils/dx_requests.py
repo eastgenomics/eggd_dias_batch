@@ -628,7 +628,7 @@ class DXExecute():
                 # set prefix for naming output report with integer suffix
                 name = (
                     f"{segment_vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list).replace('__', '_')}_CNV"
+                    f"{'_'.join(test_list)}_CNV".replace('__', '_')
                 )
                 suffix = check_report_index(name=name, reports=xlsx_reports)
 
@@ -876,7 +876,7 @@ class DXExecute():
                 # set prefix for naming output report with integer suffix
                 name = (
                     f"{vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list).replace('__', '_')}_{mode}"
+                    f"{'_'.join(test_list)}_{mode}".replace('__', '_')
                 )
                 suffix = check_report_index(name=name, reports=xlsx_reports)
 
