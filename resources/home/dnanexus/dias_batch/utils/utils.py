@@ -352,7 +352,6 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     # for Gemini samples we will squash these down to a single list due
     # to how they are booked in and get split to multiple lines (it's going
     # away anyway so this is just for handling legacy samples)
-    data = defaultdict(lambda: defaultdict(list))
 
     if all('\t' in x for x in contents if x):
         # this is an old Gemini manifest => should just have sampleID -> CI
@@ -363,7 +362,9 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             f"Gemini manifest has more than 2 columns:\n\t{contents}"
         )
 
-        sample_tests = []
+        # initialise a dict of sample names to add tests to
+        sample_names = {x[0] for x in contents}
+        data = {name: {'tests': [[]]} for name in sample_names}
 
         for sample in contents:
             test_codes = sample[1].replace(' ', '').split(',')
@@ -378,7 +379,7 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             # add test codes to samples list, keeping just the code part
             # and not full string (i.e. R134.2 from
             # R134.1_Familialhypercholesterolaemia_P)
-            data[sample[0]]['tests'].extend([
+            data[sample[0]]['tests'][0].extend([
                 re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
                 for x in test_codes
             ])
@@ -428,6 +429,9 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
 
         manifest = manifest[['SampleID', 'ReanalysisID', 'Test Codes']]
         manifest_source = 'Epic'
+
+        data = defaultdict(lambda: defaultdict(list))
+
 
         for idx, row in manifest.iterrows():
             # split test codes to list and sense check they're valid format
@@ -612,7 +616,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
                     sample_invalid_test.append(test)
             if valid_tests:
                 # one or more requested test is in genepanels
-                valid[sample]['tests'].append(valid_tests)
+                valid[sample]['tests'].append(list(set(valid_tests)))
 
         if sample_invalid_test:
             # sample had one or more invalid test code
