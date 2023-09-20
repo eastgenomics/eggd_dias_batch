@@ -2,13 +2,13 @@
 Functions related to querying and managing objects in DNAnexus, as well
 as running jobs.
 """
-from collections import defaultdict
 from copy import deepcopy
 import concurrent.futures
 import json
 import os
 import re
 from timeit import default_timer as timer
+from typing import Tuple
 
 import dxpy
 import pandas as pd
@@ -448,258 +448,29 @@ class DXExecute():
         return job_id
 
 
-    def cnv_reports(
-            self,
-            workflow_id,
-            call_job_id,
-            single_output_dir,
-            manifest,
-            manifest_source,
-            config,
-            start,
-            sample_limit,
-            parent
-        ) -> list:
-        """
-        Run Dias reports workflow on output of CNV calling.
-
-        Matches output files of CNV calling against manifest samples,
-        parses config for the workflow and launches workflow per sample.
-
-        Parameters
-        ----------
-        workflow_id : str
-            dxid of CNV reports workflow
-        call_job_id : str
-            job ID of CNV calling to use output from
-        single_output_dir : str
-            dnanexus path to Dias single output
-        manifest : dict
-            mapping of sampleID -> testCodes parsed from manifest
-        manifest_source : str
-            source of manifest (Epic or Gemini), required for filtering
-            pattern against sample name 
-        config : dict
-            config for assay, defining fixed inputs for workflow
-        start : str
-            start time of running app for naming output folders
-        sample_limit : int
-            no. of samples to launch jobs for
-        parent : list | None
-            single item list of parent dias batch job ID to use when
-            testing to stop jobs running
-
-        Returns
-        -------
-        list
-            list of job IDs launched
-        dict
-            dict of any errors found (i.e. samples missing files)
-        
-        Raises
-        ------
-        RuntimeError
-            Raised when an excluded_intervals.bed file can't be found
-        """
-        print("Configuring inputs for CNV reports")
-
-        # get required files
-        job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
-
-        segment_vcfs = list(DXManage().find_files(
-            path=f"{job_details.get('project')}:{job_details.get('folder')}",
-            pattern="segments.vcf$"
-        ))
-        excluded_intervals_bed = list(DXManage().find_files(
-            path=f"{job_details.get('project')}:{job_details.get('folder')}",
-            pattern="_excluded_intervals.bed$"
-        ))
-
-        # find all previous xlsx reports to use for indexing report names
-        xlsx_reports = DXManage().find_files(
-            path=single_output_dir,
-            pattern=r".xlsx$"
-        )
-        xlsx_reports = [
-            x['describe']['name'] for x in xlsx_reports
-        ]
-
-        if not excluded_intervals_bed:
-            raise RuntimeError(
-                f"Failed to find exlcuded intervals bed file from {call_job_id}"
-            )
-        else:
-            excluded_intervals_bed = {
-                "$dnanexus_link": {
-                    "project": excluded_intervals_bed[0]['project'],
-                    "id": excluded_intervals_bed[0]['id']
-                }
-            }
-
-        print(
-            f"Found {len(segment_vcfs)} segments.vcf files from "
-            f"{job_details.get('folder')} and {len(xlsx_reports)} "
-            f"previous xlsx reports"
-        )
-
-        # patterns of sample ID and sample file prefix to match on
-        if manifest_source == 'Epic':
-            pattern = r'^[\d\w]+-[\d\w]+'
-        else:
-            pattern = r'X[\d]+'
-
-        # ensure we have a vcf per sample, exclude those that don't have one
-        manifest, manifest_no_match, manifest_no_vcf = filter_manifest_samples_by_files(
-            manifest=manifest,
-            files=segment_vcfs,
-            name='segment_vcf',
-            pattern=pattern
-        )
-
-        # gather errors to display later
-        errors = {}
-
-        if manifest_no_match:
-            errors[
-                f"Samples in manifest not matching pattern ({len(manifest_no_match)}) {pattern}:"
-            ] = manifest_no_match
-
-        if manifest_no_vcf:
-            errors[
-                f"Samples in manifest with no VCF found ({len(manifest_no_vcf)}): "
-            ] = manifest_no_vcf
-
-        workflow_details = dxpy.describe(workflow_id)
-
-        stage_folders = DXManage().format_output_folders(
-            workflow=workflow_details,
-            single_output=single_output_dir,
-            time_stamp=start
-        )
-
-        print("Launching CNV reports per sample...")
-        start = timer()
-
-        launched_jobs = []
-        sample_summary = {'CNV': {}}
-        samples_run = 0
-        # launch reports workflow, once per sample - set of test codes
-        for sample, sample_config in manifest.items():
-
-            all_test_lists = sample_config['tests']
-            segment_vcf = sample_config['segment_vcf'][0]
-
-            # mapping for current sample name -> index suffix to handle
-            # edge case of same test code on same run
-            sample_name_to_suffix = {}
-
-            for idx, test_list in enumerate(all_test_lists):
-                print(
-                    f"[{samples_run+1}/{len(manifest)}] Launching CNV "
-                    f"reports workflow {idx+1}/{len(all_test_lists)} for "
-                    f"{sample} with test(s): {test_list}"
-                )
-
-                input = deepcopy(config['inputs'])
-                input['stage-cnv_vep.vcf'] = {
-                    "$dnanexus_link": {
-                        "project": segment_vcf['project'],
-                        "id": segment_vcf['id']
-                    }
-                }
-
-                # add run level excluded regions file to input
-                input[
-                    'stage-cnv_annotate_excluded_regions.excluded_regions'
-                ] = excluded_intervals_bed
-
-                # add required string inputs of panels and indications
-                panels = ';'.join(sample_config['panels'][idx])
-                indications = ';'.join(sample_config['indications'][idx])
-                codes = '&&'.join(test_list)
-
-                input['stage-cnv_generate_bed_vep.panel'] = indications
-                input['stage-cnv_generate_bed_vep.output_file_prefix'] = codes
-                input['stage-cnv_generate_bed_excluded.panel'] = indications
-                input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
-                input['stage-cnv_generate_workbook.clinical_indication'] = indications
-                input['stage-cnv_generate_workbook.panel'] = panels
-
-                # set prefix for naming output report with integer suffix
-                name = (
-                    f"{segment_vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list)}_CNV".replace('__', '_')
-                )
-                suffix = check_report_index(name=name, reports=xlsx_reports)
-
-                if sample_name_to_suffix.get(name):
-                    # we have already launched a report for this sample in
-                    # this current job => increment from this
-                    suffix = sample_name_to_suffix.get(name) + 1
-
-                    print(
-                        f"Already launched report for current sample, "
-                        f"will now use suffix _{suffix}"
-                    )
-
-                sample_name_to_suffix[name] = suffix
-                name = f"{name}_{suffix}"
-
-                input['stage-cnv_generate_workbook.output_prefix'] = name
-
-                job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
-                    dxid=workflow_id
-                ).run(
-                    workflow_input=input,
-                    rerun_stages=['*'],
-                    detach=True,
-                    name=f"{workflow_details['name']}_{sample}_{codes} (CNV)",
-                    stage_folders=stage_folders,
-                    depends_on=parent
-                )
-
-                launched_jobs.append(job_handle._dxid)
-                if not sample_summary['CNV'].get(sample):
-                    sample_summary['CNV'][sample] = [name]
-                else:
-                    sample_summary['CNV'][sample].append(name)
-
-            # join up multiple outputs for nicer output viewing
-            sample_summary['CNV'][sample] = '\n'.join(
-                sample_summary['CNV'][sample]
-            )
-
-            samples_run += 1
-            if samples_run == sample_limit:
-                print("Sample limit hit, stopping launching further jobs")
-                break
-
-        end = timer()
-        print(
-            f"Successfully launched {len(launched_jobs)} CNV reports "
-            f"workflows in {round(end - start)}s"
-        )
-
-        return launched_jobs, errors, sample_summary
-
-
-    def snv_reports(
+    def reports_workflow(
         self,
+        mode,
         workflow_id,
         single_output_dir,
         manifest,
         manifest_source,
         config,
-        mode,
         start,
-        sample_limit,
-        parent
-        ) -> list:
+        sample_limit=None,
+        exclude_samples=None,
+        call_job_id=None,
+        parent=None
+        ) -> Tuple(list, dict):
         """
-        Run Dias reports workflow for either SNV or mosaic reports
+        Run Dias reports (or CNV reports) workflow for either
+        CNV,SNV or mosaic reports
 
         Parameters
         ----------
+        mode : str
+            str of [CNV | SNV | mosaic], controls if running reports on
+            CNV calling output, mosaic (mutect2) output or SNVs
         workflow_id : str
             dxid of Dias reports workflow
         single_output_dir : str
@@ -711,16 +482,17 @@ class DXExecute():
             pattern against sample name
         config : dict
             config for assay, defining fixed inputs for workflow
-        mode : str
-            controls if running reports on mosaic (mutect2) output or
-            for SNVs
         start : str
             start time of running app for naming output folders
         sample_limit : int
             no. of samples to launch jobs for
+        exclude_samples : list
+            list of sample names to exclude from generating reports
+        call_job_id : str
+            job ID of CNV calling to use output from (for CNV reports)
         parent : list | None
             single item list of parent dias batch job ID to use when
-            testing to stop jobs running
+            testing to stop jobs running, or None when not running in test
 
         Returns
         -------
@@ -730,25 +502,6 @@ class DXExecute():
             dict of any errors found (i.e samples with no files)
         """
         print(f"Configuring inputs for {mode} reports")
-        # find .vcf or .vcf.gz but NOT .g.vcf
-        vcf_dir = config.get('inputs').get('stage-rpt_vep.vcf').get('folder')
-        vcf_name = config.get('inputs').get('stage-rpt_vep.vcf').get('name')
-        mosdepth_dir = config.get(
-                'inputs').get('stage-rpt_athena.mosdepth_files').get('folder')
-        mosdepth_name = config.get(
-                'inputs').get('stage-rpt_athena.mosdepth_files').get('name')
-
-        vcf_files = DXManage().find_files(
-            path=single_output_dir,
-            subdir=vcf_dir,
-            pattern=vcf_name
-        )
-
-        mosdepth_files = DXManage().find_files(
-            path=single_output_dir,
-            subdir=mosdepth_dir,
-            pattern=mosdepth_name
-        )
 
         # find all previous xlsx reports to use for indexing report names
         xlsx_reports = DXManage().find_files(
@@ -759,26 +512,102 @@ class DXExecute():
             x['describe']['name'] for x in xlsx_reports
         ]
 
-        print(
-            f"Found {len(vcf_files)} vcf files from "
-            f"{single_output_dir} in subdir {vcf_dir}, "
-            f"{len(mosdepth_files)} from {single_output_dir} in subdir "
-            f"{mosdepth_dir} and {len(xlsx_reports)} previous xlsx reports"
-        )
-
-        if not vcf_files or not mosdepth_files:
-            raise RuntimeError(
-                "Found no vcf_files and / or mosdepth files!"
-            )
-
         # patterns of sample ID and sample file prefix to match on
         if manifest_source == 'Epic':
             pattern = r'^[\d\w]+-[\d\w]+'
         else:
             pattern = r'X[\d]+'
 
-        # ensure we have a vcf and mosdepth files per sample,
-        # exclude those that don't have one
+        # set up required files for each running mode
+        if mode == 'CNV':
+            # get required files
+            job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
+
+            vcf_input_field = 'stage-cnv_vep.vcf'
+
+            vcf_dir = f"{job_details.get('project')}:{job_details.get('folder')}"
+            vcf_name = config.get('inputs').get(vcf_input_field).get('name')
+
+            vcf_files = list(DXManage().find_files(
+                path=vcf_dir,
+                pattern=vcf_name
+            ))
+            excluded_intervals_bed = list(DXManage().find_files(
+                path=f"{job_details.get('project')}:{job_details.get('folder')}",
+                pattern="_excluded_intervals.bed$"
+            ))
+
+            if not excluded_intervals_bed:
+                raise RuntimeError(
+                    f"Failed to find exlcuded intervals bed file from {call_job_id}"
+            )
+            if not vcf_files:
+                raise RuntimeError(
+                    f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
+            )
+
+            # ensure we have vcf files per sample,
+            # exclude those that don't have one
+            manifest, manifest_no_match, manifest_no_vcf = \
+                filter_manifest_samples_by_files(
+                    manifest=manifest,
+                    files=vcf_files,
+                    name='vcf',
+                    pattern=pattern
+                )
+
+            print(
+                f"Found {len(vcf_files)} segments.vcf files from "
+                f"{job_details.get('folder')} and {len(xlsx_reports)} "
+                f"previous xlsx reports"
+            )
+
+        elif mode in ('SNV', 'mosaic'):
+            vcf_input_field = 'stage-rpt_vep.vcf'
+
+            vcf_dir = config.get('inputs').get(vcf_input_field).get('folder')
+            vcf_name = config.get('inputs').get(vcf_input_field).get('name')
+            mosdepth_dir = config.get(
+                    'inputs').get('stage-rpt_athena.mosdepth_files').get('folder')
+            mosdepth_name = config.get(
+                    'inputs').get('stage-rpt_athena.mosdepth_files').get('name')
+
+            vcf_files = DXManage().find_files(
+                path=single_output_dir,
+                subdir=vcf_dir,
+                pattern=vcf_name
+            )
+
+            mosdepth_files = DXManage().find_files(
+                path=single_output_dir,
+                subdir=mosdepth_dir,
+                pattern=mosdepth_name
+            )
+
+            if not vcf_files or not mosdepth_files:
+                raise RuntimeError(
+                    "Found no vcf_files and / or mosdepth files!"
+            )
+
+            print(
+                f"Found {len(vcf_files)} vcf files from "
+                f"{single_output_dir} in subdir {vcf_dir}, "
+                f"{len(mosdepth_files)} from {single_output_dir} in subdir "
+                f"{mosdepth_dir} and {len(xlsx_reports)} previous xlsx reports"
+            )
+
+        else:
+            # this really shouldn't happen as we call it, but catch it
+            # incase I forget and do something dumb (which is likely)
+            raise RuntimeError(
+                f"Invalid mode set for running reports: {mode}"
+            )
+
+        # gather errors to display in summary report
+        errors = {}
+
+        # ensure we have a vcf and mosdepth files (for SNV)
+        # per sample, exclude those that don't have one
         manifest, manifest_no_match, manifest_no_vcf = \
             filter_manifest_samples_by_files(
                 manifest=manifest,
@@ -787,30 +616,33 @@ class DXExecute():
                 pattern=pattern
             )
 
-        manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
-            manifest=manifest,
-            files=mosdepth_files,
-            name='mosdepth',
-            pattern=pattern
-        )
-
-        # gather errors to display in summary report
-        errors = {}
-
         if manifest_no_match:
             errors[
-                f"Samples in manifest not matching pattern ({len(manifest_no_match)}) {pattern}:"
+                f"Samples in manifest not matching pattern "
+                f"({len(manifest_no_match)}) {pattern}:"
             ] = manifest_no_match
 
         if manifest_no_vcf:
             errors[
-                f"Samples in manifest with no VCF found ({len(manifest_no_vcf)}):"
+                f"Samples in manifest with no VCF found "
+                f"({len(manifest_no_vcf)}):"
             ] = manifest_no_vcf
 
-        if manifest_no_mosdepth:
-            errors[
-                f"Samples in manifest with no mosdepth files found ({len(manifest_no_mosdepth)}):"
-            ] = manifest_no_mosdepth
+        # mosdepth only in standard SNV workflow
+        if mode != 'CNV':
+            manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
+                manifest=manifest,
+                files=mosdepth_files,
+                name='mosdepth',
+                pattern=pattern
+            )
+
+            if manifest_no_mosdepth:
+                errors[
+                    f"Samples in manifest with no mosdepth files found "
+                    f"({len(manifest_no_mosdepth)}):"
+                ] = manifest_no_mosdepth
+
 
         workflow_details = dxpy.describe(workflow_id)
 
@@ -824,14 +656,16 @@ class DXExecute():
         start = timer()
 
         launched_jobs = []
-        sample_summary = {mode: {}}
         samples_run = 0
 
-        # launch reports workflow, once per sample - set of test codes
+        # initialise per sample summary dict from samples in manifest
+        sample_summary = {mode: {k: [] for k in manifest.keys()}}
+
+        # launch reports workflow, once per sample -> set of test codes
         for sample, sample_config in manifest.items():
 
             all_test_lists = sample_config['tests']
-            vcf = sample_config['vcf'][0]
+            vcf = sample_config['vcf'][0]  # TODO : need to test for >1 VCF?
 
             # mapping for current sample name -> index suffix to handle
             # edge case of same test code on same run
@@ -843,35 +677,22 @@ class DXExecute():
                     f"reports workflow {idx+1}/{len(all_test_lists)} for "
                     f"{sample} with test(s): {test_list}"
                 )
+
                 input = deepcopy(config['inputs'])
-                input['stage-rpt_vep.vcf'] = {
+
+                # add vcf found for sample to input dict, currently just
+                # needs providing to VEP for both workflows
+                input[vcf_input_field] = {
                     "$dnanexus_link": {
                         "project": vcf['project'],
                         "id": vcf['id']
                     }
                 }
 
-                # build mosdepth files as a list of dx_links for athena
-                mosdepth_links = [
-                    {"$dnanexus_link": {
-                        "project": file['project'],
-                        "id": file['id']
-                    }}
-                    for file in sample_config['mosdepth']
-                ]
-                input['stage-rpt_athena.mosdepth_files'] = mosdepth_links
-
-                # add required string inputs of panels and indications
+                # format required string inputs of panels and indications
                 panels = ';'.join(sample_config['panels'][idx])
                 indications = ';'.join(sample_config['indications'][idx])
                 codes = '&&'.join(test_list)
-
-                input['stage-rpt_generate_bed_athena.panel'] = indications
-                input['stage-rpt_generate_bed_athena.output_file_prefix'] = codes
-                input['stage-rpt_generate_bed_vep.panel'] = indications
-                input['stage-rpt_generate_bed_vep.output_file_prefix'] = codes
-                input['stage-rpt_generate_workbook.clinical_indication'] = indications
-                input['stage-rpt_generate_workbook.panel'] = panels
 
                 # set prefix for naming output report with integer suffix
                 name = (
@@ -893,9 +714,42 @@ class DXExecute():
                 sample_name_to_suffix[name] = suffix
                 name = f"{name}_{suffix}"
 
-                input['stage-rpt_generate_workbook.output_prefix'] = name
-                input['stage-rpt_athena.name'] = name
+                # CNV vs SNV stage IDs annoyingly all slight differ,
+                # add required other inputs to where they need to be
+                if mode == 'CNV':
+                    input['stage-cnv_generate_bed_vep.panel'] = indications
+                    input['stage-cnv_generate_bed_vep.output_file_prefix'] = codes
+                    input['stage-cnv_generate_bed_excluded.panel'] = indications
+                    input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
+                    input['stage-cnv_generate_workbook.clinical_indication'] = indications
+                    input['stage-cnv_generate_workbook.panel'] = panels
 
+                    # add run level excluded regions file to input
+                    input[
+                        'stage-cnv_annotate_excluded_regions.excluded_regions'
+                    ] = excluded_intervals_bed
+                else:
+                    # build mosdepth files as a list of dx_links for athena
+                    mosdepth_links = [
+                        {"$dnanexus_link": {
+                            "project": file['project'],
+                            "id": file['id']
+                        }}
+                        for file in sample_config['mosdepth']
+                    ]
+
+                    input['stage-rpt_athena.mosdepth_files'] = mosdepth_links
+                    input['stage-rpt_generate_bed_athena.panel'] = indications
+                    input['stage-rpt_generate_bed_athena.output_file_prefix'] = codes
+                    input['stage-rpt_generate_bed_vep.panel'] = indications
+                    input['stage-rpt_generate_bed_vep.output_file_prefix'] = codes
+                    input['stage-rpt_generate_workbook.clinical_indication'] = indications
+                    input['stage-rpt_generate_workbook.panel'] = panels
+                    input['stage-rpt_generate_workbook.output_prefix'] = name
+                    input['stage-rpt_athena.name'] = name
+
+
+                # now we can finally run the reports workflow
                 job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
                     dxid=workflow_id
                 ).run(
@@ -908,13 +762,10 @@ class DXExecute():
                 )
 
                 launched_jobs.append(job_handle._dxid)
+                sample_summary[mode][sample].append(name)
 
-                if not sample_summary[mode].get(sample):
-                    sample_summary[mode][sample] = [name]
-                else:
-                    sample_summary[mode][sample].append(name)
-
-            # join up multiple outputs for nicer output viewing
+            # finished launching this samples test job(s) => join up
+            # multiple outputs for nicer output viewing
             sample_summary[mode][sample] = '\n'.join(
                 sample_summary[mode][sample]
             )
@@ -965,3 +816,486 @@ class DXExecute():
                     )
 
         print("Terminated jobs.")
+
+
+    # def cnv_reports(
+    #         self,
+    #         workflow_id,
+    #         call_job_id,
+    #         single_output_dir,
+    #         manifest,
+    #         manifest_source,
+    #         config,
+    #         start,
+    #         sample_limit,
+    #         parent
+    #     ) -> list:
+    #     """
+    #     Run Dias reports workflow on output of CNV calling.
+
+    #     Matches output files of CNV calling against manifest samples,
+    #     parses config for the workflow and launches workflow per sample.
+
+    #     Parameters
+    #     ----------
+    #     workflow_id : str
+    #         dxid of CNV reports workflow
+    #     call_job_id : str
+    #         job ID of CNV calling to use output from
+    #     single_output_dir : str
+    #         dnanexus path to Dias single output
+    #     manifest : dict
+    #         mapping of sampleID -> testCodes parsed from manifest
+    #     manifest_source : str
+    #         source of manifest (Epic or Gemini), required for filtering
+    #         pattern against sample name 
+    #     config : dict
+    #         config for assay, defining fixed inputs for workflow
+    #     start : str
+    #         start time of running app for naming output folders
+    #     sample_limit : int
+    #         no. of samples to launch jobs for
+    #     parent : list | None
+    #         single item list of parent dias batch job ID to use when
+    #         testing to stop jobs running
+
+    #     Returns
+    #     -------
+    #     list
+    #         list of job IDs launched
+    #     dict
+    #         dict of any errors found (i.e. samples missing files)
+        
+    #     Raises
+    #     ------
+    #     RuntimeError
+    #         Raised when an excluded_intervals.bed file can't be found
+    #     """
+    #     print("Configuring inputs for CNV reports")
+
+    #     # get required files
+    #     job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
+
+    #     segment_vcfs = list(DXManage().find_files(
+    #         path=f"{job_details.get('project')}:{job_details.get('folder')}",
+    #         pattern="segments.vcf$"
+    #     ))
+    #     excluded_intervals_bed = list(DXManage().find_files(
+    #         path=f"{job_details.get('project')}:{job_details.get('folder')}",
+    #         pattern="_excluded_intervals.bed$"
+    #     ))
+
+    #     # find all previous xlsx reports to use for indexing report names
+    #     xlsx_reports = DXManage().find_files(
+    #         path=single_output_dir,
+    #         pattern=r".xlsx$"
+    #     )
+    #     xlsx_reports = [
+    #         x['describe']['name'] for x in xlsx_reports
+    #     ]
+
+    #     if not excluded_intervals_bed:
+    #         raise RuntimeError(
+    #             f"Failed to find exlcuded intervals bed file from {call_job_id}"
+    #         )
+    #     else:
+    #         excluded_intervals_bed = {
+    #             "$dnanexus_link": {
+    #                 "project": excluded_intervals_bed[0]['project'],
+    #                 "id": excluded_intervals_bed[0]['id']
+    #             }
+    #         }
+
+    #     print(
+    #         f"Found {len(segment_vcfs)} segments.vcf files from "
+    #         f"{job_details.get('folder')} and {len(xlsx_reports)} "
+    #         f"previous xlsx reports"
+    #     )
+
+    #     # patterns of sample ID and sample file prefix to match on
+    #     if manifest_source == 'Epic':
+    #         pattern = r'^[\d\w]+-[\d\w]+'
+    #     else:
+    #         pattern = r'X[\d]+'
+
+    #     # ensure we have a vcf per sample, exclude those that don't have one
+    #     manifest, manifest_no_match, manifest_no_vcf = filter_manifest_samples_by_files(
+    #         manifest=manifest,
+    #         files=segment_vcfs,
+    #         name='segment_vcf',
+    #         pattern=pattern
+    #     )
+
+    #     # gather errors to display later
+    #     errors = {}
+
+    #     if manifest_no_match:
+    #         errors[
+    #             f"Samples in manifest not matching pattern ({len(manifest_no_match)}) {pattern}:"
+    #         ] = manifest_no_match
+
+    #     if manifest_no_vcf:
+    #         errors[
+    #             f"Samples in manifest with no VCF found ({len(manifest_no_vcf)}): "
+    #         ] = manifest_no_vcf
+
+    #     workflow_details = dxpy.describe(workflow_id)
+
+    #     stage_folders = DXManage().format_output_folders(
+    #         workflow=workflow_details,
+    #         single_output=single_output_dir,
+    #         time_stamp=start
+    #     )
+
+    #     print("Launching CNV reports per sample...")
+    #     start = timer()
+
+    #     launched_jobs = []
+    #     sample_summary = {'CNV': {}}
+    #     samples_run = 0
+    #     # launch reports workflow, once per sample - set of test codes
+    #     for sample, sample_config in manifest.items():
+
+    #         all_test_lists = sample_config['tests']
+    #         segment_vcf = sample_config['segment_vcf'][0]
+
+    #         # mapping for current sample name -> index suffix to handle
+    #         # edge case of same test code on same run
+    #         sample_name_to_suffix = {}
+
+    #         for idx, test_list in enumerate(all_test_lists):
+    #             print(
+    #                 f"[{samples_run+1}/{len(manifest)}] Launching CNV "
+    #                 f"reports workflow {idx+1}/{len(all_test_lists)} for "
+    #                 f"{sample} with test(s): {test_list}"
+    #             )
+
+    #             input = deepcopy(config['inputs'])
+    #             input['stage-cnv_vep.vcf'] = {
+    #                 "$dnanexus_link": {
+    #                     "project": segment_vcf['project'],
+    #                     "id": segment_vcf['id']
+    #                 }
+    #             }
+
+    #             # add run level excluded regions file to input
+    #             input[
+    #                 'stage-cnv_annotate_excluded_regions.excluded_regions'
+    #             ] = excluded_intervals_bed
+
+    #             # add required string inputs of panels and indications
+    #             panels = ';'.join(sample_config['panels'][idx])
+    #             indications = ';'.join(sample_config['indications'][idx])
+    #             codes = '&&'.join(test_list)
+
+    #             input['stage-cnv_generate_bed_vep.panel'] = indications
+    #             input['stage-cnv_generate_bed_vep.output_file_prefix'] = codes
+    #             input['stage-cnv_generate_bed_excluded.panel'] = indications
+    #             input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
+    #             input['stage-cnv_generate_workbook.clinical_indication'] = indications
+    #             input['stage-cnv_generate_workbook.panel'] = panels
+
+    #             # set prefix for naming output report with integer suffix
+    #             name = (
+    #                 f"{segment_vcf['describe']['name'].split('_')[0]}_"
+    #                 f"{'_'.join(test_list)}_CNV".replace('__', '_')
+    #             )
+    #             suffix = check_report_index(name=name, reports=xlsx_reports)
+
+    #             if sample_name_to_suffix.get(name):
+    #                 # we have already launched a report for this sample in
+    #                 # this current job => increment from this
+    #                 suffix = sample_name_to_suffix.get(name) + 1
+
+    #                 print(
+    #                     f"Already launched report for current sample, "
+    #                     f"will now use suffix _{suffix}"
+    #                 )
+
+    #             sample_name_to_suffix[name] = suffix
+    #             name = f"{name}_{suffix}"
+
+    #             input['stage-cnv_generate_workbook.output_prefix'] = name
+
+    #             job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
+    #                 dxid=workflow_id
+    #             ).run(
+    #                 workflow_input=input,
+    #                 rerun_stages=['*'],
+    #                 detach=True,
+    #                 name=f"{workflow_details['name']}_{sample}_{codes} (CNV)",
+    #                 stage_folders=stage_folders,
+    #                 depends_on=parent
+    #             )
+
+    #             launched_jobs.append(job_handle._dxid)
+    #             if not sample_summary['CNV'].get(sample):
+    #                 sample_summary['CNV'][sample] = [name]
+    #             else:
+    #                 sample_summary['CNV'][sample].append(name)
+
+    #         if sample_summary['CNV'].get(sample):
+    #             # join up multiple outputs for nicer output viewing
+    #             sample_summary['CNV'][sample] = '\n'.join(
+    #                 sample_summary['CNV'][sample]
+    #             )
+
+    #         samples_run += 1
+    #         if samples_run == sample_limit:
+    #             print("Sample limit hit, stopping launching further jobs")
+    #             break
+
+    #     end = timer()
+    #     print(
+    #         f"Successfully launched {len(launched_jobs)} CNV reports "
+    #         f"workflows in {round(end - start)}s"
+    #     )
+
+    #     return launched_jobs, errors, sample_summary
+
+
+    # def snv_reports(
+    #     self,
+    #     workflow_id,
+    #     single_output_dir,
+    #     manifest,
+    #     manifest_source,
+    #     config,
+    #     mode,
+    #     start,
+    #     sample_limit,
+    #     parent
+    #     ) -> list:
+    #     """
+    #     Run Dias reports workflow for either SNV or mosaic reports
+
+    #     Parameters
+    #     ----------
+    #     workflow_id : str
+    #         dxid of Dias reports workflow
+    #     single_output_dir : str
+    #         dnanexus path to Dias single output
+    #     manifest : dict
+    #         mapping of sampleID -> testCodes parsed from manifest
+    #     manifest_source : str
+    #         source of manifest (Epic or Gemini), required for filtering
+    #         pattern against sample name
+    #     config : dict
+    #         config for assay, defining fixed inputs for workflow
+    #     mode : str
+    #         controls if running reports on mosaic (mutect2) output or
+    #         for SNVs
+    #     start : str
+    #         start time of running app for naming output folders
+    #     sample_limit : int
+    #         no. of samples to launch jobs for
+    #     parent : list | None
+    #         single item list of parent dias batch job ID to use when
+    #         testing to stop jobs running
+
+    #     Returns
+    #     -------
+    #     list
+    #         list of job IDs launched
+    #     dict
+    #         dict of any errors found (i.e samples with no files)
+    #     """
+    #     print(f"Configuring inputs for {mode} reports")
+    #     # find .vcf or .vcf.gz but NOT .g.vcf
+    #     vcf_dir = config.get('inputs').get('stage-rpt_vep.vcf').get('folder')
+    #     vcf_name = config.get('inputs').get('stage-rpt_vep.vcf').get('name')
+    #     mosdepth_dir = config.get(
+    #             'inputs').get('stage-rpt_athena.mosdepth_files').get('folder')
+    #     mosdepth_name = config.get(
+    #             'inputs').get('stage-rpt_athena.mosdepth_files').get('name')
+
+    #     vcf_files = DXManage().find_files(
+    #         path=single_output_dir,
+    #         subdir=vcf_dir,
+    #         pattern=vcf_name
+    #     )
+
+    #     mosdepth_files = DXManage().find_files(
+    #         path=single_output_dir,
+    #         subdir=mosdepth_dir,
+    #         pattern=mosdepth_name
+    #     )
+
+    #     # find all previous xlsx reports to use for indexing report names
+    #     xlsx_reports = DXManage().find_files(
+    #         path=single_output_dir,
+    #         pattern=r".xlsx$"
+    #     )
+    #     xlsx_reports = [
+    #         x['describe']['name'] for x in xlsx_reports
+    #     ]
+
+    #     print(
+    #         f"Found {len(vcf_files)} vcf files from "
+    #         f"{single_output_dir} in subdir {vcf_dir}, "
+    #         f"{len(mosdepth_files)} from {single_output_dir} in subdir "
+    #         f"{mosdepth_dir} and {len(xlsx_reports)} previous xlsx reports"
+    #     )
+
+    #     if not vcf_files or not mosdepth_files:
+    #         raise RuntimeError(
+    #             "Found no vcf_files and / or mosdepth files!"
+    #         )
+
+
+
+    #     # ensure we have a vcf and mosdepth files per sample,
+    #     # exclude those that don't have one
+    #     manifest, manifest_no_match, manifest_no_vcf = \
+    #         filter_manifest_samples_by_files(
+    #             manifest=manifest,
+    #             files=vcf_files,
+    #             name='vcf',
+    #             pattern=pattern
+    #         )
+
+    #     manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
+    #         manifest=manifest,
+    #         files=mosdepth_files,
+    #         name='mosdepth',
+    #         pattern=pattern
+    #     )
+
+    #     # gather errors to display in summary report
+    #     errors = {}
+
+    #     if manifest_no_match:
+    #         errors[
+    #             f"Samples in manifest not matching pattern ({len(manifest_no_match)}) {pattern}:"
+    #         ] = manifest_no_match
+
+    #     if manifest_no_vcf:
+    #         errors[
+    #             f"Samples in manifest with no VCF found ({len(manifest_no_vcf)}):"
+    #         ] = manifest_no_vcf
+
+    #     if manifest_no_mosdepth:
+    #         errors[
+    #             f"Samples in manifest with no mosdepth files found ({len(manifest_no_mosdepth)}):"
+    #         ] = manifest_no_mosdepth
+
+    #     workflow_details = dxpy.describe(workflow_id)
+
+    #     stage_folders = DXManage().format_output_folders(
+    #         workflow=workflow_details,
+    #         single_output=single_output_dir,
+    #         time_stamp=start
+    #     )
+
+    #     print(f"Launching {mode} reports per sample...")
+    #     start = timer()
+
+    #     launched_jobs = []
+    #     sample_summary = {mode: {}}
+    #     samples_run = 0
+
+    #     # launch reports workflow, once per sample - set of test codes
+    #     for sample, sample_config in manifest.items():
+
+    #         all_test_lists = sample_config['tests']
+    #         vcf = sample_config['vcf'][0]
+
+    #         # mapping for current sample name -> index suffix to handle
+    #         # edge case of same test code on same run
+    #         sample_name_to_suffix = {}
+
+    #         for idx, test_list in enumerate(all_test_lists):
+    #             print(
+    #                 f"[{samples_run+1}/{len(manifest)}] Launching {mode} "
+    #                 f"reports workflow {idx+1}/{len(all_test_lists)} for "
+    #                 f"{sample} with test(s): {test_list}"
+    #             )
+    #             input = deepcopy(config['inputs'])
+    #             input['stage-rpt_vep.vcf'] = {
+    #                 "$dnanexus_link": {
+    #                     "project": vcf['project'],
+    #                     "id": vcf['id']
+    #                 }
+    #             }
+
+    #             # build mosdepth files as a list of dx_links for athena
+    #             mosdepth_links = [
+    #                 {"$dnanexus_link": {
+    #                     "project": file['project'],
+    #                     "id": file['id']
+    #                 }}
+    #                 for file in sample_config['mosdepth']
+    #             ]
+    #             input['stage-rpt_athena.mosdepth_files'] = mosdepth_links
+
+    #             # add required string inputs of panels and indications
+    #             panels = ';'.join(sample_config['panels'][idx])
+    #             indications = ';'.join(sample_config['indications'][idx])
+    #             codes = '&&'.join(test_list)
+
+    #             input['stage-rpt_generate_bed_athena.panel'] = indications
+    #             input['stage-rpt_generate_bed_athena.output_file_prefix'] = codes
+    #             input['stage-rpt_generate_bed_vep.panel'] = indications
+    #             input['stage-rpt_generate_bed_vep.output_file_prefix'] = codes
+    #             input['stage-rpt_generate_workbook.clinical_indication'] = indications
+    #             input['stage-rpt_generate_workbook.panel'] = panels
+
+    #             # set prefix for naming output report with integer suffix
+    #             name = (
+    #                 f"{vcf['describe']['name'].split('_')[0]}_"
+    #                 f"{'_'.join(test_list)}_{mode}".replace('__', '_')
+    #             )
+    #             suffix = check_report_index(name=name, reports=xlsx_reports)
+
+    #             if sample_name_to_suffix.get(name):
+    #                 # we have already launched a report for this sample in
+    #                 # this current job => increment from this
+    #                 suffix = sample_name_to_suffix.get(name) + 1
+
+    #                 print(
+    #                     f"Already launched report for current sample, "
+    #                     f"will now use suffix {suffix}"
+    #                 )
+
+    #             sample_name_to_suffix[name] = suffix
+    #             name = f"{name}_{suffix}"
+
+    #             input['stage-rpt_generate_workbook.output_prefix'] = name
+    #             input['stage-rpt_athena.name'] = name
+
+    #             job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
+    #                 dxid=workflow_id
+    #             ).run(
+    #                 workflow_input=input,
+    #                 rerun_stages=['*'],
+    #                 detach=True,
+    #                 name=f"{workflow_details['name']}_{sample}_{codes} ({mode})",
+    #                 stage_folders=stage_folders,
+    #                 depends_on=parent
+    #             )
+
+    #             launched_jobs.append(job_handle._dxid)
+
+    #             if not sample_summary[mode].get(sample):
+    #                 sample_summary[mode][sample] = [name]
+    #             else:
+    #                 sample_summary[mode][sample].append(name)
+
+    #         if sample_summary[mode].get(sample):
+    #             # join up multiple outputs for nicer output viewing
+    #             sample_summary[mode][sample] = '\n'.join(
+    #                 sample_summary[mode][sample]
+    #             )
+
+    #         samples_run += 1
+    #         if samples_run == sample_limit:
+    #             print("Sample limit hit, stopping launching further jobs")
+    #             break
+
+    #     end = timer()
+    #     print(
+    #         f"Successfully launched {len(launched_jobs)} {mode} reports "
+    #         f"workflows in {round(end - start)}s"
+    #     )
+    #     return launched_jobs, errors, sample_summary
+
