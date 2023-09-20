@@ -51,7 +51,7 @@ The general behaviour of each mode is as follows:
 - Search for bam files using the folder and name provided in the config file under `-isingle_output_dir`
     - Remove any files belonging to samples specified to `-iexclude_samples`
 - Run CNV calling app
-    - n.b. if `-icnv_reports=true` is specified, the app will be held until CNV calling completes, and the output will be used for launchign CNV reports
+    - n.b. if `-icnv_reports=true` is specified, the app will be held until CNV calling completes, and the output will be used for launching CNV reports
 - Launch reports workflow (if any specified; see below)
 - Write summary report and upload
 
@@ -117,7 +117,7 @@ The top level section should be structured as follows:
 
 The definitions of inputs for CNV calling and each reports workflow should be defined under the key `modes`, containing a mapping of all inputs and other inputs for controlling running of analyses.
 
-Example format of CNV call app structure:
+**Example format of CNV call app structure**:
 ```
 "modes": {
     "cnv_call": {
@@ -135,7 +135,8 @@ Example format of CNV call app structure:
                     }
                 }
             },
-            ...
+            "annotation_tsv": {
+                ...
 ```
 - `instance_type` (`str`; optional) : instance type to use when running CNV calling app
 - `inputs` (`dict`) : mapping of each app input field to required input
@@ -143,7 +144,7 @@ Example format of CNV call app structure:
     - other inputs should be specified in the standard `$dnanexus_link` mapping format to be passed directly to the underlying run API call
 
 
-Example format of a reports workflow structure:
+**Example format of a reports workflow structure**:
 ```
 "cnv_reports": {
         "instance_type": {
