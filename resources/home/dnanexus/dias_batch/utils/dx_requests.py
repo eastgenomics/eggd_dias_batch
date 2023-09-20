@@ -484,8 +484,9 @@ class DXExecute():
             start time of running app for naming output folders
         sample_limit : int
             no. of samples to launch jobs for
-        parent : str
-            job ID of parent batch job to use when testing to stop jobs running
+        parent : list | None
+            single item list of parent dias batch job ID to use when
+            testing to stop jobs running
 
         Returns
         -------
@@ -716,8 +717,9 @@ class DXExecute():
             start time of running app for naming output folders
         sample_limit : int
             no. of samples to launch jobs for
-        parent : str
-            job ID of parent batch job to use when testing to stop jobs running
+        parent : list | None
+            single item list of parent dias batch job ID to use when
+            testing to stop jobs running
 
         Returns
         -------
