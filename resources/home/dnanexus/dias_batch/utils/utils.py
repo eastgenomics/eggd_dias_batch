@@ -345,10 +345,13 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         "\n\t".join(contents)
     )
 
-    # turn df into a dict mapping sample ID to list of test codes,
-    # duplicate samples in the same manifest will result in >1 list
-    # of test codes, will be structured as:
+    # turn manifest into a dict mapping sample ID to list of test codes,
+    # duplicate samples in the same manifest for Epic samples will result
+    # in >1 list of test codes , will be structured as:
     # {'sample1': {'tests': [['panel1', 'gene1'], ['panel2']]}}
+    # for Gemini samples we will squash these down to a single list due
+    # to how they are booked in and get split to multiple lines (it's going
+    # away anyway so this is just for handling legacy samples)
     data = defaultdict(lambda: defaultdict(list))
 
     if all('\t' in x for x in contents if x):
@@ -359,6 +362,8 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         assert all([len(x) == 2 for x in contents]), (
             f"Gemini manifest has more than 2 columns:\n\t{contents}"
         )
+
+        sample_tests = []
 
         for sample in contents:
             test_codes = sample[1].replace(' ', '').split(',')
@@ -373,7 +378,7 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             # add test codes to samples list, keeping just the code part
             # and not full string (i.e. R134.2 from
             # R134.1_Familialhypercholesterolaemia_P)
-            data[sample[0]]['tests'].append([
+            data[sample[0]]['tests'].extend([
                 re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
                 for x in test_codes
             ])
