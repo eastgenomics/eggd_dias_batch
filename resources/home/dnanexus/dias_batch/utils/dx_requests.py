@@ -731,18 +731,23 @@ class DXExecute():
         """
         print(f"Configuring inputs for {mode} reports")
         # find .vcf or .vcf.gz but NOT .g.vcf
+        vcf_dir = config.get('inputs').get('stage-rpt_vep.vcf').get('folder')
+        vcf_name = config.get('inputs').get('stage-rpt_vep.vcf').get('name')
+        mosdepth_dir = config.get(
+                'inputs').get('stage-rpt_athena.mosdepth_files').get('folder')
+        mosdepth_name = config.get(
+                'inputs').get('stage-rpt_athena.mosdepth_files').get('name')
+
         vcf_files = DXManage().find_files(
             path=single_output_dir,
-            subdir=config.get('inputs').get('stage-rpt_vep.vcf').get('folder'),
-            pattern=config.get('inputs').get('stage-rpt_vep.vcf').get('name')
+            subdir=vcf_dir,
+            pattern=vcf_name
         )
 
         mosdepth_files = DXManage().find_files(
             path=single_output_dir,
-            subdir=config.get(
-                'inputs').get('stage-rpt_athena.mosdepth_files').get('folder'),
-            pattern=config.get(
-                'inputs').get('stage-rpt_athena.mosdepth_files').get('name')
+            subdir=mosdepth_dir,
+            pattern=mosdepth_name
         )
 
         # find all previous xlsx reports to use for indexing report names
@@ -756,9 +761,9 @@ class DXExecute():
 
         print(
             f"Found {len(vcf_files)} vcf files from "
-            f"{single_output_dir} in subdir {config.get('vcf_subdir')}, "
+            f"{single_output_dir} in subdir {vcf_dir}, "
             f"{len(mosdepth_files)} from {single_output_dir} in subdir "
-            f"'mosdepth' and {len(xlsx_reports)} previous xlsx reports"
+            f"{mosdepth_dir} and {len(xlsx_reports)} previous xlsx reports"
         )
 
         if not vcf_files or not mosdepth_files:
