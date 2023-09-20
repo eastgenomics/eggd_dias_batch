@@ -30,14 +30,56 @@ The general behaviour of each mode is as follows:
 
 ### CNV calling
 
-Minimum inputs:
+**Minimum inputs**:
 - `-iassay` or `-iassay_config_file`
 - `-isingle_output_dir`
 
+**Behaviour**:
+- Check if inputs provided are valid
+- Search for and download latest config for assay (if not provided directly)
+- Parse through config file to add reference files to input fields
+- Download and format genepanels file
+- Search for bam files using the folder and name provided in the config file under `-isingle_output_dir`
+    - Remove any files belonging to samples specified to `-iexclude_samples`
+- Run CNV calling app
+    - n.b. if `-icnv_reports=true` is specified, the app will be held until CNV calling completes, and the output will be used for launchign CNV reports
+- Launch reports workflow (if any specified; see below)
+- Write summary report and upload
 
 ### Reports workflows
 
+**Minimum inputs**:
+- `-iassay` or `-iassay_config_file`
+- `-isingle_output_dir`
+- `-imanifest_file`
+- `-icnv_reports` -> `-icnv_call=true` OR `-icnv_call_job_id`
 
+**Behaviour**:
+- Check if inputs provided are valid
+- Search for and download latest config for assay (if not provided directly)
+- Parse through config file to add reference files to input fields
+- Download and format genepanels file
+- Download manifest
+    - Check provided test codes are valid and present in genepanels file
+    - Get full panel and clinical indication strings for each test code from genepanels file
+- For **CNV** reports:
+    - Gather all `segment.vcf` files from CNV call job output
+    - Find excluded intervals bed file from CNV call job output
+    - Find previous xlsx reports (used for setting report name suffix)
+    - Filter manifest by samples having a VCF found
+    - Read CNV reports inputs from config, parse in string inputs (i.e. panel str to workbooks) and add vcf input for VEP
+    - Check for previous xlsx reports for same sample and increment to always be +1
+    - Launch CNV reports workflow
+- For **SNV/mosaic** reports:
+    - Gather all VCF and mosdepth files from sub dir and name pattern specified in config as input to VEP and Athena, respectively
+    - Find previous xlsx reports (used for setting report name suffix)
+    - Filter manifest by samples having VCF and mosdepth files found
+    - Read SNV/mosaic reports inputs from config, parse in string inputs (i.e. panel str to workbooks), add VCF input for VEP and mosdepth files for Athena
+    - Check for previous xlsx reports for same sample and increment to always be +1
+    - Launch SNV/mosaic reports workflow
+
+n.b.
+- if `-itesting=true` is specified, reports jobs will launch but not start running, and will be automatically terminated on the app completing
 
 ## Config file design
 
