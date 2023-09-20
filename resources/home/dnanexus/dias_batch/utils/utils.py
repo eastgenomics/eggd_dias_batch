@@ -609,9 +609,12 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
         for test_list in test_codes['tests']:
             valid_tests = []
             for test in test_list:
-                if test in genepanels_test_codes or re.match(r'_HGNC:[\d]+', test):
+                if test in genepanels_test_codes or re.match(r'HGNC:[\d]+', test):
                     #TODO: should we check that we have a transcript assigned
                     # to this HGNC ID?
+                    if re.match(r'HGNC:[\d]+', test):
+                        # ensure HGNC IDs have an _ prefix for generate_bed
+                        test = f"_{test.lstrip('_')}"
                     valid_tests.append(test)
                 else:
                     sample_invalid_test.append(test)
