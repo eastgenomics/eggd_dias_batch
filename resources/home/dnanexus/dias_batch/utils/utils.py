@@ -453,6 +453,9 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         # throw an error here as something is up with the file
         raise RuntimeError("Manifest file provided does not seem valid")
 
+    if split_tests:
+        manifest = split_manifest_tests(manifest)
+
     samples = ('\n\t').join([
         f"{x[0]} -> {x[1]['tests']}" for x in data.items()
     ])

@@ -217,8 +217,7 @@ def main(
     # parse manifest and format into a mapping of sampleID -> test codes
     manifest_data = DXManage().read_dxfile(manifest_file)
     manifest, manifest_source = parse_manifest(manifest_data)
-    if split_tests:
-        manifest = split_manifest_tests(manifest)
+
 
     # filter manifest tests against genepanels to ensure what has been
     # requested are test codes or HGNC IDs we recognise
