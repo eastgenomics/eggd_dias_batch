@@ -485,7 +485,7 @@ class DXExecute():
         sample_limit : int
             no. of samples to launch jobs for
         parent : str
-            job ID of parent batch job to use when testing to stop jobbs running
+            job ID of parent batch job to use when testing to stop jobs running
 
         Returns
         -------

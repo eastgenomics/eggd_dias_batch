@@ -223,7 +223,7 @@ def fill_config_reference_inputs(config) -> dict:
                 if not value == f'INPUT-{reference}':
                     continue
 
-                # this input is a macth => add this ref file ID as
+                # this input is a match => add this ref file ID as
                 # the input and move to next input
                 match = True
 

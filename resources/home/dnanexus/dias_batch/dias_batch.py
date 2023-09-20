@@ -130,7 +130,10 @@ class CheckInputs():
         if not any(self.inputs.get(x) for x in modes):
             self.errors.append('No mode specified to run in')
 
-        if any(modes.pop(0)) and not self.inputs.get('manifest_file'):
+        report_modes = modes.pop(0)
+        if any([
+            self.inputs.get(x) for x in report_modes
+        ]) and not self.inputs.get('manifest_file'):
             self.errors.append(
                 'Reports argument specified with no manifest file'
             )
