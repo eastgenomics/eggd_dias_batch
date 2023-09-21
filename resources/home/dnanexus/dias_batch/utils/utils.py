@@ -73,7 +73,7 @@ def check_report_index(name, reports) -> int:
                 int(x.group().replace('.xlsx', '')) for x in suffixes if x
             ])
 
-    print(f"Previous xlsx reports found for {name}: {bool(previous_reports)}")
+    print(f"Previous xlsx reports found for {name}: {len(previous_reports)}")
     print(f"Using suffix: {suffix + 1}")
 
     return suffix + 1
