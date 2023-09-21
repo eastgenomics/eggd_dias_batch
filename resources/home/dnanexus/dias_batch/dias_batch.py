@@ -170,17 +170,7 @@ def main(
     testing=False,
     sample_limit=None
 ):
-    check = CheckInputs(
-        assay=assay,
-        assay_config_file=assay_config_file,
-        assay_config_dir=assay_config_dir,
-        manifest_file=manifest_file,
-        single_output_dir=single_output_dir,
-        cnv_call=cnv_call,
-        cnv_reports=cnv_reports,
-        snv_reports=snv_reports,
-        mosaic_reports=mosaic_reports
-    )
+    check = CheckInputs(**locals())
 
     # assign single out dir in case of missing /output prefix to path
     single_output_dir = check.inputs['single_output_dir']
