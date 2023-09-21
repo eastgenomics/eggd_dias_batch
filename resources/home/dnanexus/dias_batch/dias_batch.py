@@ -268,15 +268,16 @@ def main(
 
     if cnv_reports:
         cnv_report_jobs, cnv_report_errors, cnv_report_summary = \
-            DXExecute().cnv_reports(
+            DXExecute().reports_workflow(
+                mode='CNV',
                 workflow_id=assay_config.get('cnv_report_workflow_id'),
-                call_job_id=cnv_call_job_id,
                 single_output_dir=single_output_dir,
                 manifest=manifest,
                 manifest_source=manifest_source,
                 config=assay_config['modes']['cnv_reports'],
                 start=start_time,
                 sample_limit=sample_limit,
+                call_job_id=cnv_call_job_id,
                 parent=parent
             )
 
@@ -284,13 +285,13 @@ def main(
 
     if snv_reports:
         snv_reports, snv_report_errors, snv_report_summary = \
-            DXExecute().snv_reports(
+            DXExecute().reports_workflow(
+                mode='SNV',
                 workflow_id=assay_config.get('snv_report_workflow_id'),
                 single_output_dir=single_output_dir,
                 manifest=manifest,
                 manifest_source=manifest_source,
                 config=assay_config['modes']['snv_reports'],
-                mode='SNV',
                 start=start_time,
                 sample_limit=sample_limit,
                 parent=parent
@@ -299,13 +300,13 @@ def main(
 
     if mosaic_reports:
         mosaic_reports, mosaic_report_errors, mosaic_report_summary = \
-            DXExecute().snv_reports(
+            DXExecute().reports_workflow(
+                mode='mosaic',
                 workflow_id=assay_config.get('snv_report_workflow_id'),
                 single_output_dir=single_output_dir,
                 manifest=manifest,
                 manifest_source=manifest_source,
                 config=assay_config['modes']['mosaic_reports'],
-                mode='mosaic',
                 start=start_time,
                 sample_limit=sample_limit,
                 parent=parent
