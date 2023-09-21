@@ -5,10 +5,13 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 import json
+import os
 from pprint import PrettyPrinter
 import re
+from time import strftime, localtime
 from typing import Tuple
 
+import dxpy
 import pandas as pd
 
 # for prettier viewing in the logs
@@ -97,11 +100,34 @@ def write_summary_report(output, manifest=None, **summary) -> None:
     {output}.txt file of launched job summary
     """
     print(f"Writing summary report to {output}")
+    batch_job_id = os.environ.get('DX_JOB_ID')
+    job = dxpy.bindings.dxjob.DXJob(dxid=batch_job_id).describe()
+    app = dxpy.bindings.dxapp.DXApp(dxid=job['executable']).describe()
+    time = strftime('%Y-%m-%d %H:%M:%S', localtime(job['created'] / 1000))
+    inputs = job['runInput']
+
+    # nicer formatting of inputs for job report
+    if inputs.get('manifest_file'):
+        inputs['manifest_file'] = dxpy.describe(
+            inputs['manifest_file']['$dnanexus_link'])['name']
+
+    if inputs.get('assay_config_file'):
+        inputs['assay_config_file'] = dxpy.describe(
+            inputs['assay_config_file']['$dnanexus_link'])['name']
+
+    inputs = "\n\t".join([f"{x[0]}: {x[1]}" for x in sorted(inputs.items())])
+
     with open(output, 'w') as file_handle:
         file_handle.write(
             f"Assay config file used {summary.get('assay_config')['name']} "
             f"({summary.get('assay_config')['dxid']})\n"
         )
+        file_handle.write(
+            f"\nJobs launched from {app['name']} ({app['version']}) at {time} "
+            f"by {job['launchedBy'].replace('user-', '')} in {job['id']}\n"
+        )
+        file_handle.write(f"Job inputs:\n\t{inputs}\n")
+
         if manifest:
             file_handle.write(
                 f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
