@@ -868,7 +868,7 @@ class DXExecute():
             detach=True
         )
 
-        return job
+        return job._dxid
 
 
     @staticmethod
@@ -890,7 +890,8 @@ class DXExecute():
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
             concurrent_jobs = {
-                executor.submit(terminate_one, id): id for id in jobs
+                executor.submit(terminate_one, id):
+                id for id in sorted(jobs, reverse=True)
             }
             for future in concurrent.futures.as_completed(concurrent_jobs):
                 # access returned output as each is returned in any order
