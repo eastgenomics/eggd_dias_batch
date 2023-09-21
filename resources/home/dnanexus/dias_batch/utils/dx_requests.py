@@ -676,6 +676,10 @@ class DXExecute():
             time_stamp=start
         )
 
+        parent_folder = make_path(
+            single_output_dir, workflow_details['name'], start
+        )
+
         print(f"Launching {mode} reports per sample...")
         start = timer()
 
@@ -781,6 +785,7 @@ class DXExecute():
                     rerun_stages=['*'],
                     detach=True,
                     name=f"{workflow_details['name']}_{sample}_{codes} ({mode})",
+                    folder=parent_folder,
                     stage_folders=stage_folders,
                     depends_on=parent
                 )
@@ -805,6 +810,65 @@ class DXExecute():
             f"workflows in {round(end - start)}s"
         )
         return launched_jobs, errors, sample_summary
+
+
+    def artemis(
+            self,
+            single_output_dir,
+            app_id,
+            dependent_jobs,
+            start,
+            qc_xlsx,
+            capture_bed,
+            snv_output=None,
+            cnv_output=None
+        ) -> str:
+        """
+        Launch eggd_artemis to generate xlsx file of download links
+
+        Parameters
+        ----------
+        single_output_dir : str
+            path to single output directory
+        app_id : str
+            app ID of eggd_artemis
+        dependent_jobs : list
+            list of jobs to wait to complete before starting
+        start : str
+            start time of running app for naming output folders
+        qc_xlsx : dict
+            $dnanexus_link mapping of file input of QC status
+        capture_bed : dict
+            $dnanexus_link mapping dict of capture bed
+        snv_output : str, optional
+            output path of SNV reports (if run), by default None
+        cnv_output : str, optional
+            output path of CNV reports (if run), by default None
+
+        Returns
+        -------
+        str
+            job ID of launched job
+        """
+        details = dxpy.bindings.dxapp.DXApp(app_id).describe()
+        path = make_path(single_output_dir, details['name'], start)
+
+        app_input = {
+            "snv_path": snv_output,
+            "cnv_path": cnv_output,
+            "qc_status": qc_xlsx,
+            "bed_file": capture_bed
+        }
+
+        job = dxpy.bindings.dxapp.DXApp(dxid=app_id).run(
+            app_input=app_input,
+            project=os.environ.get('DX_PROJECT_CONTEXT_ID'),
+            folder=path,
+            depends_on=dependent_jobs,
+            detach=True
+        )
+
+        return job
 
 
     @staticmethod

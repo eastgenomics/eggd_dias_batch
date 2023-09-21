@@ -2,6 +2,7 @@
     "assay": "CEN",
     "version": "2.2.0",
     "cnv_call_app_id": "app-GJZVB2840KK0kxX998QjgXF0",
+    "artemis_app_id": "app-GVVq85j42YxK960ZK8628v5Y",
     "snv_report_workflow_id": "workflow-GXzkfYj4QPQp9z4Jz4BF09y6",
     "cnv_report_workflow_id": "workflow-GXzvJq84XZB1fJk9fBfG88XJ",
     "reference_files": {
@@ -170,6 +171,18 @@
                 "stage-rpt_athena.mosdepth_files": {
                     "folder": "eggd_mosdepth",
                     "name": "per-base.bed.gz$|reference.txt$"
+                }
+            }
+        },
+        "artemis": {
+            "inputs": {
+                "capture_bed": {
+                    "$dnanexus_link": {
+                        "$dnanexus_link": {
+                            "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                            "id": "file-GFPxpJj4GVV0Pfzv4VGYf1pq"
+                        }
+                    }
                 }
             }
         }

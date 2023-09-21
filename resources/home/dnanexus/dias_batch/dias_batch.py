@@ -42,13 +42,17 @@ class CheckInputs():
         Raised if one or more inputs is invalid
     """
     def __init__(self, **inputs) -> None:
-        print("Validating inputs...")
+        input_str = '\n\t'.join(f"{k} : {v}" for k, v in inputs.items())
+        print(f"Validating inputs, inputs provided:\n\t{input_str}")
+
         self.inputs = inputs
         self.errors = []
         self.check_assay()
         self.check_assay_config_dir()
         self.check_mode_set()
         self.check_single_output_dir()
+        self.check_cnv_calling_for_cnv_reports()
+        self.check_artemis_inputs()
 
         if self.errors:
             errors = '\n\t'.join(x for x in self.errors)
@@ -143,14 +147,35 @@ class CheckInputs():
         Check if running CNV reports that either a job ID is given
         or running CNV calling at the same time
         """
-        if self.inputs.get('cnv_reports') and not (
-            self.inputs.get('cnv_call') or self.inputs.get('cnv_call_job_id')
-        ):
-            self.errors.append(
-                "Running CNV reports without first running CNV calling and "
-                "cnv_call_job_ID not specified. Please rerun with "
-                "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
-            )
+        if self.inputs.get('cnv_reports'):
+            if (
+                not self.inputs.get('cnv_call') and
+                not self.inputs.get('cnv_call_job_id')
+            ):
+                self.errors.append(
+                    "Running CNV reports without first running CNV calling and "
+                    "cnv_call_job_ID not specified. Please rerun with "
+                    "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
+                )
+
+    def check_artemis_inputs(self):
+        """Check if running artemis that the required inputs are set"""
+        if self.inputs.get('artemis'):
+            if (
+                not self.inputs.get('cnv_reports') or
+                not self.inputs.get('snv_reports')
+            ):
+                self.errors.append(
+                    "Artemis specified to run but no snv or cnv reports "
+                    "specified. Please rerun with -icnv_reports and/or "
+                    "-isnv_reports"
+                )
+
+            if not self.inputs.get('qc_file'):
+                self.errors.append(
+                    "Artmeis specified to run but no QC .xlsx provided. "
+                    "Please rerun specifying -iqc_xlsx"
+                )
 
 
 @dxpy.entry_point('main')
@@ -167,20 +192,12 @@ def main(
     cnv_reports=False,
     snv_reports=False,
     mosaic_reports=False,
+    artemis=False,
+    qc_file=None,
     testing=False,
     sample_limit=None
 ):
-    check = CheckInputs(
-        assay=assay,
-        assay_config_file=assay_config_file,
-        assay_config_dir=assay_config_dir,
-        manifest_file=manifest_file,
-        single_output_dir=single_output_dir,
-        cnv_call=cnv_call,
-        cnv_reports=cnv_reports,
-        snv_reports=snv_reports,
-        mosaic_reports=mosaic_reports
-    )
+    check = CheckInputs(**locals())
 
     # assign single out dir in case of missing /output prefix to path
     single_output_dir = check.inputs['single_output_dir']
@@ -312,6 +329,36 @@ def main(
                 parent=parent
             )
         launched_jobs['mosaic_reports'] = mosaic_reports
+
+    if artemis:
+        # get parent output path of all reports workflows
+        snv_path = cnv_path = None
+
+        if launched_jobs.get('snv_reports'):
+            snv_path = dxpy.describe(
+                launched_jobs.get('snv_reports')[0])['folder']
+
+        if cnv_reports:
+            if launched_jobs.get('snv_reports'):
+                cnv_path = dxpy.describe(
+                    launched_jobs.get('cnv_reports')[0])['folder']
+
+        dependent_jobs = [
+            job for job_list in launched_jobs.values() for job in job_list
+        ]
+
+        artemis_job = DXExecute().artemis(
+            single_output_dir=single_output_dir,
+            app_id=assay_config.get('artemis_app_id'),
+            dependent_jobs=dependent_jobs,
+            start=start_time,
+            qc_xlsx=qc_file,
+            snv_output=snv_path,
+            cnv_output=cnv_path,
+            capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed']
+        )
+
+        launched_jobs['artemis'] = [artemis_job]
 
     print(
         'All jobs launched:\n\t',
