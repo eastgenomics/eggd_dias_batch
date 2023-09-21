@@ -114,6 +114,13 @@
         "class": "file",
         "optional": true,
         "help": "text file with summary of jobs launched and any errors encountered"
+      },
+      {
+        "name": "launched_jobs",
+        "label": "launched jobs",
+        "class": "string",
+        "optional": true,
+        "help": "comma separated string of launched jobs"
       }
     ],
     "runSpec": {

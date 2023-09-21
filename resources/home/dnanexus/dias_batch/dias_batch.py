@@ -346,6 +346,13 @@ def main(
             os.environ.get('DX_JOB_ID')).describe()['folder']
     )
 
-    return {"summary_report": dxpy.dxlink(url_file)}
+    launched_jobs = ','.join([
+        job for job_list in launched_jobs.values() for job in job_list
+    ])
+
+    return {
+        "summary_report": dxpy.dxlink(url_file),
+        "launched_jobs": launched_jobs
+    }
 
 dxpy.run()
