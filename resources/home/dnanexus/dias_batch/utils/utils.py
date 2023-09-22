@@ -69,7 +69,9 @@ def check_report_index(name, reports) -> int:
         # some previous reports, try get highest suffix
         suffixes = [
             re.search(r'[\d]{1,2}.xlsx$', x) for x in previous_reports
+            if re.search(r'[\d]{1,2}.xlsx$', x)
         ]
+
         if suffixes:
             # found something useful, if not we're just going to use 1
             suffix = max([
