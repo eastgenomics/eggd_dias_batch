@@ -1,3 +1,14 @@
+"""
+Tests for general functions in utils.py
+
+The following functions are not covered as they are either
+not needed to be tested (i.e. prettier_print()) or are a
+pain to write tests for (i.e. write_summary_report()):
+
+- time_stamp()
+- prettier_print()
+- write_summary_report()
+"""
 from copy import deepcopy
 import os
 import pytest
@@ -17,37 +28,6 @@ from utils import utils
 TEST_DATA_DIR = (
     os.path.join(os.path.dirname(__file__), 'test_data')
 )
-
-
-class TestMakePath():
-    """
-    Tests for utils.make_path(), expect it to take any number of strings
-    with random '/' and format nicely as a path for DNAnexus queries,
-    dropping project- prefix if present
-    """
-    def test_path_mix(self):
-        """
-        Test mix of strings builds path correctly
-        """
-        path_parts = [
-            "project-abc123:/dir1"
-            "/double_slash/",
-            "/prefix_slash",
-            "suffix_slash/",
-            "no_slash",
-            "and_another/",
-            "/much_path",
-            "many_lines/"
-        ]
-
-        path = utils.make_path(*path_parts)
-
-        correct_path = (
-            "/dir1/double_slash/prefix_slash/suffix_slash/no_slash/"
-            "and_another/much_path/many_lines/"
-        )
-
-        assert path == correct_path, "Invalid path built"
 
 
 class TestCheckReportIndex():
@@ -109,6 +89,62 @@ class TestCheckReportIndex():
         )
 
         assert suffix == 1, "Wrong suffix returned for no report suffix"
+
+
+class TestMakePath():
+    """
+    Tests for utils.make_path(), expect it to take any number of strings
+    with random '/' and format nicely as a path for DNAnexus queries,
+    dropping project- prefix if present
+    """
+    def test_path_mix(self):
+        """
+        Test mix of strings builds path correctly
+        """
+        path_parts = [
+            "project-abc123:/dir1"
+            "/double_slash/",
+            "/prefix_slash",
+            "suffix_slash/",
+            "no_slash",
+            "and_another/",
+            "/much_path",
+            "many_lines/"
+        ]
+
+        path = utils.make_path(*path_parts)
+
+        correct_path = (
+            "/dir1/double_slash/prefix_slash/suffix_slash/no_slash/"
+            "and_another/much_path/many_lines/"
+        )
+
+        assert path == correct_path, "Invalid path built"
+
+
+class TestFillConfigReferenceInputs():
+    """
+    _summary_
+    """
+    # TODO
+
+
+class TestParseGenePanels():
+    """
+    Tests for utils.parse_genepanels()
+    """
+    with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
+        # parse genepanels file like is done in dias_batch.main()
+        genepanels_data = file_handle.read().splitlines()
+        genepanels_df = utils.parse_genepanels(genepanels_data)
+
+    #TODO
+
+
+class TestSplitGenePanelsTestCodes():
+    """
+    TODO
+    """
 
 
 class TestParseManifest:
@@ -306,11 +342,23 @@ class TestParseManifest:
             utils.parse_manifest(data)
 
 
-class TestParseGenePanels():
+class TestFilterManifestSamplesByFiles():
     """
-    Tests for utils.parse_genepanels()
+    TODO
     """
-    with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
-        # parse genepanels file like is done in dias_batch.main()
-        genepanels_data = file_handle.read().splitlines()
-        genepanels_df = utils.parse_genepanels(genepanels_data)
+
+class TestCheckManifestValidTestCodes():
+    """
+    TODO
+    """
+
+
+class TestSplitManifestTests():
+    """
+    TODO
+    """
+
+class TestAddPanelsAndIndicationsToManifest():
+    """
+    TODO
+    """
