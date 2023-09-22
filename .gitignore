@@ -1,3 +1,5 @@
 archive/*
 test.py
 *.pyc
+/*.txt
+/*.tsv
