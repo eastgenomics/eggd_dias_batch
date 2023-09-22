@@ -1,0 +1,7 @@
+23-NGSA27
+Re-analysis Specimen ID;Re-analysis Instrument ID;Specimen ID;Instrument ID;Sequencing Run Name;Batch ID;Specimen Type;Order ID;Priority;Test;Sex;Patient Age;Family #;Test Codes
+;;23146R00111;123245111;230830_A01295_0226_BH3KNWDRX3;23-NGCEN13;Peripheral blood;235592426;STAT;*Rare Disease NGS Analysis*;Human;154 yrs;Data Unavailable;R207.1, , , , 
+;;33202R00111;224289111;230830_A01295_0226_BH3KNWDRX3;23-NGCEN13;Peripheral blood;240279812;STAT;*Rare Disease NGS Analysis*;Human;99 yrs;Z707954;R208.1, , , , 
+;;43206R00111;324338111;230830_A01295_0226_BH3KNWDRX3;23-NGCEN13;Peripheral blood;240630210;STAT;*Rare Disease NGS Analysis*;Human;111 yrs;Data Unavailable;R134.1, , , , 
+;;53214R00111;424487111;230830_A01295_0226_BH3KNWDRX3;23-NGCEN13;Peripheral blood;241211592;STAT;*Rare Disease NGS Analysis*;Human;131 yrs;Data Unavailable;R208.1, , R216.1, , 
+GM2308111;X225111;23230R0111;124801362;230601_A01295_0185_AHK723DMXY_TWE;;Stored Sample;242823004;Routine;*Rare Disease NGS Analysis*;Human;11 yr;Data Unavailable;R149.1, , , , 
