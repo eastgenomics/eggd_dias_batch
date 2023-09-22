@@ -299,6 +299,32 @@ def fill_config_reference_inputs(config) -> dict:
     return filled_config
 
 
+def parse_genepanels(contents) -> pd.DataFrame:
+    """
+    Parse genepanels file into nicely formatted DataFrame
+
+    Parameters
+    ----------
+    contents : list
+        _description_
+
+    Returns
+    -------
+    pd.DataFrame
+        _description_
+    """
+    genepanels = pd.DataFrame(
+        [x.split('\t') for x in contents],
+        columns=['indication', 'panel_name', 'hgnc_id']
+    )
+    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
+    genepanels.drop_duplicates(keep='first', inplace=True)
+    genepanels.reset_index(inplace=True)
+    genepanels = split_genepanels_test_codes(genepanels)
+
+    return genepanels
+
+
 def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     """
     Split out R/C codes from full CI name for easier matching
@@ -439,12 +465,12 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         # and their fat fingers
         columns = [
             'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
-            'Re-analysis Specimen ID'
+            'Re-analysis Specimen ID', 'Test Codes'
         ]
 
         # remove any spaces and SP- from specimen columns
         manifest[columns] = manifest[columns].applymap(
-            lambda x: x.replace(' ', ''))
+            lambda x: x.replace(' ', '') if x else x)
         manifest['Re-analysis Specimen ID'] = \
             manifest['Re-analysis Specimen ID'].str.replace('SP-', '')
         manifest['Specimen ID'] = \
@@ -462,7 +488,6 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         manifest_source = 'Epic'
 
         data = defaultdict(lambda: defaultdict(list))
-
 
         for idx, row in manifest.iterrows():
             # split test codes to list and sense check they're valid format
