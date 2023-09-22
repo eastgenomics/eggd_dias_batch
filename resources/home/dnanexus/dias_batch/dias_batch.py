@@ -196,7 +196,7 @@ def main(
     genepanels_data = DXManage().read_dxfile(
         file=assay_config.get('reference_files', {}).get('genepanels'),
     )
-    genepanels_data = parse_genepanels(genepanels_data)
+    genepanels = parse_genepanels(genepanels_data)
 
     if manifest_file:
         # parse manifest and format into a mapping of sampleID -> test codes
