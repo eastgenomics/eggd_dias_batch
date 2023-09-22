@@ -7,6 +7,7 @@ import concurrent.futures
 import json
 import os
 import re
+from time import sleep
 from timeit import default_timer as timer
 from typing import Tuple
 
@@ -225,10 +226,11 @@ class DXManage():
             if x['describe']['archivalState'] != 'live'
         ]
         if not_live:
-            raise RuntimeError(
-                f"WARNING: one or more files found in {path} are not in "
-                f"a live state: {prettier_print(not_live)}"
+            print(
+                "WARNING: some files found are in an archived state, if these "
+                "are for samples to be analysed this will raise an error..."
             )
+            prettier_print(not_live)
 
         print(f"Found {len(files)} files in {path}/{subdir}")
 
@@ -291,6 +293,114 @@ class DXManage():
             project=project, dxid=file_id).read().split('\n')
 
 
+    def check_archival_state(self, files, unarchive, samples=None) -> None:
+        """
+        Check archival state of n files, to be used before attempting
+        to launch jobs to ensure nothing fails due to archived files
+
+        Parameters
+        ---------
+        files : list
+            list of DXFile objects to check state of
+        unarchive : bool
+            if to automatically unarchive files
+        samples : list
+            list of sample names to filter down files to check
+        """
+        print(f"Checking archival state of {len(files)} files...")
+
+        not_live = [
+            f"{x['describe']['name']} ({x['id']})" for x in files
+            if x['describe']['archivalState'] != 'live'
+        ]
+
+        if samples and not_live:
+            not_live_filtered = []
+            for dx_file in not_live:
+                match = False
+                for name in samples:
+                    if dx_file['describe']['name'].startswith(name):
+                        match = True
+                        break
+
+                if match:
+                    # this file is archived and in one of our samples
+                    not_live_filtered.append(dx_file)
+
+            not_live = not_live_filtered
+
+        not_live_ids = [x['id'] for x in not_live]
+        not_live_printable = '\n\t'.join([
+            f"{x['describe']['name']} ({x['id']}) - {x['describe']['archivalState']}"
+            for x in not_live
+        ])
+
+        print(
+            f"WARNING: {len(not_live)} sample files to use for analysis are "
+            f"not in a live state:\n\t{not_live_printable}"
+        )
+
+        if unarchive:
+            print(
+                "-iunarchive specified, will start unarchiving..."
+            )
+            self.unarchive_files(not_live)
+        else:
+            # not unarchiving => print a handy message and rage quit
+            print(
+                f"ERROR: files required are archived and -iunarchive not "
+                f"specified, file IDs of archived files:\n\t{not_live_ids}"
+            )
+            raise RuntimeError('Files required for analysis archived')
+
+
+    def unarchive_files(self, files) -> None:
+        """
+        Unarchive given file IDs ready for analysis, will set off unarchiving
+        and terminate the app since unarchiving takes a while
+
+        Parameters
+        ----------
+        files : list
+            dx file IDs of files to unarchive
+        """
+        for idx, dx_file in enumerate(files):
+            print(
+                f"[{idx+1}/{len(files)}] Unarchiving "
+                f"{dx_file['describe']['name']} ({dx_file['id']})..."
+            )
+
+            # add some buffer in case DNAnexus gets angry at lots of requests
+            attempt = 1
+            sleepy_time = 10
+
+            while attempt <= 5:
+                try:
+                    dxpy.bindings.dxfile.DXFile(dxid=dx_file['id']).unarchive()
+                    continue
+                except Exception as error:
+                    print(
+                        f"[{attempt}/5] Error in unarchiving file:\n\t{error}"
+                        f"\n\nWaiting {sleepy_time}s to retry"
+                    )
+                    sleep(sleepy_time)
+                    attempt += 1
+                    sleepy_time = sleepy_time * 2
+
+            raise RuntimeError(
+                f"Error in unarchiving file: {dx_file['id']}"
+            )
+
+        check_state_cmd = (
+            f"echo \"{' '.join([x['id'] for x in files])}\" | xargs"
+        )
+        
+        print(
+            f"Unarchiving requested for {len(files)} files, this will take "
+            "some time."
+        )
+
+
     def format_output_folders(self, workflow, single_output, time_stamp) -> dict:
         """
         Generate dict of output folders for each stage of given workflow
@@ -347,7 +457,13 @@ class DXExecute():
     """
     Methods for handling exeuction of apps / worklfows
     """
-    def cnv_calling(self, config, single_output_dir, exclude, wait) -> str:
+    def cnv_calling(self,
+            config,
+            single_output_dir,
+            exclude,
+            wait,
+            unarchive
+        ) -> str:
         """
         Run CNV calling for given samples in manifest
 
@@ -361,6 +477,8 @@ class DXExecute():
             list of sample IDs to exclude bam files from calling
         wait : bool
             if to set hold_on_wait to wait on job to finish
+        unarchive : bool
+            controls if to automatically unarchive any archived files
 
         Returns
         -------
@@ -405,6 +523,9 @@ class DXExecute():
                 if not file['describe']['name'].split('_')[0] in exclude
             ]
             print(f"{len(files)} .bam/.bai files after exlcuding")
+
+        # check to ensure all bams are unarchived
+        DXManage().check_archival_state(files, unarchive=unarchive)
 
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['inputs']['bambais'] = files

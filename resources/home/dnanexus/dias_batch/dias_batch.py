@@ -169,7 +169,8 @@ def main(
     snv_reports=False,
     mosaic_reports=False,
     testing=False,
-    sample_limit=None
+    sample_limit=None,
+    unarchive=None
 ):
     check = CheckInputs(**locals())
 
@@ -252,7 +253,8 @@ def main(
                 config=assay_config,
                 single_output_dir=single_output_dir,
                 exclude=exclude_samples,
-                wait=wait
+                wait=wait,
+                unarchive=unarchive
             )
 
             launched_jobs['CNV calling'] = [cnv_call_job_id]

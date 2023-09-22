@@ -18,6 +18,7 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 - `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run
 - `-iexclude_samples` (`str`): comma separated string of samples to exclude from analysis
 - `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
+- `-iunarchive` (`bool`): controls if to automatically unarchive any required files that are archived
 
 
 **Running modes**
