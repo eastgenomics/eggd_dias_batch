@@ -33,6 +33,11 @@ TEST_DATA_DIR = (
 class TestCheckReportIndex():
     """
     Tests for utils.check_report_index()
+
+    Function takes a list of files returned from DXManage.find_files()
+    and a sample name stem, filters down to just xlsx reports for the
+    given sample and then gets the highest index found from the int before
+    the '.xlsx' suffix
     """
     reports = [
         "X223420-GM2225190_SNV_1.xlsx",
@@ -93,9 +98,11 @@ class TestCheckReportIndex():
 
 class TestMakePath():
     """
-    Tests for utils.make_path(), expect it to take any number of strings
-    with random '/' and format nicely as a path for DNAnexus queries,
-    dropping project- prefix if present
+    Tests for utils.make_path()
+    
+    Function expects  to take any number of strings with variable '/' and
+    format nicely as a path for DNAnexus queries, dropping project-
+    prefix if present
     """
     def test_path_mix(self):
         """
@@ -124,9 +131,8 @@ class TestMakePath():
 
 class TestFillConfigReferenceInputs():
     """
-    _summary_
+    TODO
     """
-    # TODO
 
 
 class TestParseGenePanels():
@@ -346,6 +352,7 @@ class TestFilterManifestSamplesByFiles():
     """
     TODO
     """
+
 
 class TestCheckManifestValidTestCodes():
     """
