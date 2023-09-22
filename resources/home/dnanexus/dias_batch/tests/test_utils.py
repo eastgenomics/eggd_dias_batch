@@ -144,7 +144,15 @@ class TestParseGenePanels():
         genepanels_data = file_handle.read().splitlines()
         genepanels_df = utils.parse_genepanels(genepanels_data)
 
-    #TODO
+    def test_genepanels_df_returned(self):
+        """
+        _summary_
+
+        Raises
+        ------
+        an
+            _description_
+        """
 
 
 class TestSplitGenePanelsTestCodes():
