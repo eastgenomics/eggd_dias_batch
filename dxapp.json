@@ -41,7 +41,14 @@
             "label": "exclude samples",
             "class": "string",
             "optional": true,
-            "help": "comma separated string of samples to exclude from analysis"
+            "help": "comma separated string of samples to exclude from CNV calling / reports"
+          },
+          {
+            "name": "exclude_samples_file",
+            "label": "exclude samples file",
+            "class": "string",
+            "optional": true,
+            "help": "file of samples to exclude from CNV calling / reports"
           },
           {
             "name": "single_output_dir",

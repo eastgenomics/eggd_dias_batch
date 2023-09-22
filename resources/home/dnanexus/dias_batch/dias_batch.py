@@ -12,13 +12,13 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
-    from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
+    from dias_batch.utils.utils import parse_manifest, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
         make_path, time_stamp, write_summary_report
 else:
     from .utils.dx_requests import DXExecute, DXManage
-    from .utils.utils import parse_manifest, split_manifest_tests, \
+    from .utils.utils import parse_manifest, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
         make_path, time_stamp, write_summary_report
@@ -153,6 +153,20 @@ class CheckInputs():
                 "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
             )
 
+    def check_exclude_str_and_file(self):
+        """
+        Check when -iexclude_samples or -iexclude_samples_file is passed
+        that only one is specified
+        """
+        if all([
+            self.inputs.get('exclude_samples'),
+            self.inputs.get('exclude_samples_file')
+        ]):
+            self.errors.append(
+                "Both -iexclude_samples and -iexclude_samples_file specified, "
+                "only one may be specified"
+            )
+
 
 @dxpy.entry_point('main')
 def main(
@@ -162,6 +176,7 @@ def main(
     manifest_file=None,
     split_tests=False,
     exclude_samples=None,
+    exclude_samples_file=None,
     single_output_dir=None,
     cnv_call_job_id=None,
     cnv_call=False,
@@ -191,6 +206,9 @@ def main(
 
     if exclude_samples:
         exclude_samples = exclude_samples.split(',')
+
+    if exclude_samples_file:
+        exclude_samples = DXManage().read_dxfile(exclude_samples_file)
 
     # parse and format genepanels file
     genepanels = DXManage().read_dxfile(
