@@ -49,6 +49,7 @@ class CheckInputs():
         self.check_assay_config_dir()
         self.check_mode_set()
         self.check_single_output_dir()
+        self.check_cnv_calling_for_cnv_reports()
 
         if self.errors:
             errors = '\n\t'.join(x for x in self.errors)
