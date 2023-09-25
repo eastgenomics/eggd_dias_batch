@@ -125,7 +125,14 @@ dx run app-eggd_dias_batch \
 
 Running all modes in testing:
 ```
-dx run app-eggd_dias_batch -iassay=CEN -imanifest_file=file-xxx -isingle_output_dir=project-xxx:/path_to_output/ -icnv_call=true -icnv_reports=true -isnv_reports=true -imosaic_reports=true
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call=true \
+    -icnv_reports=true \
+    -isnv_reports=true \
+    -imosaic_reports=true
 ```
 
 
