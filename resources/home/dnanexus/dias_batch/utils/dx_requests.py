@@ -330,7 +330,7 @@ class DXManage():
 
             not_live = not_live_filtered
 
-        not_live_ids = [x['id'] for x in not_live]
+        not_live_ids = ' '.join([x['id'] for x in not_live])
         not_live_printable = '\n\t'.join([
             f"{x['describe']['name']} ({x['id']}) - {x['describe']['archivalState']}"
             for x in not_live
@@ -393,12 +393,18 @@ class DXManage():
             )
 
         check_state_cmd = (
-            f"echo \"{' '.join([x['id'] for x in files])}\" | xargs"
+            f"echo {' '.join([x['id'] for x in files])} | xargs -n1 -d' ' -P32 "
+            "-I{} bash -c 'dx describe --json {} ' | grep archival | uniq -c"
         )
 
         print(
             f"Unarchiving requested for {len(files)} files, this will take "
-            "some time..."
+            "some time...\n \n"
+        )
+
+        print(
+            "The state of all files may be checked with the following command:"
+            f"\n \n{check_state_cmd}\n \n"
         )
 
         print(
