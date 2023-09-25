@@ -303,15 +303,28 @@ def parse_genepanels(contents) -> pd.DataFrame:
     """
     Parse genepanels file into nicely formatted DataFrame
 
+    This will drop the HGNC ID column and keep the unique rows left (i.e.
+    one row per clinical inidication / panel), and adds the test code as 
+    a separate column.
+    
+    Example resultant dataframe:
+
+    +-----------+-----------------------+---------------------------+
+    | test_code |      indication       |        panel_name         |
+    +-----------+-----------------------+---------------------------+
+    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
+    | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
+    +-----------+-----------------------+---------------------------+
+
     Parameters
     ----------
     contents : list
-        _description_
+        contents of genepanels file read from DXManage.read_dxfile()
 
     Returns
     -------
     pd.DataFrame
-        _description_
+        DataFrame of genepanels file
     """
     genepanels = pd.DataFrame(
         [x.split('\t') for x in contents],

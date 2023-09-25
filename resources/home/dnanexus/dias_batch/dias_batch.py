@@ -12,13 +12,13 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
-    from dias_batch.utils.utils import parse_manifest, split_manifest_tests, \
+    from dias_batch.utils.utils import parse_manifest, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
         make_path, time_stamp, write_summary_report, parse_genepanels
 else:
     from .utils.dx_requests import DXExecute, DXManage
-    from .utils.utils import parse_manifest, split_manifest_tests, \
+    from .utils.utils import parse_manifest, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
         make_path, time_stamp, write_summary_report, parse_genepanels
