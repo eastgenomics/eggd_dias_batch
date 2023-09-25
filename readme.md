@@ -95,7 +95,12 @@ n.b.
 
 Running CNV calling and CNV reports for CEN assay:
 ```
-dx run app-eggd_dias_batch -iassay=CEN -imanifest_file=file-xxx -isingle_output_dir=project-xxx:/path_to_output/ -icnv_call=true -icnv_reports=true
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call=true \
+    -icnv_reports=true
 ```
 
 Running reports for CNV and SNV:
