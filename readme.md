@@ -103,14 +103,24 @@ dx run app-eggd_dias_batch \
     -icnv_reports=true
 ```
 
-Running reports for CNV and SNV:
+Running reports for CNV and SNV (using previous CNV calling output):
 ```
-dx run app-eggd_dias_batch -iassay=CEN -imanifest_file=file-xxx -isingle_output_dir=project-xxx:/path_to_output/ -icnv_call_job_id=job-xxx -icnv_reports=true -isnv_reports=true
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call_job_id=job-xxx \
+    -icnv_reports=true \
+    -isnv_reports=true
 ```
 
 Running SNV reports with specified config file:
 ```
-dx run app-eggd_dias_batch -iassay_config_file=file-xxx -imanifest_file=file-xxx -isingle_output_dir=project-xxx:/path_to_output/ -isnv_reports=true
+dx run app-eggd_dias_batch \
+    -iassay_config_file=file-xxx \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -isnv_reports=true
 ```
 
 Running all modes in testing:
