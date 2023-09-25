@@ -47,7 +47,7 @@ class TestCheckReportIndex():
 
     def test_max_suffix_snv(self):
         """
-        Test that max suffix returned for SNV
+        Test that max suffix returned for SNV is correct
         """
         suffix = utils.check_report_index(
             name="X223420-GM2225190_SNV",
@@ -58,7 +58,7 @@ class TestCheckReportIndex():
 
     def test_max_suffix_cnv(self):
         """
-        Test max suffix returned for CNV
+        Test max suffix returned for CNV is correct
         """
         suffix = utils.check_report_index(
             name="X223420-GM2225190_CNV",
@@ -245,7 +245,8 @@ class TestParseManifest:
         ]
 
         for column in columns:
-            # copy Epic data and drop out required column
+            # copy Epic data and drop out required column to ensure
+            # error is raised
             data = deepcopy(self.epic_data)
             data[1] = re.sub(rf"{column}", 'NA', data[1])
 
@@ -271,6 +272,7 @@ class TestParseManifest:
             in enumerate(data[-1].split(';'))
         ])
 
+        # parse manifest => should remove our mess from above
         manifest, _ = utils.parse_manifest(data)
 
         errors = []
@@ -302,7 +304,7 @@ class TestParseManifest:
     def test_epic_reanalysis_ids_used(self):
         """
         Where 'Re-analysis Specimen ID' or 'Re-analysis Instrument ID'
-        are specified these should be used over the Specimen Id and
+        are specified these should be used over the Specimen ID and
         Instrument columns, as these contain the original IDs that we need
         
         The last row in our test epic manifest has GM2308111 and X225111
