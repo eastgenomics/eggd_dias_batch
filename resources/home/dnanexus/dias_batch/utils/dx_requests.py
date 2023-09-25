@@ -401,6 +401,12 @@ class DXManage():
             "some time..."
         )
 
+        print(
+            "This job can be relaunched once unarchiving is complete by "
+            "running dx run app-eggd_dias_batch --clone "
+            f"{os.environ.get('DX_JOB_ID')} -iunarchive=false"
+        )
+
         dxpy.bindings.dxjob.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
             f"Archiving of {len(files)} requested, no jobs launched."
         )
