@@ -7,6 +7,7 @@ import concurrent.futures
 import json
 import os
 import re
+import sys
 from time import sleep
 from timeit import default_timer as timer
 from typing import Tuple
@@ -394,11 +395,17 @@ class DXManage():
         check_state_cmd = (
             f"echo \"{' '.join([x['id'] for x in files])}\" | xargs"
         )
-        
+
         print(
             f"Unarchiving requested for {len(files)} files, this will take "
-            "some time."
+            "some time..."
         )
+
+        dxpy.bindings.dxjob.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
+            f"Archiving of {len(files)} requested, no jobs launched."
+        )
+
+        sys.exit(0)
 
 
     def format_output_folders(self, workflow, single_output, time_stamp) -> dict:

@@ -105,6 +105,13 @@
             "optional": true,
             "help": "no. of samples to limit launching reports workflow jobs for",
             "group": "test"
+          },
+          {
+            "name": "unarchive",
+            "label": "unarchive",
+            "class": "boolean",
+            "optional": true,
+            "help": "controls if to automatically unarchive any required files that are archived"
           }
     ],
     "outputSpec": [
