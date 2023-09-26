@@ -208,3 +208,151 @@ class TestDXManageGetFileProjectContext(unittest.TestCase):
 
         with pytest.raises(AssertionError, match=correct_error):
             DXManage().get_file_project_context(file='file-xxx')
+
+
+class TestDXManageFindFiles(unittest.TestCase):
+    """
+    Tests for DXManage.find_files()
+
+    Function takes a path in DNAnexus and returns a set of files,
+    will optionally filter these to a sub directory and also regex
+    pattern for the file name to match
+    """
+
+    @patch('utils.dx_requests.dxpy.find_data_objects')
+    def test_files_just_path_returned(self, mock_find):
+        """
+        Test when a set of files is returned from dxpy.find_data_objects()
+        and no sub dir or pattern is specified that all the files are returned
+        """
+        mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'file1',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'file2',
+                    'archivalState': 'live'
+                }
+            }
+        ]
+
+        files = DXManage().find_files(path='project-xxx:/some_path/')
+
+        assert files == mock_find.return_value, 'Incorrect files returned'
+
+
+    @patch('utils.dx_requests.dxpy.find_data_objects')
+    def test_sub_dir_filters_correctly(self, mock_find):
+        """
+        Test when a sub dir is provided, the files are correctly filtered
+        """
+        mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'file1',
+                    'archivalState': 'live',
+                    'folder': '/path_to_files/subdir1/app1'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'file2',
+                    'archivalState': 'live',
+                    'folder': 'path_to_files/subdir2/app1'
+                }
+            }
+        ]
+
+        files = DXManage().find_files(
+            path='project-xxx:/path_to_files/',
+            subdir='/subdir1'
+        )
+
+        assert files == [mock_find.return_value[0]], (
+            'Incorrect file returned when filtering to subdir'
+        )
+
+
+class TestDXManageFormatOutputFolders(unittest.TestCase):
+    """
+    Tests for DXManage.format_output_folders()
+
+    Function takes all the stages of a workflow, single output directory
+    and a time stamp string to build a mapping of stages -> output folders
+    """
+
+    @patch('utils.dx_requests.dxpy.describe')
+    def test_correct_folder_applet(self, mock_describe):
+        """
+        Test when an applet is inlcuded as a stage that the path is
+        correctly set, applets are treat differently to apps as the
+        'executable' key in the workflow details is just the applet ID
+        instead of the human name and version for apps
+        """
+        mock_describe.return_value = {'name': 'applet1-v1.2.3'}
+
+        workflow_details = {
+            'name': 'workflow1',
+            'stages': [
+                {
+                    'id': 'stage1',
+                    'executable': 'applet-xxx'
+                }
+            ]
+        }
+
+        returned_stage_folder = DXManage().format_output_folders(
+            workflow=workflow_details,
+            single_output='some_output_path',
+            time_stamp='010123_1303'
+        )
+
+        correct_stage_folder = {
+            "stage1": "/some_output_path/workflow1/010123_1303/applet1-v1.2.3/"
+        }
+
+        assert correct_stage_folder == returned_stage_folder, (
+            "Incorrect stage folders returned for applet"
+        )
+    
+    def test_correct_folder_app(self):
+        """
+        Test when an app is included as a stage that the path is correctly
+        set from its 'executable' value as this will contain the name
+        and the version for the app
+        """
+        workflow_details = {
+            'name': 'workflow1',
+            'stages': [
+                {
+                    'id': 'stage1',
+                    'executable': 'app-xxx/1.2.3'
+                }
+            ]
+        }
+
+        correct_stage_folder = {
+            "stage1": "/some_output_path/workflow1/010123_1303/xxx-1.2.3/"
+        }
+
+        returned_stage_folder = DXManage().format_output_folders(
+            workflow=workflow_details,
+            single_output='some_output_path',
+            time_stamp='010123_1303'
+        )
+
+        assert correct_stage_folder == returned_stage_folder, (
+            "Inavlid stage folders returned for app"
+        )
