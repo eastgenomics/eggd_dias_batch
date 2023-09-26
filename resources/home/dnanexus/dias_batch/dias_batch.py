@@ -167,7 +167,7 @@ class CheckInputs():
             ):
                 self.errors.append(
                     "Artemis specified to run but no snv or cnv reports "
-                    "specified. Please rerun with -icnv_reports and/or "
+                    "specified. Please rerun with -icnv_reports and / or "
                     "-isnv_reports"
                 )
 

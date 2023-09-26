@@ -12,6 +12,7 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search assay_config_dir for files (using `-iassay`)
 - `-isingle_output_dir` (`str`): path to output directory of Dias single to use as input files
 - `-imanifest_file` (`file`): manifest file from Epic or Gemini, maps sample ID -> required test codes / HGNC IDs (required for running any reports mode)
+- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_only required when `-iartemis=true` specified_)
 
 **Useful ones**
 
@@ -25,6 +26,7 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 - `-icnv_reports` (`bool`): controls if to run CNV reports workflows
 - `-isnv_reports` (`bool`): controls if to run SNV reports workflows
 - `-imosaic_reports` (`bool`): controls if to run mosaic reports workflow
+- `-iartemis` (`bool`): controls if to run eggd_artemis
 
 **Testing**
 - `-itesting` (`bool`): controls if to run in testing mode and terminate all launched jobs after launching
@@ -90,6 +92,19 @@ The general behaviour of each mode is as follows:
 n.b.
 - if `-itesting=true` is specified, reports jobs will launch but not start running, and will be automatically terminated on the app completing
 
+### Artemis
+
+**Minimum inputs**
+
+- `-isnv_reports` and / or `-icnv_reports`
+- `-iqc_file`
+
+**Behaviour**
+- check if inputs provided are valid
+- check if one or more jobs launched for SNV / CNV reports
+    - get parent path of both if true to set as input
+- launch eggd_artemis, will be dependent on **all** SNV and CNV report workflows completing
+
 
 ### Example commands
 
@@ -103,7 +118,7 @@ dx run app-eggd_dias_batch \
     -icnv_reports=true
 ```
 
-Running reports for CNV and SNV (using previous CNV calling output):
+Running reports for CNV and SNV (using previous CNV calling output) and launching eggd_artemis:
 ```
 dx run app-eggd_dias_batch \
     -iassay=CEN \
@@ -111,7 +126,9 @@ dx run app-eggd_dias_batch \
     -isingle_output_dir=project-xxx:/path_to_output/ \
     -icnv_call_job_id=job-xxx \
     -icnv_reports=true \
-    -isnv_reports=true
+    -isnv_reports=true \ 
+    -iartmeis=true \
+    -iqc_file=file-xxx
 ```
 
 Running SNV reports with specified config file:
