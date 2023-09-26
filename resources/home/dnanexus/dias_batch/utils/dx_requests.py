@@ -172,8 +172,9 @@ class DXManage():
 
     def find_files(self, path, subdir='', pattern=None) -> list:
         """
-        Search given path in DNAnexus, optionally in a sub directory
-        and with a pattern
+        Search given path in DNAnexus, optionally filter down by a sub
+        directory and / or with a file name regex pattern. Default
+        behaviour is to just return all files in the given path.
 
         Parameters
         ----------
