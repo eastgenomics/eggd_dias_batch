@@ -10,6 +10,7 @@ pain to write tests for (i.e. write_summary_report()):
 - write_summary_report()
 """
 from copy import deepcopy
+import json
 import os
 import pytest
 import re
@@ -132,8 +133,79 @@ class TestMakePath():
 
 class TestFillConfigReferenceInputs():
     """
-    TODO
+    Tests for utils.fill_config_reference_inputs()
+
+    Function takes the reference files defined in the top section of
+    the config file, and parses these into the inputs sections where
+    they are defined as INPUT-{reference_name} to then run jobs
     """
+    # read our test config file in like would be read from dx file
+    with open(f"{TEST_DATA_DIR}/example_config.json") as file_handle:
+        config = json.load(file_handle)
+
+    # read in populated config for comparing
+    with open(f"{TEST_DATA_DIR}/example_filled_config.json") as file_handle:
+        filled_config = json.load(file_handle)
+
+
+    def test_all_reference_files_added(self):
+        """
+        Test that all reference files in the 'reference_files' section of
+        the config file are correctly parsed in when all provided in
+        config file as project-xxx:file-xxx
+        """
+        parsed_config = utils.fill_config_reference_inputs(self.config)
+
+        assert parsed_config == self.filled_config, (
+            "Reference files incorrectly parsed into config"
+        )
+
+    def test_reference_added_as_just_file_id(self):
+        """
+        Test when reference provided as just file-xxx (i.e. not project and
+        file ID) it is added correctly
+        """
+        config_copy = deepcopy(self.config)
+        config_copy['reference_files']['genepanels'] = "file-GVx0vkQ433Gvq63k1Kj4Y562"
+
+        parsed_config = utils.fill_config_reference_inputs(config_copy)
+
+        correct_format = {"$dnanexus_link": "file-GVx0vkQ433Gvq63k1Kj4Y562"}
+        filled_input = parsed_config['modes']['workflow_1'][
+            'inputs']['stage_2.input_1']
+
+        assert correct_format == filled_input, (
+            'Reference incorrectly added to config when provided as file ID'
+        )
+
+    def test_reference_added_as_dx_link_mapping(self):
+        """
+        Test when reference provided as dx_link mapping it is added correctly
+        """
+        config_copy = deepcopy(self.config)
+        config_copy['reference_files']['genepanels'] = {
+            "$dnanexus_link": {
+              "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+              "id": "file-GVx0vkQ433Gvq63k1Kj4Y562"
+            }
+        }
+
+        parsed_config = utils.fill_config_reference_inputs(config_copy)
+
+        assert parsed_config['modes'] == self.filled_config['modes'], (
+            'Reference incorrectly added to config when provided as dx link'
+        )
+
+    def test_malformed_reference(self):
+        """
+        Test when config file has an input that contains invalid reference
+        file that this raises a RuntimeError
+        """
+        config_copy = deepcopy(self.config)
+        config_copy['reference_files']['genepanels'] = 'INPUT-invalid'
+
+        with pytest.raises(RuntimeError):
+            utils.fill_config_reference_inputs(config_copy)
 
 
 class TestParseGenePanels():
@@ -190,10 +262,8 @@ class TestSplitGenePanelsTestCodes():
     """
     Tests for utils.split_gene_panels_test_codes()
     
-    Function takes the read in genepanels file, splits out the test code
-    that prefixes the clinical indication (i.e. R337.1 -> R337.1_CADASIL_G),
-    drops the HGNC ID column and returns a subset of unique rows of what is
-    left
+    Function takes the read in genepanels file and splits out the test code
+    that prefixes the clinical indication (i.e. R337.1 -> R337.1_CADASIL_G)
     """
     # read in genepanels file in the same manner as utils.parse_genepanels()
     # up to the point of calling split_gene_panels_test_codes()
@@ -207,6 +277,7 @@ class TestSplitGenePanelsTestCodes():
         genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
         genepanels.drop_duplicates(keep='first', inplace=True)
         genepanels.reset_index(inplace=True)
+
 
     def test_length_unchanged(self):
         """
@@ -260,8 +331,6 @@ class TestSplitGenePanelsTestCodes():
 
         with pytest.raises(RuntimeError):
             utils.split_genepanels_test_codes(genepanels_copy)
-
-
 
 
 class TestParseManifest:
