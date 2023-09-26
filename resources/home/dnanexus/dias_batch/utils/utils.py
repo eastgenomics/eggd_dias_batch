@@ -370,6 +370,11 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     -------
     pd.DataFrame
         genepanels with test code split to separate column
+    
+    Raises
+    ------
+    RuntimeError
+        Raised when test code links to more than one clinical indication
     """
     genepanels['test_code'] = genepanels['indication'].apply(
         lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
@@ -414,6 +419,8 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     
     Raises
     ------
+    RuntimeError
+        Raised when a test code doesn't seem valid against regex pattern
     RuntimeError
         Raised when a sample seems malformed (missing / wrongly formatted IDs)
     RuntimeError
@@ -669,6 +676,12 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     -------
     Tuple[dict, dict]
         2 dicts of manifest with valid test codes and those that are invalid
+    
+    Raises
+    ------
+    RuntimeError
+        Raised if all samples in manifest had a test that doesn't exist in
+        genepanels file => nothing to run
     """
     print("Checking test codes in manifest are valid...")
     invalid = defaultdict(list)
