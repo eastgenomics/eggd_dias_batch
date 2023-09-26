@@ -46,7 +46,7 @@
           {
             "name": "exclude_samples_file",
             "label": "exclude samples file",
-            "class": "string",
+            "class": "file",
             "optional": true,
             "help": "file of samples to exclude from CNV calling / reports"
           },
