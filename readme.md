@@ -90,6 +90,52 @@ The general behaviour of each mode is as follows:
 n.b.
 - if `-itesting=true` is specified, reports jobs will launch but not start running, and will be automatically terminated on the app completing
 
+
+### Example commands
+
+Running CNV calling and CNV reports for CEN assay:
+```
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call=true \
+    -icnv_reports=true
+```
+
+Running reports for CNV and SNV (using previous CNV calling output):
+```
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call_job_id=job-xxx \
+    -icnv_reports=true \
+    -isnv_reports=true
+```
+
+Running SNV reports with specified config file:
+```
+dx run app-eggd_dias_batch \
+    -iassay_config_file=file-xxx \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -isnv_reports=true
+```
+
+Running all modes in testing:
+```
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call=true \
+    -icnv_reports=true \
+    -isnv_reports=true \
+    -imosaic_reports=true
+```
+
+
 ## Config file design
 
 The config file for an assay is written in JSON format and specifies the majority of inputs for running each type of analysis. A populated example config file may be found [here](example/dias_batch_example_config.json).
