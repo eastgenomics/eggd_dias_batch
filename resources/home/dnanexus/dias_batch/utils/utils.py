@@ -348,7 +348,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     +-----------------------+--------------------------+
     | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
     | C2.1_INSR             | CUH_INSR_1.0             |
-    +-----------------------+--------------------------+
+    +-----------------------+--gene------------------------+
 
                                     |
                                     ▼
@@ -375,6 +375,15 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
         lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
     )
     genepanels = genepanels[['test_code', 'indication', 'panel_name']]
+
+    # sense check test code only points to one unique indication
+    for code in set(genepanels['test_code'].tolist()):
+        code_rows = genepanels[genepanels['test_code'] == code]
+        if len(set(code_rows['indication'].tolist())) > 1:
+            raise RuntimeError(
+                f"Test code {code} linked to more than one indication in "
+                f"genepanels!\n\t{code_rows['indication'].tolist()}"
+            )
 
     print(f"Genepanels file: \n{genepanels}")
 
@@ -842,14 +851,43 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                 if re.fullmatch(r'[RC][\d]+\.[\d]+', test):
                     # get genepanels row for current test prefix, should just
                     # be one since we dropped HGNC ID column and duplicates
+
+                    # SPOLIER: in older genepanels it isn't always 1:1 as we
+                    # have 'single gene panels' (which aren't actually single
+                    # genes as there's multiple but OH WELL), this is not a
+                    # thing in Eris and there's only ~20, so for these we will
+                    # just dump all the single gene 'panel' names into one
+                    # and they can deal with that, example of this hot mess:
+                    # test_code          indication                 panel_name
+                    # R371.1  R371.1_Malignant hyperthermia_P  HGNC:10483_SG_panel_1.0.0
+                    # R371.1  R371.1_Malignant hyperthermia_P   HGNC:1397_SG_panel_1.0.0
+                    # R371.1  R371.1_Malignant hyperthermia_P  HGNC:28423_SG_panel_1.0.0
+                    #
+                    # which would result in:
+                    # R371.1 -> HGNC:10483_SG_panel_1.0.0;HGNC:1397_SG_panel_1.0.0;HGNC:28423_SG_panel_1.0.0
+
                     genepanels_row = genepanels[genepanels['test_code'] == test]
 
                     assert not genepanels_row.empty, (
                         f"Filtering genepanels for {test} returned empty df"
                     )
 
-                    panels.append(genepanels_row.iloc[0].panel_name)
+                    if len(genepanels_row.index) > 1:
+                        # munge the panel strings together to handle the above
+                        print(
+                            f'Test code {test} has >1 panel name assigned, '
+                            f'these will be combined:\n\t{genepanels_row}'
+                        )
+                        panel_str = ';'.join(
+                            genepanels_row['panel_name'].tolist()
+                        )
+                    else:
+                        # this is nice and sane and 1:1
+                        panel_str = genepanels_row.iloc[0].panel_name
+
+                    panels.append(panel_str)
                     indications.append(genepanels_row.iloc[0].indication)
+
                 elif re.fullmatch(r'_HGNC:[\d]+', test):
                     # add gene IDs as is to all lists
                     panels.append(test)
