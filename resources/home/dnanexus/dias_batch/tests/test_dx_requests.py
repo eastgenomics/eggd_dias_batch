@@ -1,11 +1,15 @@
 """
-Limited test suite for dx_requests.py
-
 The majority of functions in dx_requests.py relate to interacting with
 DNAnexus via dxpy API calls to either manage data (in DXManage) or for
-launching jobs (in DXExecute), therefore a lot of this is a pain to write
-unit tests for. The majority of the logic of parsing the output of functions
-in DXManage is in utils.py with its own unit tests.
+launching jobs (in DXExecute).
+
+Functions not covered by unit tests:
+    - DXManage.read_assay_config() - mostly just calls DXFile.read() on
+        provided dx file ID
+    - DXManage().read_dxfile() - just reads file object from given dx
+        file ID, not expected to raise any errors
+    - Everything in DXExecute - all functions relate to launching jobs,
+        going to test these manually in by running the app
 """
 from copy import deepcopy
 import json
