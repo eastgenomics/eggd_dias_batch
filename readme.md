@@ -72,7 +72,7 @@ The general behaviour of each mode is as follows:
     - Check provided test codes are valid and present in genepanels file
     - Get full panel and clinical indication strings for each test code from genepanels file
 - For **CNV** reports:
-    - Gather all `segment.vcf` files from CNV call job output
+    - Gather all `segments.vcf` files from CNV call job output
     - Find excluded intervals bed file from CNV call job output
     - Find previous xlsx reports (used for setting report name suffix)
     - Filter manifest by samples having a VCF found
