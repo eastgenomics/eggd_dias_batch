@@ -181,11 +181,16 @@ def main(
 
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
-    assay_config = DXManage().get_assay_config(
-        path=assay_config_dir,
-        file=assay_config_file,
-        assay=assay
-    )
+    if assay_config_file:
+        assay_config = DXManage().read_assay_config_file(
+            file=assay_config_file
+        )
+
+    if assay and assay_config_dir:
+        assay_config = DXManage().get_assay_config(
+            assay=assay,
+            path=assay_config_dir
+        )
 
     assay_config = fill_config_reference_inputs(assay_config)
 
