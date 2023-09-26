@@ -547,6 +547,7 @@ class TestSplitManifestTests():
     TODO
     """
 
+
 class TestAddPanelsAndIndicationsToManifest():
     """
     TODO
