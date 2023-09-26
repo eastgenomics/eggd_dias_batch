@@ -852,7 +852,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     # get genepanels row for current test prefix, should just
                     # be one since we dropped HGNC ID column and duplicates
 
-                    # SPOLIER: in older genepanels it isn't always 1:1 as we
+                    # SPOILER: in older genepanels it isn't always 1:1 as we
                     # have 'single gene panels' (which aren't actually single
                     # genes as there's multiple but OH WELL), this is not a
                     # thing in Eris and there's only ~20, so for these we will
