@@ -526,10 +526,11 @@ class DXExecute():
         ]
 
         # patterns of sample ID and sample file prefix to match on
+        #TODO move these to config
         if manifest_source == 'Epic':
-            pattern = r'^[\d\w]+-[\d\w]+'
+            pattern = r'^[\d\w]+-[\d\w]+-'
         else:
-            pattern = r'X[\d]+'
+            pattern = r'X[\d]+-'
 
         # set up required files for each running mode
         if mode == 'CNV':
@@ -549,6 +550,7 @@ class DXExecute():
                 path=f"{job_details.get('project')}:{job_details.get('folder')}",
                 pattern="_excluded_intervals.bed$"
             ))
+            # TODO: check if file is always output (i.e. if its empty)
 
             if not excluded_intervals_bed:
                 raise RuntimeError(
@@ -566,6 +568,10 @@ class DXExecute():
                 }
             }
 
+            # TODO use exclude samples here to drop from manifest
+
+            # TODO I DONT THINK I NEED THIS AS WE DO THE SAME LATER ON SO I SHOULD PROBABLY LOOK AT IT LATER
+            
             # ensure we have vcf files per sample,
             # exclude those that don't have one
             manifest, manifest_no_match, manifest_no_vcf = \
@@ -641,8 +647,7 @@ class DXExecute():
         # gather errors to display in summary report
         errors = {}
 
-        # ensure we have a vcf and mosdepth files (for SNV)
-        # per sample, exclude those that don't have one
+        # ensure we have a vcf per sample, exclude those that don't have one
         manifest, manifest_no_match, manifest_no_vcf = \
             filter_manifest_samples_by_files(
                 manifest=manifest,
@@ -653,8 +658,8 @@ class DXExecute():
 
         if manifest_no_match:
             errors[
-                f"Samples in manifest not matching pattern "
-                f"({len(manifest_no_match)}) {pattern}:"
+                f"Samples in manifest not matching expected {manifest_source} "
+                f"pattern ({len(manifest_no_match)}) {pattern}:"
             ] = manifest_no_match
 
         if manifest_no_vcf:
