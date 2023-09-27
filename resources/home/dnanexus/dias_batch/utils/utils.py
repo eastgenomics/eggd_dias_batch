@@ -501,9 +501,10 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         manifest[columns] = manifest[columns].applymap(
             lambda x: x.replace(' ', '') if x else x)
         manifest['Re-analysis Specimen ID'] = \
-            manifest['Re-analysis Specimen ID'].str.replace('SP-', '')
+            manifest['Re-analysis Specimen ID'].str.replace(
+                r'SP-|\.', '', regex=True)
         manifest['Specimen ID'] = \
-            manifest['Specimen ID'].str.replace('SP-', '')
+            manifest['Specimen ID'].str.replace(r'SP-|\.', '', regex=True)
 
         # sample id may be split between 'Specimen ID' and 'Instrument ID' or
         # Re-analysis Specimen ID and Re-analysis Instrument ID columns, join

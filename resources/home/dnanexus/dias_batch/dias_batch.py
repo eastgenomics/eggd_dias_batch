@@ -153,6 +153,20 @@ class CheckInputs():
                 "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
             )
 
+    def check_exclude_str_and_file(self):
+        """
+        Check when -iexclude_samples or -iexclude_samples_file is passed
+        that only one is specified
+        """
+        if all([
+            self.inputs.get('exclude_samples'),
+            self.inputs.get('exclude_samples_file')
+        ]):
+            self.errors.append(
+                "Both -iexclude_samples and -iexclude_samples_file specified, "
+                "only one may be specified"
+            )
+
 
 @dxpy.entry_point('main')
 def main(
@@ -162,6 +176,7 @@ def main(
     manifest_file=None,
     split_tests=False,
     exclude_samples=None,
+    exclude_samples_file=None,
     single_output_dir=None,
     cnv_call_job_id=None,
     cnv_call=False,
@@ -191,6 +206,9 @@ def main(
 
     if exclude_samples:
         exclude_samples = exclude_samples.split(',')
+
+    if exclude_samples_file:
+        exclude_samples = DXManage().read_dxfile(exclude_samples_file)
 
     # parse and format genepanels file
     genepanels_data = DXManage().read_dxfile(

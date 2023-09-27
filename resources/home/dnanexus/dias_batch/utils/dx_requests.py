@@ -172,8 +172,9 @@ class DXManage():
 
     def find_files(self, path, subdir='', pattern=None) -> list:
         """
-        Search given path in DNAnexus, optionally in a sub directory
-        and with a pattern
+        Search given path in DNAnexus, optionally filter down by a sub
+        directory and / or with a file name regex pattern. Default
+        behaviour is to just return all files in the given path.
 
         Parameters
         ----------
@@ -366,6 +367,11 @@ class DXExecute():
         -------
         str
             job ID of launch cnv calling job
+        
+        Raises
+        ------
+        dxpy.exceptions.DXJobFailureError
+            Raised when CNV calling fails / terminates / timed out
         """
         print("Building inputs for CNV calling")
         cnv_config = config['modes']['cnv_call']
@@ -438,7 +444,7 @@ class DXExecute():
                 job_handle.wait_on_done()
             except dxpy.exceptions.DXJobFailureError as err:
                 # dx job error raised (i.e. failed, timed out, terminated)
-                raise RuntimeError(
+                raise dxpy.exceptions.DXJobFailureError(
                     f"CNV calling failed in job {job_id}:\n\n{err}"
                 )
             print("CNV calling completed successfully\n")
@@ -502,6 +508,11 @@ class DXExecute():
             dict of any errors found (i.e samples with no files)
         dict
             dict of per sample summary of names used for jobs
+        
+        Raises
+        ------
+        RuntimeError
+            Raised when invalid mode set
         """
         print(f"Configuring inputs for {mode} reports")
 

@@ -16,7 +16,8 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 **Useful ones**
 
 - `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run
-- `-iexclude_samples` (`str`): comma separated string of samples to exclude from analysis
+- `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports
+- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)
 - `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
 
 
@@ -72,7 +73,7 @@ The general behaviour of each mode is as follows:
     - Check provided test codes are valid and present in genepanels file
     - Get full panel and clinical indication strings for each test code from genepanels file
 - For **CNV** reports:
-    - Gather all `segment.vcf` files from CNV call job output
+    - Gather all `segments.vcf` files from CNV call job output
     - Find excluded intervals bed file from CNV call job output
     - Find previous xlsx reports (used for setting report name suffix)
     - Filter manifest by samples having a VCF found
@@ -89,6 +90,52 @@ The general behaviour of each mode is as follows:
 
 n.b.
 - if `-itesting=true` is specified, reports jobs will launch but not start running, and will be automatically terminated on the app completing
+
+
+### Example commands
+
+Running CNV calling and CNV reports for CEN assay:
+```
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call=true \
+    -icnv_reports=true
+```
+
+Running reports for CNV and SNV (using previous CNV calling output):
+```
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call_job_id=job-xxx \
+    -icnv_reports=true \
+    -isnv_reports=true
+```
+
+Running SNV reports with specified config file:
+```
+dx run app-eggd_dias_batch \
+    -iassay_config_file=file-xxx \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -isnv_reports=true
+```
+
+Running all modes in testing:
+```
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -imanifest_file=file-xxx \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -icnv_call=true \
+    -icnv_reports=true \
+    -isnv_reports=true \
+    -imosaic_reports=true
+```
+
 
 ## Config file design
 
