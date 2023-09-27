@@ -46,7 +46,35 @@ class TestCheckInputs():
         }
 
         check.check_assay()
-        
+
         assert check.errors == ['Invalid assay passed: invalidAssay'], (
             'Error not raised for invalid assay string'
         )
+
+    @patch('utils.dx_requests.dxpy.find_data_objects')
+    def test_assay_config_dir(self, test_patch, mocker):
+        """
+        Test when assay config dir specified is empty that error is raised
+        """
+        test_patch.return_value = []
+
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        mocker.return_value = None
+        check = CheckInputs()
+        check.errors = []
+        check.inputs = {
+            'assay_config_dir': 'project-xxx:/some_empty_path'
+        }
+
+        check.check_assay_config_dir()
+
+        correct_error = [
+            'Given assay config dir appears to contain no config files: '
+            'project-xxx:/some_empty_path'
+        ]
+
+        assert check.errors == correct_error, (
+            'Correct error not raised for empty assay config dir'
+        )
+
+    def test_check_single_output_dir()
