@@ -307,9 +307,16 @@ class DXManage():
             if to automatically unarchive files
         samples : list
             list of sample names to filter down files to check
+        
+        Raises
+        ------
+        RuntimeError
+            Raised when required files are archived and -iunarchive=False
         """
         print(f"Checking archival state of {len(files)} files...")
 
+        # find files not in a live state, and filter these down by samples
+        # given that we're going to launch jobs for
         not_live = [
             f"{x['describe']['name']} ({x['id']})" for x in files
             if x['describe']['archivalState'] != 'live'
@@ -329,6 +336,11 @@ class DXManage():
                     not_live_filtered.append(dx_file)
 
             not_live = not_live_filtered
+
+        if not not_live:
+            # nothing archived that we need :dancing_penguin:
+            print("No required files in archived state")
+            return
 
         not_live_ids = ' '.join([x['id'] for x in not_live])
         not_live_printable = '\n\t'.join([
@@ -392,6 +404,8 @@ class DXManage():
                 f"Error in unarchiving file: {dx_file['id']}"
             )
 
+        # build a handy command to dump into the logs for people to check
+        # the state of all of the files we're unarchiving later on
         check_state_cmd = (
             f"echo {' '.join([x['id'] for x in files])} | xargs -n1 -d' ' -P32 "
             "-I{} bash -c 'dx describe --json {} ' | grep archival | uniq -c"
@@ -413,6 +427,7 @@ class DXManage():
             f"{os.environ.get('DX_JOB_ID')} -iunarchive=false"
         )
 
+        # tag job to know its not launched any jobs
         dxpy.bindings.dxjob.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
             f"Archiving of {len(files)} requested, no jobs launched."
         )
