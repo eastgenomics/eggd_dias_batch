@@ -271,7 +271,8 @@ def main(
                 start=start_time,
                 sample_limit=sample_limit,
                 call_job_id=cnv_call_job_id,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
@@ -287,7 +288,8 @@ def main(
                 config=assay_config['modes']['snv_reports'],
                 start=start_time,
                 sample_limit=sample_limit,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
         launched_jobs['snv_reports'] = snv_reports
 
@@ -302,7 +304,8 @@ def main(
                 config=assay_config['modes']['mosaic_reports'],
                 start=start_time,
                 sample_limit=sample_limit,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
         launched_jobs['mosaic_reports'] = mosaic_reports
 
