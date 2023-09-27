@@ -30,6 +30,13 @@
             "group": ""
           },
           {
+            "name": "qc_file",
+            "label": "QC file",
+            "class": "file",
+            "optional": true,
+            "help": "QC .xlsx file, required if running eggd_artemis"
+          },
+          {
             "name": "split_tests",
             "label": "split tests",
             "class": "boolean",
@@ -95,6 +102,14 @@
             "class": "boolean",
             "optional": true,
             "help": "run mosaic reports",
+            "group": "mode"
+          },
+          {
+            "name": "artemis",
+            "label": "artemis",
+            "class": "boolean",
+            "optional": true,
+            "help": "run eggd_artemis",
             "group": "mode"
           },
           {
