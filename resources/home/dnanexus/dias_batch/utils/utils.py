@@ -344,17 +344,17 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     against manifest
 
     +-----------------------+--------------------------+
-    |      indication      |        panel_name        |
+    |      indication      |        panel_name         |
     +-----------------------+--------------------------+
     | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
     | C2.1_INSR             | CUH_INSR_1.0             |
-    +-----------------------+--gene------------------------+
+    +-----------------------+--------------------------+
 
                                     |
                                     ▼
                                         
     +-----------+-----------------------+---------------------------+
-    | test_code |      indication      |        panel_name         |
+    | test_code |      indication      |        panel_name          |
     +-----------+-----------------------+---------------------------+
     | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
     | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
