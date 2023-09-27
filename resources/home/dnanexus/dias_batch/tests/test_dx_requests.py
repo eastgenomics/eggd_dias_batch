@@ -6,10 +6,11 @@ launching jobs (in DXExecute).
 Functions not covered by unit tests:
     - DXManage.read_assay_config() - mostly just calls DXFile.read() on
         provided dx file ID
-    - DXManage().read_dxfile() - just reads file object from given dx
+    - DXManage().read_dxfile() - reads file object from given dx
         file ID, not expected to raise any errors
     - Everything in DXExecute - all functions relate to launching jobs,
-        going to test these manually in by running the app
+        going to test these manually by running the app (probably, we shall
+        see if I get the motivation to try patch things well to test them)
 """
 from copy import deepcopy
 import json
