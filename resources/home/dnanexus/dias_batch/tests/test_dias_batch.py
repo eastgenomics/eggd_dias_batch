@@ -1,18 +1,9 @@
 """
 Tests for CheckInputs() that are run at the beginning of dias batch
 """
-from copy import deepcopy
-import json
 import os
-import pytest
-import re
-import subprocess
 import sys
-import unittest
 from unittest.mock import patch
-
-import dxpy
-import pandas as pd
 
 
 sys.path.append(os.path.abspath(
