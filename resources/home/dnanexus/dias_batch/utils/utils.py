@@ -1,15 +1,23 @@
+"""
+General utils for parsing config, genepanels and manifest files
+"""
 from collections import defaultdict
+from copy import deepcopy
 from datetime import datetime
+import json
+import os
 from pprint import PrettyPrinter
 import re
-from typing import Union
+from time import strftime, localtime
+from typing import Tuple
 
+import dxpy
 import pandas as pd
 
 # for prettier viewing in the logs
-pd.set_option('display.max_rows', 100)
+pd.set_option('display.max_rows', 200)
 pd.set_option('max_colwidth', 1500)
-PPRINT = PrettyPrinter(indent=1).pprint
+PPRINT = PrettyPrinter(indent=2, width=1000).pprint
 
 
 def time_stamp() -> str:
@@ -22,6 +30,158 @@ def time_stamp() -> str:
         String of current date and time as YYMMDD_HHMM
     """
     return datetime.now().strftime("%y%m%d_%H%M")
+
+
+def prettier_print(thing) -> None:
+    """
+    Pretty print for nicer viewing in the logs since pprint does not
+    do an amazing job visualising big dicts and long strings
+
+    Parameters
+    ----------
+    thing : anything json dumpable
+        thing to print
+    """
+    print(json.dumps(thing, indent=4))
+
+
+def check_report_index(name, reports) -> int:
+    """
+    Check for a given output name prefix if there are any previous reports
+    and increase the suffix index to +1
+
+    Parameters
+    ----------
+    name : str
+        prefix of sample name + test code + [SNV|CNV|mosaic]
+    reports : list
+        list of previous reports found
+
+    Returns
+    -------
+    int
+        suffix to add to report name
+    """
+    suffix = 0
+    previous_reports = [x for x in reports if x.startswith(name)]
+
+    if previous_reports:
+        # some previous reports, try get highest suffix
+        suffixes = [
+            re.search(r'[\d]{1,2}.xlsx$', x) for x in previous_reports
+        ]
+        if suffixes:
+            # found something useful, if not we're just going to use 1
+            suffix = max([
+                int(x.group().replace('.xlsx', '')) for x in suffixes if x
+            ])
+
+    print(f"Previous xlsx reports found for {name}: {len(previous_reports)}")
+    print(f"Using suffix: {suffix + 1}")
+
+    return suffix + 1
+
+
+def write_summary_report(output, manifest=None, **summary) -> None:
+    """
+    Write output summary file with jobs launched and any errors etc.
+
+    Parameters
+    ----------
+    output : str
+        name for output file
+    manifest : dict
+        mapping of samples in manifest -> requested test codes
+    summary : kwargs
+        all possible named summary metrics to write
+
+    Outputs
+    -------
+    {output}.txt file of launched job summary
+    """
+    print(f"Writing summary report to {output}")
+    batch_job_id = os.environ.get('DX_JOB_ID')
+    job = dxpy.bindings.dxjob.DXJob(dxid=batch_job_id).describe()
+    app = dxpy.bindings.dxapp.DXApp(dxid=job['executable']).describe()
+    time = strftime('%Y-%m-%d %H:%M:%S', localtime(job['created'] / 1000))
+    inputs = job['runInput']
+
+    # nicer formatting of inputs for job report
+    if inputs.get('manifest_file'):
+        inputs['manifest_file'] = dxpy.describe(
+            inputs['manifest_file']['$dnanexus_link'])['name']
+
+    if inputs.get('assay_config_file'):
+        inputs['assay_config_file'] = dxpy.describe(
+            inputs['assay_config_file']['$dnanexus_link'])['name']
+
+    inputs = "\n\t".join([f"{x[0]}: {x[1]}" for x in sorted(inputs.items())])
+
+    with open(output, 'w') as file_handle:
+        file_handle.write(
+            f"Assay config file used {summary.get('assay_config')['name']} "
+            f"({summary.get('assay_config')['dxid']})\n"
+        )
+        file_handle.write(
+            f"\nJobs launched from {app['name']} ({app['version']}) at {time} "
+            f"by {job['launchedBy'].replace('user-', '')} in {job['id']}\n"
+        )
+        file_handle.write(f"Job inputs:\n\t{inputs}\n")
+
+        if manifest:
+            file_handle.write(
+                f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
+            )
+        launched_jobs = '\n\t'.join([
+            f"{k} : {len(v)} jobs" for k, v
+            in summary.get('launched_jobs').items()
+        ])
+        file_handle.write(f"\nTotal jobs launched:\n\t{launched_jobs}\n")
+
+        if summary.get('invalid_tests'):
+            invalid_tests = '\n\t'.join([
+                f"{k} : {v}" for k, v
+                in summary.get('invalid_tests').items()
+            ])
+            file_handle.write(
+                f"\nInvalid tests excluded from manifest:\n\t{invalid_tests}\n"
+            )
+
+        report_summaries = {
+            "snv_report_errors": "SNV",
+            "cnv_report_errors": "CNV",
+            "mosaic_report_errors": "mosaic"
+        }
+
+        # write summary of errors from each report stage if present
+        for key, word in report_summaries.items():
+            if summary.get(key):
+                errors = '\n\t'.join([
+                    f"{k} : {v}" for k, v in summary.get(key).items()
+                ])
+                file_handle.write(
+                    f"\nErrors in launching {word} reports:\n\t{errors}\n"
+                )
+
+        # mush the report summary dicts together to make a pretty table
+        outputs = {}
+        if summary.get('cnv_report_summary'):
+            outputs = {**outputs, **summary.get('cnv_report_summary')}
+        if summary.get('snv_report_summary'):
+            outputs = {**outputs, **summary.get('snv_report_summary')}
+        if summary.get('mosaic_report_summary'):
+            outputs = {**outputs, **summary.get('mosaic_report_summary')}
+
+        if outputs:
+            fancy_table = pd.DataFrame(outputs)
+            fancy_table.fillna(value='-', inplace=True)
+            fancy_table = fancy_table.to_markdown(tablefmt="grid")
+            file_handle.write(
+                f"\nReports created per sample:\n\n{fancy_table}"
+            )
+
+    # dump written file into logs
+    print('\n'.join(open(output, 'r').read().splitlines()))
 
 
 def make_path(*path) -> str:
@@ -47,17 +207,15 @@ def make_path(*path) -> str:
     return f"/{path}/"
 
 
-def fill_config_reference_inputs(job_config, reference_files) -> dict:
+def fill_config_reference_inputs(config) -> dict:
     """
-    Fill config file input fields for workflow stages against the
+    Fill config file input fields for all workflow stages against the
     reference files stored in top level of config
 
     Parameters
     ----------
-    job_config : dict
-        subset of assay config for given app/stage
-    reference_files : dict
-        reference file inputs defined in top of assay config
+    config : dict
+        assay config file
 
     Returns
     -------
@@ -69,25 +227,39 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
     RuntimeError
         Raised when provided reference in assay config has no file-[\d\w]+ ID
     """
-    print(f"Filling config file with reference files, before:")
-    PPRINT(job_config)
+    print("Filling config file with reference files, before:")
+    prettier_print(config)
 
-    print(f"Reference files to add:")
-    PPRINT(reference_files)
+    print("Reference files to add:")
+    prettier_print(config['reference_files'])
 
-    filled_config = {}
+    filled_config = deepcopy(config)
 
-    for input, value in job_config.items():
-        match = False
-        for reference, file_id in reference_files.items():
-            if value == f'INPUT-{reference}':
-                # add this ref file ID as the input and move to next input
+    # empty so we can fill with new inputs
+    for mode in filled_config['modes']:
+        filled_config['modes'][mode]['inputs'] = {}
+
+    for mode, mode_config in config['modes'].items():
+        if not mode_config.get('inputs'):
+            print(
+                f"WARNING: {mode} in the config does not appear to "
+                f"have an 'inputs' key, skipping adding reference files"
+            )
+            continue
+        for input, value in mode_config['inputs'].items():
+            match = False
+            for reference, file_id in config['reference_files'].items():
+                if not value == f'INPUT-{reference}':
+                    continue
+
+                # this input is a match => add this ref file ID as
+                # the input and move to next input
                 match = True
 
                 if isinstance(file_id, dict):
                     # being provided as $dnanexus_link format, use it
                     # as is and assume its formatted correctly
-                    filled_config[input] = file_id
+                    filled_config['modes'][mode]['inputs'][input] = file_id
 
                 if isinstance(file_id, str):
                     # provided as string (i.e. project-xxx:file-xxx)
@@ -107,20 +279,20 @@ def fill_config_reference_inputs(job_config, reference_files) -> dict:
                     else:
                         # not found a file ID
                         raise RuntimeError(
-                            f"Provided reference doesn't appear valid:"
-                            f"{reference} : {file_id}"
+                            f"Provided reference doesn't appear "
+                            f"valid: {reference} : {file_id}"
                         )
 
-                    filled_config[input] = dx_link
+                    filled_config['modes'][mode]['inputs'][input] = dx_link
 
                 break
 
-        if not match:
-            # this input isn't a reference file => add back as is   
-            filled_config[input] = value
+            if not match:
+                # this input isn't a reference file => add back as is
+                filled_config['modes'][mode]['inputs'][input] = value
 
-    print(f"And now it's filled:")
-    PPRINT(filled_config)
+    print("And now it's filled:")
+    prettier_print(filled_config)
 
     return filled_config
 
@@ -131,7 +303,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     against manifest
 
     +-----------------------+--------------------------+
-    |      gemini_name      |        panel_name        |
+    |      indication      |        panel_name        |
     +-----------------------+--------------------------+
     | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
     | C2.1_INSR             | CUH_INSR_1.0             |
@@ -141,7 +313,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
                                     ▼
                                         
     +-----------+-----------------------+---------------------------+
-    | test_code |      gemini_name      |        panel_name         |
+    | test_code |      indication      |        panel_name         |
     +-----------+-----------------------+---------------------------+
     | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
     | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
@@ -158,10 +330,10 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     pd.DataFrame
         genepanels with test code split to separate column
     """
-    genepanels['test_code'] = genepanels['gemini_name'].apply(
+    genepanels['test_code'] = genepanels['indication'].apply(
         lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
     )
-    genepanels = genepanels[['test_code', 'gemini_name', 'panel_name']]
+    genepanels = genepanels[['test_code', 'indication', 'panel_name']]
 
     print(f"Genepanels file: \n{genepanels}")
 
@@ -202,19 +374,80 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         "\n\t".join(contents)
     )
 
-    # turn df into a dict mapping sample ID to list of test codes,
-    # duplicate samples in the same manifest will result in >1 list
-    # of test codes, will be structured as:
+    # turn manifest into a dict mapping sample ID to list of test codes,
+    # duplicate samples in the same manifest for Epic samples will result
+    # in >1 list of test codes , will be structured as:
     # {'sample1': {'tests': [['panel1', 'gene1'], ['panel2']]}}
-    data = defaultdict(lambda: defaultdict(list))
+    # for Gemini samples we will squash these down to a single list due
+    # to how they are booked in and get split to multiple lines (it's going
+    # away anyway so this is just for handling legacy samples)
 
-    if all(';' in x for x in contents[1:] if x):
+    if all('\t' in x for x in contents if x):
+        # this is an old Gemini manifest => should just have sampleID -> CI
+        contents = [x.split('\t') for x in contents if x]
+
+        # sense check data does only have 2 columns
+        assert all([len(x) == 2 for x in contents]), (
+            f"Gemini manifest has more than 2 columns:\n\t{contents}"
+        )
+
+        # initialise a dict of sample names to add tests to
+        sample_names = {x[0] for x in contents}
+        data = {name: {'tests': [[]]} for name in sample_names}
+
+        for sample in contents:
+            test_codes = sample[1].replace(' ', '').split(',')
+            if not all([
+                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
+            ]):
+                # TODO - as above, error or throw out
+                raise RuntimeError(
+                    'Invalid test code(s) provided for sample '
+                    f'{sample[0]} : {sample[1]}'
+                )
+            # add test codes to samples list, keeping just the code part
+            # and not full string (i.e. R134.2 from
+            # R134.1_Familialhypercholesterolaemia_P)
+            data[sample[0]]['tests'][0].extend([
+                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
+                for x in test_codes
+            ])
+
+        manifest_source = 'Gemini'
+
+    elif all(';' in x for x in contents[1:] if x):
         # csv file => Epic style manifest
         # (not actually a csv file even though they call it .csv since it
         # has ; as a delimeter and everything is a lie)
         # first row is just batch ID and 2nd is column names
         contents = [x.split(';') for x in contents if x]
         manifest = pd.DataFrame(contents[2:], columns=contents[1])
+
+        # sense check we have columns we need
+        required = [
+            'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
+            'Re-analysis Specimen ID', 'Test Codes'
+        ]
+
+        assert not set(required) - set(manifest.columns.tolist()), (
+            "Missing one or more required columns from Epic manifest"
+        )
+
+        # make sure we don't have any spaces from pesky humans
+        # and their fat fingers
+        columns = [
+            'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
+            'Re-analysis Specimen ID'
+        ]
+
+        # remove any spaces and SP- from specimen columns
+        manifest[columns] = manifest[columns].applymap(
+            lambda x: x.replace(' ', ''))
+        manifest['Re-analysis Specimen ID'] = \
+            manifest['Re-analysis Specimen ID'].str.replace(
+                r'SP-|\.', '', regex=True)
+        manifest['Specimen ID'] = \
+            manifest['Specimen ID'].str.replace(r'SP-|\.', '', regex=True)
 
         # sample id may be split between 'Specimen ID' and 'Instrument ID' or
         # Re-analysis Specimen ID and Re-analysis Instrument ID columns, join
@@ -223,21 +456,24 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             '-' + manifest['Specimen ID']
         manifest['ReanalysisID'] = manifest['Re-analysis Instrument ID'] + \
             '-' + manifest['Re-analysis Specimen ID']
-        
+
         manifest = manifest[['SampleID', 'ReanalysisID', 'Test Codes']]
         manifest_source = 'Epic'
 
+        data = defaultdict(lambda: defaultdict(list))
+
         for idx, row in manifest.iterrows():
             # split test codes to list and sense check they're valid format
-            # will be formatted as 'R211.1, , , ,' or '_HGNC:1234, , , ,' etc.
+            # will be formatted as 'R211.1, , , ,' or 'HGNC:1234, , , ,' etc.
             test_codes = [
                 x for x in row['Test Codes'].replace(' ', '').split(',') if x
             ]
             if not all([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC", x) for x in test_codes
+                re.match(r"[RC][\d]+\.[\d]+|HGNC", x) for x in test_codes
             ]):
+                # TODO - do we want to raise an error here or just throw it out?
                 raise RuntimeError(
-                    f'Invalid test code provided for sample {row}'
+                    f'Badly formatted test code provided for sample {row}'
                 )
 
             # prefentially use ReanalysisID if present
@@ -251,40 +487,12 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
                     f"Error in sample formatting of row {idx + 1} in manifest:"
                     f"\n\t{row}"
                 )
-
-    elif all('\t' in x for x in contents if x):
-        # this is an old Gemini manifest => should just have sampleID -> CI
-        contents = [x.split('\t') for x in contents if x]
-
-        # sense check data does only have 2 columns
-        assert all([len(x)==2 for x in contents]), (
-            f"Gemini manifest has more than 2 columns:\n\t{contents}"
-        )
-
-        for sample in contents:
-            test_codes = sample[1].replace(' ', '').split(',')
-            if not all([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
-            ]):
-                raise RuntimeError(
-                    'Invalid test code(s) provided for sample '
-                    f'{sample[0]} : {sample[1]}'
-                )
-            # add test codes to samples list, keeping just the code part
-            # and not full string (i.e. R134.2 from 
-            # R134.1_Familialhypercholesterolaemia_P)
-            data[sample[0]]['tests'].append([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
-                for x in test_codes
-            ])
-        
-        manifest_source = 'Gemini'
-
     else:
         # throw an error here as something is up with the file
-        raise RuntimeError(
-            f"Manifest file provided does not seem valid"
-        )
+        raise RuntimeError("Manifest file provided does not seem valid")
+
+    if split_tests:
+        manifest = split_manifest_tests(manifest)
 
     samples = ('\n\t').join([
         f"{x[0]} -> {x[1]['tests']}" for x in data.items()
@@ -294,7 +502,8 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     return data, manifest_source
 
 
-def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
+def filter_manifest_samples_by_files(
+        manifest, files, name, pattern) -> Tuple[dict, list, list]:
     """
     Filter samples in manifest against those where required per sample
     files have been found with DXManage.find_files().
@@ -315,24 +524,31 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
             (Gemini naming)
             manifest name : X12345
             vcf name      : X12345-GM12345_much_suffix.vcf.gz
-            pattern       : '^X[\d]+'
+            pattern       : r'^X[\d]+'
 
             (Epic naming)
             manifest_name : 124801362-23230R0131
             vcf name      : 124801362-23230R0131-23NGSCEN15-8128-M-96527.vcf.gz
-            pattern       : '^[\d\w]+-[\d\w]+'
+            pattern       : r'^[\d\w]+-[\d\w]+'
 
     Returns
     -------
     dict
         subset of manifest mapping dict with samples removed that have
-        no files and with DXFile objects added under 'files' as a list
+        no files and with DXFile objects added under '{name}' as a list
         for each sample where one or more files were found
+    list
+        list of sample IDs that didn't match the specified pattern
+    list
+        list of sample IDs that didn't match a file
     """
     # build mapping of prefix using given pattern to matching files
     # i.e. {'124801362-23230R0131': DXFileObject{'id': ...}}
-    print("Filtering manifest samples against available files")
-    print(f"Total files before filtering against pattern: {len(files)}")
+    print(f"Filtering manifest samples against available {name} files")
+    print(
+        f"Total files before filtering against pattern "
+        f"'{pattern}' : {len(files)}"
+    )
     file_prefixes = defaultdict(list)
 
     for file in files:
@@ -369,27 +585,25 @@ def filter_manifest_samples_by_files(manifest, files, name, pattern) -> dict:
                 manifest_no_files.append(sample)
             else:
                 # sample matches pattern and matches some file(s)
-                print(
-                    f"Found {len(sample_files)} files for {sample}\n"
-                    f"{[x['describe']['name'] for x in sample_files]}"
-                )
                 manifest_with_files[sample] = manifest[sample]
                 manifest_with_files[sample][name] = sample_files
-    
-    print(
-        f"{len(manifest_no_match)} samples in manifest didn't match expected "
-        f"pattern of {pattern}: {manifest_no_match}"
-    )
 
-    print(
-        f"{len(manifest_no_files)} samples in manifest didn't have any "
-        f"matching files: {manifest_no_files}"
-    )
+    if manifest_no_match:
+        print(
+            f"{len(manifest_no_match)} samples in manifest didn't match "
+            f"expected pattern of {pattern}: {manifest_no_match}"
+        )
 
-    return manifest_with_files
+    if manifest_no_files:
+        print(
+            f"{len(manifest_no_files)} samples in manifest didn't "
+            f"have any matching files: {manifest_no_files}"
+        )
+
+    return manifest_with_files, manifest_no_match, manifest_no_files
 
 
-def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
+def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     """
     Parse through manifest dict of sampleID -> test codes to check
     all codes are valid and exlcude those that are invalid against
@@ -404,14 +618,16 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
 
     Returns
     -------
-    Union[dict, dict]
+    Tuple[dict, dict]
         2 dicts of manifest with valid test codes and those that are invalid
     """
     print("Checking test codes in manifest are valid...")
     invalid = defaultdict(list)
     valid = defaultdict(lambda: defaultdict(list))
 
-    genepanels_test_codes = set(genepanels['test_code'].tolist())
+    genepanels_test_codes = sorted(set(genepanels['test_code'].tolist()))
+
+    print(f"Current valid test codes:\n\t{genepanels_test_codes}")
 
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
@@ -421,20 +637,23 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
         for test_list in test_codes['tests']:
             valid_tests = []
             for test in test_list:
-                if test in genepanels_test_codes or re.match(r'_HGNC:[\d]+', test):
+                if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
                     #TODO: should we check that we have a transcript assigned
                     # to this HGNC ID?
+                    if re.search(r'HGNC:[\d]+', test):
+                        # ensure HGNC IDs have an _ prefix for generate_bed
+                        test = f"_{test.lstrip('_')}"
                     valid_tests.append(test)
                 else:
                     sample_invalid_test.append(test)
             if valid_tests:
                 # one or more requested test is in genepanels
-                valid[sample]['tests'].append(valid_tests)
+                valid[sample]['tests'].append(list(set(valid_tests)))
 
         if sample_invalid_test:
             # sample had one or more invalid test code
             invalid[sample].extend(sample_invalid_test)
-    
+
     if invalid:
         print(
             "WARNING: one or more samples had an invalid test "
@@ -442,7 +661,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
         )
     else:
         print("All sample test codes valid!")
-    
+
     # check if any samples only had test codes that are invalid -> won't
     # have any reports generated
     no_tests = set(manifest.keys()) - set(valid.keys())
@@ -451,7 +670,12 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Union[dict, dict]:
             "WARNING: samples with invalid test codes resulting in having "
             f"no tests to run reports for: {no_tests}"
         )
-    
+
+    if not valid:
+        raise RuntimeError(
+            "All samples had invalid test codes resulting in an empty manifest"
+        )
+
     return valid, invalid
 
 
@@ -498,16 +722,16 @@ def split_manifest_tests(data) -> dict:
             for idx, sub_test in enumerate(test_list):
                 if re.match(r"[RC][\d]+\.[\d]+", sub_test):
                     # it's a panel => split it out
-                    all_split_test_codes.append([test])
+                    all_split_test_codes.append([sub_test])
                 else:
                     # it's a gene, add these back to a list to group
                     test_genes.append(sub_test)
             if test_genes:
                 # there were some single genes to test
                 all_split_test_codes.append(list(set(test_genes)))
-        
+
         split_data[sample]['tests'].extend(all_split_test_codes)
-    
+
     return split_data
 
 
@@ -585,7 +809,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     )
 
                     panels.append(genepanels_row.iloc[0].panel_name)
-                    indications.append(genepanels_row.iloc[0].gemini_name)
+                    indications.append(genepanels_row.iloc[0].indication)
                 elif re.fullmatch(r'_HGNC:[\d]+', test):
                     # add gene IDs as is to all lists
                     panels.append(test)
@@ -599,11 +823,10 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     )
             sample_tests['panels'].append(panels)
             sample_tests['indications'].append(indications)
-        
+
         manifest_with_panels[sample] = sample_tests
-    
+
     print("Manifest after")
     PPRINT(manifest_with_panels)
 
     return manifest_with_panels
-
