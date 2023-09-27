@@ -48,7 +48,7 @@
             "label": "exclude samples file",
             "class": "file",
             "optional": true,
-            "help": "file of samples to exclude from CNV calling / reports"
+            "help": "file of samples to exclude from CNV calling / reports, one sample name per line (as found in manifest)"
           },
           {
             "name": "single_output_dir",
