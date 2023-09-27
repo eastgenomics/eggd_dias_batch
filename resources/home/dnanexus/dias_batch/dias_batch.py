@@ -346,4 +346,6 @@ def main(
         "launched_jobs": launched_jobs
     }
 
-dxpy.run()
+if os.path.exists('/home/dnanexus'):
+    # check for env to allow importing CheckInputs for unit tests
+    dxpy.run()
