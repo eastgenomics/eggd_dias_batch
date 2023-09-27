@@ -152,8 +152,8 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {'assay': 'test', 'version': '1.0.0'},
             {'assay': 'test', 'version': '1.1.0'},
             {'assay': 'test', 'version': '1.0.10'},
-            {'assay': 'test', 'version': '2.0.0'},
-            {'assay': 'test', 'version': '1.1.11'}
+            {'assay': 'test', 'version': '1.1.11'},
+            {'assay': 'test', 'version': '1.2.1'}
         ]
 
         config = DXManage().get_assay_config(
@@ -161,7 +161,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             assay='test'
         )
 
-        assert config['version'] == '2.0.0', (
+        assert config['version'] == '1.2.1', (
             "Incorrect config file version returned"            
         )
 
