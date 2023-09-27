@@ -127,7 +127,7 @@ dx run app-eggd_dias_batch \
     -icnv_call_job_id=job-xxx \
     -icnv_reports=true \
     -isnv_reports=true \ 
-    -iartmeis=true \
+    -iartemis=true \
     -iqc_file=file-xxx
 ```
 

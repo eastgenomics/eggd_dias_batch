@@ -173,7 +173,7 @@ class CheckInputs():
 
             if not self.inputs.get('qc_file'):
                 self.errors.append(
-                    "Artmeis specified to run but no QC .xlsx provided. "
+                    "Artemis specified to run but no QC .xlsx provided. "
                     "Please rerun specifying -iqc_xlsx"
                 )
 
