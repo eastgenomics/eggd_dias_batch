@@ -69,7 +69,9 @@ def check_report_index(name, reports) -> int:
         # some previous reports, try get highest suffix
         suffixes = [
             re.search(r'[\d]{1,2}.xlsx$', x) for x in previous_reports
+            if re.search(r'[\d]{1,2}.xlsx$', x)
         ]
+
         if suffixes:
             # found something useful, if not we're just going to use 1
             suffix = max([
@@ -297,13 +299,52 @@ def fill_config_reference_inputs(config) -> dict:
     return filled_config
 
 
+def parse_genepanels(contents) -> pd.DataFrame:
+    """
+    Parse genepanels file into nicely formatted DataFrame
+
+    This will drop the HGNC ID column and keep the unique rows left (i.e.
+    one row per clinical inidication / panel), and adds the test code as 
+    a separate column.
+    
+    Example resultant dataframe:
+
+    +-----------+-----------------------+---------------------------+
+    | test_code |      indication       |        panel_name         |
+    +-----------+-----------------------+---------------------------+
+    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
+    | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
+    +-----------+-----------------------+---------------------------+
+
+    Parameters
+    ----------
+    contents : list
+        contents of genepanels file read from DXManage.read_dxfile()
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of genepanels file
+    """
+    genepanels = pd.DataFrame(
+        [x.split('\t') for x in contents],
+        columns=['indication', 'panel_name', 'hgnc_id']
+    )
+    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
+    genepanels.drop_duplicates(keep='first', inplace=True)
+    genepanels.reset_index(inplace=True)
+    genepanels = split_genepanels_test_codes(genepanels)
+
+    return genepanels
+
+
 def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     """
     Split out R/C codes from full CI name for easier matching
     against manifest
 
     +-----------------------+--------------------------+
-    |      indication      |        panel_name        |
+    |      indication      |        panel_name         |
     +-----------------------+--------------------------+
     | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
     | C2.1_INSR             | CUH_INSR_1.0             |
@@ -313,7 +354,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
                                     ▼
                                         
     +-----------+-----------------------+---------------------------+
-    | test_code |      indication      |        panel_name         |
+    | test_code |      indication      |        panel_name          |
     +-----------+-----------------------+---------------------------+
     | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
     | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
@@ -329,11 +370,25 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     -------
     pd.DataFrame
         genepanels with test code split to separate column
+    
+    Raises
+    ------
+    RuntimeError
+        Raised when test code links to more than one clinical indication
     """
     genepanels['test_code'] = genepanels['indication'].apply(
         lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
     )
     genepanels = genepanels[['test_code', 'indication', 'panel_name']]
+
+    # sense check test code only points to one unique indication
+    for code in set(genepanels['test_code'].tolist()):
+        code_rows = genepanels[genepanels['test_code'] == code]
+        if len(set(code_rows['indication'].tolist())) > 1:
+            raise RuntimeError(
+                f"Test code {code} linked to more than one indication in "
+                f"genepanels!\n\t{code_rows['indication'].tolist()}"
+            )
 
     print(f"Genepanels file: \n{genepanels}")
 
@@ -364,6 +419,8 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
     
     Raises
     ------
+    RuntimeError
+        Raised when a test code doesn't seem valid against regex pattern
     RuntimeError
         Raised when a sample seems malformed (missing / wrongly formatted IDs)
     RuntimeError
@@ -437,12 +494,12 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
         # and their fat fingers
         columns = [
             'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
-            'Re-analysis Specimen ID'
+            'Re-analysis Specimen ID', 'Test Codes'
         ]
 
         # remove any spaces and SP- from specimen columns
         manifest[columns] = manifest[columns].applymap(
-            lambda x: x.replace(' ', ''))
+            lambda x: x.replace(' ', '') if x else x)
         manifest['Re-analysis Specimen ID'] = \
             manifest['Re-analysis Specimen ID'].str.replace(
                 r'SP-|\.', '', regex=True)
@@ -613,6 +670,12 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     -------
     Tuple[dict, dict]
         2 dicts of manifest with valid test codes and those that are invalid
+    
+    Raises
+    ------
+    RuntimeError
+        Raised if all samples in manifest had a test that doesn't exist in
+        genepanels file => nothing to run
     """
     print("Checking test codes in manifest are valid...")
     invalid = defaultdict(list)
@@ -807,14 +870,43 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                 if re.fullmatch(r'[RC][\d]+\.[\d]+', test):
                     # get genepanels row for current test prefix, should just
                     # be one since we dropped HGNC ID column and duplicates
+
+                    # SPOILER: in older genepanels it isn't always 1:1 as we
+                    # have 'single gene panels' (which aren't actually single
+                    # genes as there's multiple but OH WELL), this is not a
+                    # thing in Eris and there's only ~20, so for these we will
+                    # just dump all the single gene 'panel' names into one
+                    # and they can deal with that, example of this hot mess:
+                    # test_code          indication                 panel_name
+                    # R371.1  R371.1_Malignant hyperthermia_P  HGNC:10483_SG_panel_1.0.0
+                    # R371.1  R371.1_Malignant hyperthermia_P   HGNC:1397_SG_panel_1.0.0
+                    # R371.1  R371.1_Malignant hyperthermia_P  HGNC:28423_SG_panel_1.0.0
+                    #
+                    # which would result in:
+                    # R371.1 -> HGNC:10483_SG_panel_1.0.0;HGNC:1397_SG_panel_1.0.0;HGNC:28423_SG_panel_1.0.0
+
                     genepanels_row = genepanels[genepanels['test_code'] == test]
 
                     assert not genepanels_row.empty, (
                         f"Filtering genepanels for {test} returned empty df"
                     )
 
-                    panels.append(genepanels_row.iloc[0].panel_name)
+                    if len(genepanels_row.index) > 1:
+                        # munge the panel strings together to handle the above
+                        print(
+                            f'Test code {test} has >1 panel name assigned, '
+                            f'these will be combined:\n\t{genepanels_row}'
+                        )
+                        panel_str = ';'.join(
+                            genepanels_row['panel_name'].tolist()
+                        )
+                    else:
+                        # this is nice and sane and 1:1
+                        panel_str = genepanels_row.iloc[0].panel_name
+
+                    panels.append(panel_str)
                     indications.append(genepanels_row.iloc[0].indication)
+
                 elif re.fullmatch(r'_HGNC:[\d]+', test):
                     # add gene IDs as is to all lists
                     panels.append(test)

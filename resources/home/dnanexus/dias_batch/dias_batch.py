@@ -15,13 +15,13 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.utils import parse_manifest, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        make_path, time_stamp, write_summary_report
+        make_path, time_stamp, write_summary_report, parse_genepanels
 else:
     from .utils.dx_requests import DXExecute, DXManage
     from .utils.utils import parse_manifest, \
         split_genepanels_test_codes, check_manifest_valid_test_codes, \
         add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        make_path, time_stamp, write_summary_report
+        make_path, time_stamp, write_summary_report, parse_genepanels
 
 import dxpy
 import pandas as pd
@@ -237,17 +237,10 @@ def main(
         exclude_samples = DXManage().read_dxfile(exclude_samples_file)
 
     # parse and format genepanels file
-    genepanels = DXManage().read_dxfile(
+    genepanels_data = DXManage().read_dxfile(
         file=assay_config.get('reference_files', {}).get('genepanels'),
     )
-    genepanels = pd.DataFrame(
-        [x.split('\t') for x in genepanels],
-        columns=['indication', 'panel_name', 'hgnc_id']
-    )
-    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
-    genepanels.drop_duplicates(keep='first', inplace=True)
-    genepanels.reset_index(inplace=True)
-    genepanels = split_genepanels_test_codes(genepanels)
+    genepanels = parse_genepanels(genepanels_data)
 
     if manifest_file:
         # parse manifest and format into a mapping of sampleID -> test codes
