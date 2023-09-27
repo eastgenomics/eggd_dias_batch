@@ -625,10 +625,16 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
 
+        if not test_codes['tests']:
+            # sample has no booked tests => chuck it in the error bucket
+            invalid[sample].append('No tests booked for sample')
+            continue
+
         # test codes stored under 'tests' key and is a list of lists
         # dependent on what genes / panels have been requested
         for test_list in test_codes['tests']:
             valid_tests = []
+
             for test in test_list:
                 if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
                     #TODO: should we check that we have a transcript assigned
@@ -637,6 +643,12 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
                         # ensure HGNC IDs have an _ prefix for generate_bed
                         test = f"_{test.lstrip('_')}"
                     valid_tests.append(test)
+                elif test == 'Research Use':
+                    # more Epic weirdness, chuck these out but don't break
+                    print(
+                        f"WARNING: {sample} booked for 'Research Use' test, "
+                        f"skipping this test code and continuing..."
+                    )
                 else:
                     sample_invalid_test.append(test)
             if valid_tests:
@@ -648,9 +660,9 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
             invalid[sample].extend(sample_invalid_test)
 
     if invalid:
-        print(
-            "WARNING: one or more samples had an invalid test "
-            f"requested:\n\t{invalid}" 
+        raise RuntimeError(
+            "one or more samples had an invalid test code "
+            f"requested:\n\t{prettier_print(invalid)}" 
         )
     else:
         print("All sample test codes valid!")
