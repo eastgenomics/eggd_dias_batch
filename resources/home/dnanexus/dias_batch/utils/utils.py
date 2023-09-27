@@ -397,21 +397,21 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
 
         for sample in contents:
             test_codes = sample[1].replace(' ', '').split(',')
-            if not all([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
-            ]):
-                # TODO - as above, error or throw out
-                raise RuntimeError(
-                    'Invalid test code(s) provided for sample '
-                    f'{sample[0]} : {sample[1]}'
-                )
-            # add test codes to samples list, keeping just the code part
-            # and not full string (i.e. R134.2 from
-            # R134.1_Familialhypercholesterolaemia_P)
-            data[sample[0]]['tests'][0].extend([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
-                for x in test_codes
-            ])
+
+            for test_code in test_codes:
+                # add test codes to samples list, keeping just the code part
+                # and not full string (i.e. R134.2 from
+                # R134.1_Familialhypercholesterolaemia_P)
+                match = re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", test_code)
+                if match:
+                    code = match.group()
+                else:
+                    # this likely isn't valid, but will raise an error
+                    # when we validate all test codes against genepanels
+                    # in utils.check_manifest_valid_test_codes()
+                    code = test_code
+
+                data[sample[0]]['tests'][0].append(code)
 
         manifest_source = 'Gemini'
 
@@ -468,13 +468,6 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             test_codes = [
                 x for x in row['Test Codes'].replace(' ', '').split(',') if x
             ]
-            if not all([
-                re.match(r"[RC][\d]+\.[\d]+|HGNC", x) for x in test_codes
-            ]):
-                # TODO - do we want to raise an error here or just throw it out?
-                raise RuntimeError(
-                    f'Badly formatted test code provided for sample {row}'
-                )
 
             # prefentially use ReanalysisID if present
             if re.match(r"[\d\w]+-[\d\w]+", row.ReanalysisID):
