@@ -321,13 +321,13 @@ class TestSplitGenePanelsTestCodes():
         that this gets caught
         """
         genepanels_copy = deepcopy(self.genepanels)
-        genepanels_copy = genepanels_copy.append(
-            {
+        genepanels_copy = pd.concat([genepanels_copy,
+            pd.DataFrame([{
                 'test_code': 'R337.1',
                 'indication': 'R337.1_CADASIL_G_COPY',
                 'panel_name': 'R337.1_CADASIL_G_COPY'
-            }, ignore_index=True
-        )
+            }])
+        ])
 
         with pytest.raises(RuntimeError):
             utils.split_genepanels_test_codes(genepanels_copy)
