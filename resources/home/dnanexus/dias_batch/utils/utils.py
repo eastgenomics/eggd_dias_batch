@@ -674,8 +674,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     Raises
     ------
     RuntimeError
-        Raised if all samples in manifest had a test that doesn't exist in
-        genepanels file => nothing to run
+        Raised if any invalid test codes requested for one or more samples
     """
     print("Checking test codes in manifest are valid...")
     invalid = defaultdict(list)

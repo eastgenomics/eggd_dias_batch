@@ -361,17 +361,6 @@ class TestParseManifest:
             utils.parse_manifest(data)
 
 
-    def test_gemini_invalid_test_code(self):
-        """
-        Test if an invalid test code or HGNC ID provided an error is raised
-        """
-        data = deepcopy(self.gemini_data)
-        data.append('X12345\tnotValidTest')
-
-        with pytest.raises(RuntimeError):
-            utils.parse_manifest(data)
-
-
     def test_gemini_multiple_lines_combined(self):
         """
         Test when multiple test codes for one sample provided on separate
@@ -458,21 +447,6 @@ class TestParseManifest:
         assert not errors, errors
 
 
-    def test_epic_invalid_test_code(self):
-        """
-        Test that an error is raised if an invalid test code is provided
-        (n.b. this just checks against a regex pattern and not if its
-        valid against genepanels, this is done in
-        utils.check_manifest_valid_test_codes())
-        """
-        # add invalid test code to test codes of last row
-        data = deepcopy(self.epic_data)
-        data[-1] = f"{data[-1]}invalidTestCode"
-
-        with pytest.raises(RuntimeError):
-            utils.parse_manifest(data)
-
-
     def test_epic_reanalysis_ids_used(self):
         """
         Where 'Re-analysis Specimen ID' or 'Re-analysis Instrument ID'
@@ -538,7 +512,11 @@ class TestFilterManifestSamplesByFiles():
 
 class TestCheckManifestValidTestCodes():
     """
-    TODO
+    Tests for utils.check_manifest_valid_test_codes()
+
+    Function parses through all test codes from the manifest, and checks
+    they are valid against what we have in genepanels. If any are invalid
+    for any sample, an error is raised.
     """
 
 
