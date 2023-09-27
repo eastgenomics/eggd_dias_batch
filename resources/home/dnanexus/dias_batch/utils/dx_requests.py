@@ -615,7 +615,8 @@ class DXExecute():
             sample_limit=None,
             exclude_samples=None,
             call_job_id=None,
-            parent=None
+            parent=None,
+            unarchive=None
         ) -> Tuple[list, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
@@ -648,6 +649,8 @@ class DXExecute():
         parent : list | None
             single item list of parent dias batch job ID to use when
             testing to stop jobs running, or None when not running in test
+        unarchive : bool
+            controls if to automatically unarchive any archived files
 
         Returns
         -------
@@ -674,6 +677,8 @@ class DXExecute():
             pattern = r'^[\d\w]+-[\d\w]+'
         else:
             pattern = r'X[\d]+'
+
+        vcf_files = mosdepth_files = []
 
         # set up required files for each running mode
         if mode == 'CNV':
@@ -822,6 +827,12 @@ class DXExecute():
                     f"({len(manifest_no_mosdepth)}):"
                 ] = manifest_no_mosdepth
 
+        # check to ensure all vcfs (and mosdepth files for SNVs) are unarchived
+        DXManage().check_archival_state(
+            files=vcf_files + mosdepth_files,
+            samples=manifest.keys(),
+            unarchive=unarchive
+        )
 
         workflow_details = dxpy.describe(workflow_id)
 

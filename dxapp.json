@@ -111,7 +111,8 @@
             "label": "unarchive",
             "class": "boolean",
             "optional": true,
-            "help": "controls if to automatically unarchive any required files that are archived"
+            "default": false,
+            "help": "controls if to automatically unarchive any required files that are archived, default is to fail the app with a list of files required to unarchive. If set to true, all required files will start to be unarchived and the job will exit with a zero exit code and the job tagged to state no jobs were launched"
           }
     ],
     "outputSpec": [
