@@ -338,10 +338,9 @@ def main(
             snv_path = dxpy.describe(
                 launched_jobs.get('snv_reports')[0])['folder']
 
-        if cnv_reports:
-            if launched_jobs.get('snv_reports'):
-                cnv_path = dxpy.describe(
-                    launched_jobs.get('cnv_reports')[0])['folder']
+        if launched_jobs.get('cnv_reports'):
+            cnv_path = dxpy.describe(
+                launched_jobs.get('cnv_reports')[0])['folder']
 
         dependent_jobs = [
             job for job_list in launched_jobs.values() for job in job_list
