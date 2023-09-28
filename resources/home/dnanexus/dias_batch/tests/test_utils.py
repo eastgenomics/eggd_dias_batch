@@ -544,13 +544,27 @@ class TestCheckManifestValidTestCodes():
         format dict of the manifest -> test codes as is passed in, therefore
         test that this is true
         """
-        tested_manifest, _ = utils.check_manifest_valid_test_codes(
+        tested_manifest = utils.check_manifest_valid_test_codes(
             manifest=self.manifest, genepanels=self.genepanels
         )
 
         assert tested_manifest.items() == self.manifest.items(), (
             "Manifest changed when checking test codes with valid test codes"
         )
+
+    def test_error_raised_when_sample_has_no_tests(self):
+        """
+        Test we raise an error if a sample has no test codes booked against it
+        """
+        # drop test codes for a manifest sample
+        manifest_copy = deepcopy(self.manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [[]]
+
+        with pytest.raises(RuntimeError, match=r"No tests booked for sample"):
+            utils.check_manifest_valid_test_codes(
+                manifest=manifest_copy, genepanels=self.genepanels
+            )
+
 
     def test_error_raised_when_manifest_contains_invalid_test_code(self):
         """
@@ -562,13 +576,8 @@ class TestCheckManifestValidTestCodes():
         manifest_copy['424487111-53214R00111']['tests'].append([
             'invalidTestCode'])
 
-        correct_error = (
-            'One or more samples had an invalid test code requested:\n\t{'
-            '\n\t424487111-53214R00111": [\n\t\t"invalid_test"\n\t]\t}'
-        )
-
-        with pytest.raises(RuntimeError):
-            tested_manifest, _ = utils.check_manifest_valid_test_codes(
+        with pytest.raises(RuntimeError, match=r"invalidTestCode"):
+            utils.check_manifest_valid_test_codes(
                 manifest=manifest_copy, genepanels=self.genepanels
             )
 
@@ -585,7 +594,7 @@ class TestCheckManifestValidTestCodes():
 
         correct_test_codes = [['R208.1', 'R216.1']]
 
-        tested_manifest, _ = utils.check_manifest_valid_test_codes(
+        tested_manifest = utils.check_manifest_valid_test_codes(
             manifest=manifest_copy, genepanels=self.genepanels
         )
         sample_test_codes = tested_manifest['424487111-53214R00111']['tests']
@@ -593,7 +602,6 @@ class TestCheckManifestValidTestCodes():
         assert sample_test_codes == correct_test_codes, (
             'Test codes not correctly parsed when "Research Use" present'
         )
-        
 
 
 class TestSplitManifestTests():
