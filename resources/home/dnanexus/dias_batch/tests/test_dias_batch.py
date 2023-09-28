@@ -27,7 +27,7 @@ class TestCheckInputs():
     """
     def test_invalid_assay_str_error_raised(self, mocker):
         """
-        Test when an invalid assay string passed to -iassay error is raised
+        Test error is raised when an invalid assay string passed to -iassay
         """
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
         check = CheckInputs()
@@ -45,7 +45,7 @@ class TestCheckInputs():
     @patch('utils.dx_requests.dxpy.find_data_objects')
     def test_assay_config_dir(self, test_patch, mocker):
         """
-        Test when assay config dir specified is empty that error is raised
+        Test that error is raised when assay config dir specified is empty
         """
         test_patch.return_value = []
 
@@ -71,7 +71,7 @@ class TestCheckInputs():
     @patch('utils.dx_requests.dxpy.find_data_objects')
     def test_check_single_output_dir(self, test_patch, mocker):
         """
-        Test when no files are found in single output dir error is raised
+        Test that error is raised when no files are found in single output dir
         """
         test_patch.return_value = []
 
@@ -136,7 +136,7 @@ class TestCheckInputs():
 
     def test_error_raised_for_cnv_reports_invalid(self, mocker):
         """
-        Test when CNV reports is to be run that errors is raised if
+        Test when CNV reports is to be run that an error is raised if
         CNV call mode or CNV call job ID is missing
         """
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
