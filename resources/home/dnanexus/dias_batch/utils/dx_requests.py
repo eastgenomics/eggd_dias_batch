@@ -359,7 +359,7 @@ class DXManage():
                     # this file is archived and in one of our samples
                     not_live_filtered.append(dx_file)
 
-            not_live = not_live_filtered
+            not_live = set(not_live_filtered)
 
         if not not_live:
             # nothing archived that we need :dancing_penguin:
