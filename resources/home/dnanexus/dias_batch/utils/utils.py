@@ -786,7 +786,7 @@ def split_manifest_tests(data) -> dict:
                     test_genes.append(sub_test)
             if test_genes:
                 # there were some single genes to test
-                all_split_test_codes.append(list(set(test_genes)))
+                all_split_test_codes.append(sorted(set(test_genes)))
 
         split_data[sample]['tests'].extend(all_split_test_codes)
 
@@ -905,7 +905,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     # we already validated earlier all the test codes so
                     # shouldn't get here
                     raise RuntimeError(
-                        f"Error occured selecting testing from genepanels for "
+                        "Error occured selecting test from genepanels for "
                         f"test {test}"
                     )
             sample_tests['panels'].append(panels)

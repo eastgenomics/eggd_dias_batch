@@ -514,8 +514,157 @@ class TestParseManifest:
 
 class TestFilterManifestSamplesByFiles():
     """
-    TODO
+    Tests for utils.filter_manifest_samples_by_files()
+
+    Function filters out sample names that either don't meet a specified
+    regex pattern (i.e. [\w\d]+-[\w\d]+- for Epic sample naming) or have
+    no files available against a list of samples found to use as inputs  
     """
+    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+        epic_data = file_handle.read().splitlines()
+        manifest, _ = utils.parse_manifest(epic_data)
+
+    # minimal dxpy.find_data_objects() return object with list of files
+    files = [
+        {'describe': {
+            'name': '123245111-23146R00111-other-name-parts_markdup.vcf.gz'}},
+        {'describe': {
+            'name': '224289111-33202R00111-other-name-parts_markdup.vcf.gz'}},
+        {'describe': {
+            'name': '324338111-43206R00111-other-name-parts_markdup.vcf.gz'}},
+        {'describe': {
+            'name': '424487111-53214R00111-other-name-parts_markdup.vcf.gz'}},
+        {'describe': {
+            'name': 'X225111-GM2308111-other-name-parts_markdup.vcf.gz'}}
+    ]
+
+
+    def test_files_not_matching_pattern_filtered_out(self, capsys):
+        """
+        Test where file name not matching the specified pattern is
+        correctly filtered out
+        """
+        # add in a non-matching file
+        file_list = deepcopy(self.files)
+        file_list.append(
+            {'describe': {'name': 'file1.txt'}}
+        )
+
+        utils.filter_manifest_samples_by_files(
+            manifest=self.manifest,
+            files=file_list,
+            name='vcf',
+            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        )
+
+        # since we don't explicitly return the filtered out files we
+        # have to pick it out of the stdout as it just gets printed
+        stdout = capsys.readouterr().out
+        expected_files = 'Total files after filtering against pattern: 5'
+
+        assert expected_files in stdout, (
+            'Files not matching given pattern not correctly filtered out'
+        )
+
+
+    def test_samples_not_matching_pattern_filtered_out(self):
+        """
+        Test where sample name not matching the specified pattern is
+        correctly filtered out
+        """
+        # bodge one of the sample names in the manifest
+        manifest_copy = deepcopy(self.manifest)
+        manifest_copy['invalid_sample_name'] = manifest_copy.pop(
+            '424487111-53214R00111'
+        )
+
+        _, pattern_no_match, _ = utils.filter_manifest_samples_by_files(
+            manifest=manifest_copy,
+            files=self.files,
+            name='vcf',
+            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        )
+
+        assert pattern_no_match == ['invalid_sample_name'], (
+            'Invalid sample name not correctly filtered out of manifest'
+        )
+
+
+    def test_sample_in_manifest_has_no_files(self):
+        """
+        Test where sample has no files that it gets removed from the manifest
+        """
+        manifest, _, sample_no_files  = utils.filter_manifest_samples_by_files(
+            manifest=self.manifest,
+            files=self.files[1:],  # exclude file for 123245111-23146R00111
+            name='vcf',
+            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        )
+
+        errors = []
+
+        if not sample_no_files == ['123245111-23146R00111']:
+            errors.append(
+                'Sample with no file not correctly added to '
+                'returned manifest_no_files list'
+            )
+
+        if '123245111-23146R00111' in manifest.keys():
+            errors.append(
+                'Sample with no file not correctly excluded from manifest'
+            )
+
+        assert not errors, errors
+
+
+    def test_files_correctly_added_to_manifest(self):
+        """
+        Test that files correctly get added into manifest under specified key
+        """
+        manifest_w_files = {
+            '123245111-23146R00111':  {
+                'tests': [['R207.1']],
+                'vcf': [{'describe': {
+                    'name': '123245111-23146R00111-other-name-parts_markdup.vcf.gz'
+                }}]
+            },
+            '224289111-33202R00111':  {
+                'tests': [['R208.1']],
+                'vcf': [{'describe': {
+                    'name': '224289111-33202R00111-other-name-parts_markdup.vcf.gz'
+                }}]
+            },
+            '324338111-43206R00111':  {
+                'tests': [['R134.1']],
+                'vcf': [{'describe': {
+                    'name': '324338111-43206R00111-other-name-parts_markdup.vcf.gz'
+                }}]
+            },
+            '424487111-53214R00111':  {
+                'tests': [['R208.1', 'R216.1']],
+                'vcf': [{'describe': {
+                    'name': '424487111-53214R00111-other-name-parts_markdup.vcf.gz'
+                }}]
+            },
+            'X225111-GM2308111':  {
+                'tests': [['R149.1']],
+                'vcf': [{'describe': {
+                    'name': 'X225111-GM2308111-other-name-parts_markdup.vcf.gz'
+                }}]
+            }
+        }
+
+
+        manifest, _, _ = utils.filter_manifest_samples_by_files(
+            manifest=self.manifest,
+            files=self.files,
+            name='vcf',
+            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        )
+
+        assert manifest == manifest_w_files, (
+            'files incorrectly added to manifest'
+        )
 
 
 class TestCheckManifestValidTestCodes():
@@ -530,8 +679,7 @@ class TestCheckManifestValidTestCodes():
         epic_data = file_handle.read().splitlines()
         manifest, _ = utils.parse_manifest(epic_data)
 
-    # read in genepanels file in the same manner as utils.parse_genepanels()
-    # up to the point of calling split_gene_panels_test_codes()
+    # read in genepanels file
     with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
         # parse genepanels file like is done in dias_batch.main()
         genepanels_data = file_handle.read().splitlines()
@@ -606,11 +754,201 @@ class TestCheckManifestValidTestCodes():
 
 class TestSplitManifestTests():
     """
-    TODO
+    Tests for utils.split_manifest_tests()
+
+    Function parses through the list of lists of test codes for each sample
+    in the manifest and splits all test codes to be their own list, which
+    will result in them generating their own reports
     """
+
+    def test_panels_correctly_split_out(self):
+        """
+        Test that any panels are correctly split to their own test list
+        """
+        manifest = {
+            "sample1" : {'tests': [['R1.1', 'R134.1']]},
+            "sample2" : {'tests': [['R228.1']]},
+            "sample3" : {'tests': [['R218.2'], ['R2.1']]},
+        }
+
+        split_manifest = utils.split_manifest_tests(manifest)
+
+        correct_split = {
+            "sample1" : {'tests': [['R1.1'], ['R134.1']]},
+            "sample2" : {'tests': [['R228.1']]},
+            "sample3" : {'tests': [['R218.2'], ['R2.1']]},
+        }
+
+        assert split_manifest == correct_split, (
+            "Manifest test codes incorrectly split"
+        )
+
+    def test_gene_symbols_correctly_not_split(self):
+        """
+        Gene symbols requested together (i.e. in the same sub list of tests)
+        should _not_ be split, but those not requested together (i.e. in
+        different sub lists of tests) do _not_ get combined, test this works
+        """
+        manifest = {
+            "sample1" : {'tests': [['_HGNC:235']]},
+            "sample2" : {'tests': [['_HGNC:1623', '_HGNC:4401']]},
+            "sample3" : {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+        }
+
+        split_manifest = utils.split_manifest_tests(manifest)
+
+        correct_split = manifest = {
+            "sample1" : {'tests': [['_HGNC:235']]},
+            "sample2" : {'tests': [['_HGNC:1623', '_HGNC:4401']]},
+            "sample3" : {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+        }
+
+        assert split_manifest == correct_split, (
+            'Gene symbols incorrectly split'
+        )
+
+    def test_panels_and_gene_symbols_handled_together_correctly(self):
+        """
+        Combining the above to test mix of panels and gene symbols
+        are correctly split
+        """
+        manifest = {
+            "sample1" : {'tests': [['R1.1', 'R134.1', '_HGNC:235']]},
+            "sample2" : {'tests': [['R228.1']]},
+            "sample3" : {'tests': [['R218.2'], ['R2.1', '_HGNC:1623', '_HGNC:4401']]},
+            "sample4" : {'tests': [['R1.1', '_HGNC:152'], ['R1.2', '_HGNC:18']]}
+        }
+
+        split_tests = utils.split_manifest_tests(manifest)
+
+        correct_split = manifest = {
+            "sample1" : {'tests': [['R1.1'], ['R134.1'], ['_HGNC:235']]},
+            "sample2" : {'tests': [['R228.1']]},
+            "sample3" : {'tests': [['R218.2'], ['R2.1'], ['_HGNC:1623', '_HGNC:4401']]},
+            "sample4" : {'tests': [['R1.1'], ['_HGNC:152'], ['R1.2'], ['_HGNC:18']]}
+        }
+
+        assert split_tests == correct_split, (
+            'Mix of panels and gene symbols incorrectly split'
+        )
 
 
 class TestAddPanelsAndIndicationsToManifest():
     """
-    TODO
+    Tests for utils.add_panel_and_indications_to_manifest()
+
+    Function goes over the test list for each sample in the manifest and
+    adds equal length lists of clinical indications and panel strings
+    as separate keys to be used later for inputs such as names in reports etc.
     """
+    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+        epic_data = file_handle.read().splitlines()
+        manifest, _ = utils.parse_manifest(epic_data)
+
+    with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
+        genepanels_data = file_handle.read().splitlines()
+        genepanels = utils.parse_genepanels(genepanels_data)
+
+
+    def test_invalid_test_code_caught(self):
+        """
+        Test if an invalid test code is present in the manifest that it gets
+        caught when trying to select it from genepanels. This shouldn't
+        happen as we test for valid test codes in
+        utils.check_manifest_valid_test_codes() but lets add another check
+        in because why not, never trust the things coming from humans
+        """
+        manifest_copy = deepcopy(self.manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [['R10000000001.1']]
+
+        with pytest.raises(
+            AssertionError,
+            match='Filtering genepanels for R10000000001.1 returned empty df'
+        ):
+            utils.add_panels_and_indications_to_manifest(
+                manifest=manifest_copy,
+                genepanels=self.genepanels
+            )
+
+    def test_correct_indications_panels(self):
+        """
+        Test that the correct panel and indication strings are added in for
+        our test manifest.
+
+        This includes testing of joyous panels such as R208.1 which is a
+        'single' gene panel that is actually has multiple panel entries in
+        genepanels under the same indication, for these we just join them
+        all together with ';' and return a single string of all of these
+        as the panel name (this is ugo but is only used in displaying in
+        the report and nobody has complained so far so ¯\_(ツ)_/¯)
+        """
+        manifest = utils.add_panels_and_indications_to_manifest(
+            manifest=self.manifest,
+            genepanels=self.genepanels
+        )
+
+        correct_manifest = {
+            "123245111-23146R00111": {
+                "tests": [["R207.1"]],
+                "panels": [
+                    ["Inherited ovarian cancer (without breast cancer)_4.0"]
+                ],
+                "indications": [[
+                    "R207.1_Inherited ovarian cancer (without breast cancer)_P"
+                ]]
+            },
+            "224289111-33202R00111": {
+                "tests": [["R208.1"]],
+                "panels": [
+                    [
+                        "HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;"
+                        "HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;"
+                        "HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;"
+                        "HGNC:9823_SG_panel_1.0.0"
+                    ]
+                ],
+                "indications": [
+                    ["R208.1_Inherited breast cancer and ovarian cancer_P"]
+                ]
+            },
+            "324338111-43206R00111": {
+                "tests": [["R134.1"]],
+                "panels": [
+                    ["Familial hypercholesterolaemia (GMS)_2.0"]
+                ],
+                "indications": [
+                    ["R134.1_Familial hypercholesterolaemia_P"]
+                ]
+            },
+            "424487111-53214R00111": {
+                "tests": [["R208.1", "R216.1"]],
+                "panels": [
+                    [
+                        "HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;"
+                        "HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;"
+                        "HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;"
+                        "HGNC:9823_SG_panel_1.0.0",
+                        "HGNC:11998_SG_panel_1.0.0;HGNC:17284_SG_panel_1.0.0"
+                    ]
+                ],
+                "indications": [
+                    [
+                        "R208.1_Inherited breast cancer and ovarian cancer_P",
+                        "R216.1_Li Fraumeni Syndrome_P"
+                    ]
+                ]
+            },
+            "X225111-GM2308111": {
+                "tests": [ ["R149.1"] ],
+                "panels": [
+                    ["Severe early-onset obesity_4.0"]
+                ],
+                "indications": [
+                    ["R149.1_Severe early-onset obesity_P"]
+                ]
+            }
+        }
+
+        assert manifest == correct_manifest, (
+            'Clinical indications and panels incorrectly added to manifest'
+        )
