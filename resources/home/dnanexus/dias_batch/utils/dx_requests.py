@@ -96,8 +96,6 @@ class DXManage():
 
         project, project_path = path.split(':')
 
-        print('here1')
-
         files = list(dxpy.find_data_objects(
             name=".json$",
             name_mode='regexp',
@@ -105,8 +103,6 @@ class DXManage():
             folder=project_path,
             describe=True
         ))
-
-        print('here2')
 
         # sense check we find config files
         assert files, f"No config files found in given path: {path}"
