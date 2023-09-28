@@ -56,7 +56,9 @@ class TestCheckReportIndex():
             reports=self.reports
         )
 
-        assert suffix == 3, "Wrong suffix returned for 2 previous reports"
+        assert suffix == 3, (
+            "Wrong suffix returned for sample with 2 previous reports"
+        )
 
     def test_max_suffix_cnv(self):
         """
@@ -67,7 +69,9 @@ class TestCheckReportIndex():
             reports=self.reports
         )
 
-        assert suffix == 2, "Wrong suffix returned for 1 previous report"
+        assert suffix == 2, (
+            "Wrong suffix returned for sample with 1 previous report"
+        )
 
     def test_suffix_1_returned_no_previous_reports(self):
         """
@@ -78,7 +82,9 @@ class TestCheckReportIndex():
             reports=self.reports
         )
 
-        assert suffix == 1, "Wrong suffix returned for no previous reports"
+        assert suffix == 1, (
+            "Wrong suffix returned for sample with no previous reports"
+        )
 
     def test_prev_samples_but_no_suffix_in_name(self):
         """
@@ -95,7 +101,9 @@ class TestCheckReportIndex():
             reports=previous_reports
         )
 
-        assert suffix == 1, "Wrong suffix returned for no report suffix"
+        assert suffix == 1, (
+            "Wrong suffix returned for sample with no previous report suffix"
+        )
 
 
 class TestMakePath():
@@ -212,7 +220,7 @@ class TestParseGenePanels():
     """
     Tests for utils.parse_genepanels() that reads in the genepanels file,
     drops the HGNC ID column and keeps the unique rows left (i.e. one row
-    per clinical inidication / panel), and adds the test code as a separate
+    per clinical indication / panel), and adds the test code as a separate
     column.
     """
     with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
@@ -220,7 +228,7 @@ class TestParseGenePanels():
         genepanels_data = file_handle.read().splitlines()
         genepanels_df = utils.parse_genepanels(genepanels_data)
 
-    def test_correct_inidications(self):
+    def test_correct_indications(self):
         """
         Check that all the correct unique clinical indications parsed
         from the file
@@ -232,10 +240,10 @@ class TestParseGenePanels():
 
         stdout = sorted([x for x in output.stdout.decode().split('\n') if x])
 
-        correct_inidications = sorted(set(
+        correct_indications = sorted(set(
             self.genepanels_df['indication'].tolist()))
 
-        assert stdout == correct_inidications, (
+        assert stdout == correct_indications, (
             "Incorrect indications parsed from genepanels file"
         )
 
@@ -279,7 +287,7 @@ class TestSplitGenePanelsTestCodes():
         genepanels.reset_index(inplace=True)
 
 
-    def test_length_unchanged(self):
+    def test_genepanels_unchanged_by_splitting(self):
         """
         Test that no rows get added or removed
         """
@@ -316,7 +324,7 @@ class TestSplitGenePanelsTestCodes():
 
     def test_catch_multiple_indication_for_one_test_code(self):
         """
-        We have a check for if a test code links to more than one clinical
+        We have a check that if a test code links to more than one clinical
         indication (which it shouldn't), we can add in a duplicate and test
         that this gets caught
         """

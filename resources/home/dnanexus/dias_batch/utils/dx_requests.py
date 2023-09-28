@@ -6,7 +6,10 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
+from packaging.version import Version, parse
 import re
+import sys
+from time import sleep
 from timeit import default_timer as timer
 from typing import Tuple
 
@@ -25,17 +28,50 @@ class DXManage():
     """
     Methods for generic handling of dx related things
     """
-
-    def get_assay_config(self, path, file, assay) -> dict:
+    def read_assay_config_file(self, file):
         """
-        Get highest config file from given path for given assay
+        Read assay config file specified with -iassay_config_file
+
+        Parameters
+        ----------
+        file : str
+            DNAnexus file ID of config to read
+        """
+        print("Reading in specified assay config file...")
+        file = file.get('$dnanexus_link')
+
+        if not file.startswith('project'):
+            # just file-xxx provided => find a project the file is in
+            file_details = self.get_file_project_context(file)
+        else:
+            project, file_id = file.split(':')
+            file_details = dxpy.bindings.dxfile.DXFile(
+                project=project, dxid=file_id).describe()
+        print(
+            f"Using assay config file: {file_details['describe']['name']} "
+            f"({file_details['project']}:{file_details['id']})"
+        )
+
+        config = json.loads(dxpy.bindings.dxfile.DXFile(
+            project=file_details['project'], dxid=file_details['id']).read())
+
+        config['name'] = file_details['describe']['name']
+        config['dxid'] = file_details['id']
+
+        print("Assay config file contents:")
+        prettier_print(config)
+        return config
+
+
+    def get_assay_config(self, path, assay) -> dict:
+        """
+        Get highest config file from given path for given assay and
+        read in to a dict
 
         Parameters
         ----------
         path : str
             DNAnexus project:path to dir containing assay configs
-        file: str
-            DNAnexus file ID of config file to use instead of searching
         assay : str
             assay string to return configs for (i.e. CEN or WES)
 
@@ -43,34 +79,16 @@ class DXManage():
         -------
         dict
             contents of config file
+        
+        Raises
+        ------
+        AssertionError
+            Raised if 'path' parameter not a valid project-xxx:/ path
+        AssertionError
+            Raised if no config files found at the given path
+        AssertionError
+            Raised if no config files found for the given assay string
         """
-        if file:
-            # specified file to use => read in and return
-            print("Reading in specified assay config file")
-            file = file.get('$dnanexus_link')
-
-            if not file.startswith('project'):
-                # just file-xxx provided => find a project the file is in
-                file_details = self.get_file_project_context(file)
-            else:
-                project, file_id = file.split(':')
-                file_details = dxpy.bindings.dxfile.DXFile(
-                    project=project, dxid=file_id).describe()
-            print(
-                f"Using assay config file: {file_details['describe']['name']} "
-                f"({file_details['project']}:{file_details['id']})"
-            )
-
-            config = json.loads(dxpy.bindings.dxfile.DXFile(
-                project=file_details['project'], dxid=file_details['id']).read())
-
-            config['name'] = file_details['describe']['name']
-            config['dxid'] = file_details['id']
-
-            print("Assay config file contents:")
-            prettier_print(config)
-            return config
-
         # searching dir for configs, check for valid project:path structure
         assert re.match(r'project-[\d\w]*:/.*', path), (
             f'path to assay configs appears invalid: {path}'
@@ -113,10 +131,14 @@ class DXManage():
             if not config_data.get('assay') == assay:
                 continue
 
-            if config_data.get('version') > highest_config.get('version'):
+            if Version(config_data.get('version')) > Version(highest_config.get('version', '0')):
                 config_data['dxid'] = file['id']
                 config_data['name'] = file['describe']['name']
                 highest_config = config_data
+
+        assert highest_config, (
+            f"No config file was found for {assay} from {path}"
+        )
 
         print(
             f"Highest version config found for {assay} was "
@@ -226,10 +248,11 @@ class DXManage():
             if x['describe']['archivalState'] != 'live'
         ]
         if not_live:
-            raise RuntimeError(
-                f"WARNING: one or more files found in {path} are not in "
-                f"a live state: {prettier_print(not_live)}"
+            print(
+                "WARNING: some files found are in an archived state, if these "
+                "are for samples to be analysed this will raise an error..."
             )
+            prettier_print(not_live)
 
         print(f"Found {len(files)} files in {path}/{subdir}")
 
@@ -292,6 +315,147 @@ class DXManage():
             project=project, dxid=file_id).read().split('\n')
 
 
+    def check_archival_state(self, files, unarchive, samples=None) -> None:
+        """
+        Check archival state of n files, to be used before attempting
+        to launch jobs to ensure nothing fails due to archived files
+
+        Parameters
+        ---------
+        files : list
+            list of DXFile objects to check state of
+        unarchive : bool
+            if to automatically unarchive files
+        samples : list
+            list of sample names to filter down files to check
+        
+        Raises
+        ------
+        RuntimeError
+            Raised when required files are archived and -iunarchive=False
+        """
+        print(f"Checking archival state of {len(files)} files...")
+
+        # find files not in a live state, and filter these down by samples
+        # given that we're going to launch jobs for
+        not_live = [
+            f"{x['describe']['name']} ({x['id']})" for x in files
+            if x['describe']['archivalState'] != 'live'
+        ]
+
+        if samples and not_live:
+            not_live_filtered = []
+            for dx_file in not_live:
+                match = False
+                for name in samples:
+                    if dx_file['describe']['name'].startswith(name):
+                        match = True
+                        break
+
+                if match:
+                    # this file is archived and in one of our samples
+                    not_live_filtered.append(dx_file)
+
+            not_live = not_live_filtered
+
+        if not not_live:
+            # nothing archived that we need :dancing_penguin:
+            print("No required files in archived state")
+            return
+
+        not_live_ids = ' '.join([x['id'] for x in not_live])
+        not_live_printable = '\n\t'.join([
+            f"{x['describe']['name']} ({x['id']}) - {x['describe']['archivalState']}"
+            for x in not_live
+        ])
+
+        print(
+            f"WARNING: {len(not_live)} sample files to use for analysis are "
+            f"not in a live state:\n\t{not_live_printable}"
+        )
+
+        if unarchive:
+            print(
+                "-iunarchive specified, will start unarchiving..."
+            )
+            self.unarchive_files(not_live)
+        else:
+            # not unarchiving => print a handy message and rage quit
+            print(
+                f"ERROR: files required are archived and -iunarchive not "
+                f"specified, file IDs of archived files:\n\t{not_live_ids}"
+            )
+            raise RuntimeError('Files required for analysis archived')
+
+
+    def unarchive_files(self, files) -> None:
+        """
+        Unarchive given file IDs ready for analysis, will set off unarchiving
+        and terminate the app since unarchiving takes a while
+
+        Parameters
+        ----------
+        files : list
+            dx file IDs of files to unarchive
+        """
+        for idx, dx_file in enumerate(files):
+            print(
+                f"[{idx+1}/{len(files)}] Unarchiving "
+                f"{dx_file['describe']['name']} ({dx_file['id']})..."
+            )
+
+            # add some buffer in case DNAnexus gets angry at lots of requests
+            attempt = 1
+            sleepy_time = 10
+
+            while attempt <= 5:
+                try:
+                    dxpy.bindings.dxfile.DXFile(dxid=dx_file['id']).unarchive()
+                    continue
+                except Exception as error:
+                    print(
+                        f"[{attempt}/5] Error in unarchiving file:\n\t{error}"
+                        f"\n\nWaiting {sleepy_time}s to retry"
+                    )
+                    sleep(sleepy_time)
+                    attempt += 1
+                    sleepy_time = sleepy_time * 2
+
+            raise RuntimeError(
+                f"Error in unarchiving file: {dx_file['id']}"
+            )
+
+        # build a handy command to dump into the logs for people to check
+        # the state of all of the files we're unarchiving later on
+        check_state_cmd = (
+            f"echo {' '.join([x['id'] for x in files])} | xargs -n1 -d' ' -P32 "
+            "-I{} bash -c 'dx describe --json {} ' | grep archival | uniq -c"
+        )
+
+        print(
+            f"Unarchiving requested for {len(files)} files, this will take "
+            "some time...\n \n"
+        )
+
+        print(
+            "The state of all files may be checked with the following command:"
+            f"\n \n{check_state_cmd}\n \n"
+        )
+
+        print(
+            "This job can be relaunched once unarchiving is complete by "
+            "running dx run app-eggd_dias_batch --clone "
+            f"{os.environ.get('DX_JOB_ID')} -iunarchive=false"
+        )
+
+        # tag job to know its not launched any jobs
+        dxpy.bindings.dxjob.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
+            f"Archiving of {len(files)} requested, no jobs launched."
+        )
+
+        sys.exit(0)
+
+
     def format_output_folders(self, workflow, single_output, time_stamp) -> dict:
         """
         Generate dict of output folders for each stage of given workflow
@@ -348,7 +512,13 @@ class DXExecute():
     """
     Methods for handling exeuction of apps / worklfows
     """
-    def cnv_calling(self, config, single_output_dir, exclude, wait) -> str:
+    def cnv_calling(self,
+            config,
+            single_output_dir,
+            exclude,
+            wait,
+            unarchive
+        ) -> str:
         """
         Run CNV calling for given samples in manifest
 
@@ -362,6 +532,8 @@ class DXExecute():
             list of sample IDs to exclude bam files from calling
         wait : bool
             if to set hold_on_wait to wait on job to finish
+        unarchive : bool
+            controls if to automatically unarchive any archived files
 
         Returns
         -------
@@ -411,6 +583,9 @@ class DXExecute():
                 if not file['describe']['name'].split('_')[0] in exclude
             ]
             print(f"{len(files)} .bam/.bai files after exlcuding")
+
+        # check to ensure all bams are unarchived
+        DXManage().check_archival_state(files, unarchive=unarchive)
 
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['inputs']['bambais'] = files
@@ -466,7 +641,8 @@ class DXExecute():
             sample_limit=None,
             exclude_samples=None,
             call_job_id=None,
-            parent=None
+            parent=None,
+            unarchive=None
         ) -> Tuple[list, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
@@ -499,6 +675,8 @@ class DXExecute():
         parent : list | None
             single item list of parent dias batch job ID to use when
             testing to stop jobs running, or None when not running in test
+        unarchive : bool
+            controls if to automatically unarchive any archived files
 
         Returns
         -------
@@ -526,10 +704,13 @@ class DXExecute():
         ]
 
         # patterns of sample ID and sample file prefix to match on
+        #TODO move these to config
         if manifest_source == 'Epic':
-            pattern = r'^[\d\w]+-[\d\w]+'
+            pattern = r'^[\d\w]+-[\d\w]+-'
         else:
-            pattern = r'X[\d]+'
+            pattern = r'X[\d]+-'
+
+        vcf_files = mosdepth_files = []
 
         # set up required files for each running mode
         if mode == 'CNV':
@@ -549,6 +730,7 @@ class DXExecute():
                 path=f"{job_details.get('project')}:{job_details.get('folder')}",
                 pattern="_excluded_intervals.bed$"
             ))
+            # TODO: check if file is always output (i.e. if its empty)
 
             if not excluded_intervals_bed:
                 raise RuntimeError(
@@ -566,6 +748,10 @@ class DXExecute():
                 }
             }
 
+            # TODO use exclude samples here to drop from manifest
+
+            # TODO I DONT THINK I NEED THIS AS WE DO THE SAME LATER ON SO I SHOULD PROBABLY LOOK AT IT LATER
+            
             # ensure we have vcf files per sample,
             # exclude those that don't have one
             manifest, manifest_no_match, manifest_no_vcf = \
@@ -641,8 +827,7 @@ class DXExecute():
         # gather errors to display in summary report
         errors = {}
 
-        # ensure we have a vcf and mosdepth files (for SNV)
-        # per sample, exclude those that don't have one
+        # ensure we have a vcf per sample, exclude those that don't have one
         manifest, manifest_no_match, manifest_no_vcf = \
             filter_manifest_samples_by_files(
                 manifest=manifest,
@@ -653,8 +838,8 @@ class DXExecute():
 
         if manifest_no_match:
             errors[
-                f"Samples in manifest not matching pattern "
-                f"({len(manifest_no_match)}) {pattern}:"
+                f"Samples in manifest not matching expected {manifest_source} "
+                f"pattern ({len(manifest_no_match)}) {pattern}:"
             ] = manifest_no_match
 
         if manifest_no_vcf:
@@ -678,6 +863,12 @@ class DXExecute():
                     f"({len(manifest_no_mosdepth)}):"
                 ] = manifest_no_mosdepth
 
+        # check to ensure all vcfs (and mosdepth files for SNVs) are unarchived
+        DXManage().check_archival_state(
+            files=vcf_files + mosdepth_files,
+            samples=manifest.keys(),
+            unarchive=unarchive
+        )
 
         workflow_details = dxpy.describe(workflow_id)
 

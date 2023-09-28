@@ -123,10 +123,10 @@ class CheckInputs():
                     self.inputs['single_output_dir'] = prefix_path
                     return
 
-            self.errors.append(
-                "Given Dias single output dir appears to be empty: "
-                f"{self.inputs['single_output_dir']}"
-            )
+        self.errors.append(
+            "Given Dias single output dir appears to be empty: "
+            f"{self.inputs['single_output_dir']}"
+        )
 
     def check_mode_set(self):
         """Check at least one running mode set and manifest passed if running reports"""
@@ -134,9 +134,9 @@ class CheckInputs():
         if not any(self.inputs.get(x) for x in modes):
             self.errors.append('No mode specified to run in')
 
-        report_modes = modes.pop(0)
+        modes.pop(0)
         if any([
-            self.inputs.get(x) for x in report_modes
+            self.inputs.get(x) for x in modes
         ]) and not self.inputs.get('manifest_file'):
             self.errors.append(
                 'Reports argument specified with no manifest file'
@@ -210,7 +210,8 @@ def main(
     artemis=False,
     qc_file=None,
     testing=False,
-    sample_limit=None
+    sample_limit=None,
+    unarchive=None
 ):
     check = CheckInputs(**locals())
 
@@ -222,11 +223,16 @@ def main(
 
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
-    assay_config = DXManage().get_assay_config(
-        path=assay_config_dir,
-        file=assay_config_file,
-        assay=assay
-    )
+    if assay_config_file:
+        assay_config = DXManage().read_assay_config_file(
+            file=assay_config_file
+        )
+
+    if assay and assay_config_dir:
+        assay_config = DXManage().get_assay_config(
+            assay=assay,
+            path=assay_config_dir
+        )
 
     assay_config = fill_config_reference_inputs(assay_config)
 
@@ -289,7 +295,8 @@ def main(
                 config=assay_config,
                 single_output_dir=single_output_dir,
                 exclude=exclude_samples,
-                wait=wait
+                wait=wait,
+                unarchive=unarchive
             )
 
             launched_jobs['CNV calling'] = [cnv_call_job_id]
@@ -306,7 +313,8 @@ def main(
                 start=start_time,
                 sample_limit=sample_limit,
                 call_job_id=cnv_call_job_id,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
@@ -322,7 +330,8 @@ def main(
                 config=assay_config['modes']['snv_reports'],
                 start=start_time,
                 sample_limit=sample_limit,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
         launched_jobs['snv_reports'] = snv_reports
 
@@ -337,7 +346,8 @@ def main(
                 config=assay_config['modes']['mosaic_reports'],
                 start=start_time,
                 sample_limit=sample_limit,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
         launched_jobs['mosaic_reports'] = mosaic_reports
 
@@ -412,4 +422,6 @@ def main(
         "launched_jobs": launched_jobs
     }
 
-dxpy.run()
+if os.path.exists('/home/dnanexus'):
+    # check for env to allow importing CheckInputs for unit tests
+    dxpy.run()
