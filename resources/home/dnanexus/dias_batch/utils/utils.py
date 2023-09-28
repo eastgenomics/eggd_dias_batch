@@ -791,7 +791,7 @@ def split_manifest_tests(data) -> dict:
                     test_genes.append(sub_test)
             if test_genes:
                 # there were some single genes to test
-                all_split_test_codes.append(list(set(test_genes)))
+                all_split_test_codes.append(sorted(set(test_genes)))
 
         split_data[sample]['tests'].extend(all_split_test_codes)
 
