@@ -552,8 +552,83 @@ class TestCheckManifestValidTestCodes():
 
 class TestSplitManifestTests():
     """
-    TODO
+    Tests for utils.split_manifest_tests()
+
+    Function parses through the list of lists of test codes for each sample
+    in the manifest and splits all test codes to be their own list, which
+    will result in them generating their own reports
     """
+
+    def test_panels_correctly_split_out(self):
+        """
+        Test that any panels are correctly split to their own test list
+        """
+        manifest = {
+            "sample1" : {'tests': [['R1.1', 'R134.1']]},
+            "sample2" : {'tests': [['R228.1']]},
+            "sample3" : {'tests': [['R218.2'], ['R2.1']]},
+        }
+
+        split_manifest = utils.split_manifest_tests(manifest)
+
+        correct_split = {
+            "sample1" : {'tests': [['R1.1'], ['R134.1']]},
+            "sample2" : {'tests': [['R228.1']]},
+            "sample3" : {'tests': [['R218.2'], ['R2.1']]},
+        }
+
+        assert split_manifest == correct_split, (
+            "Manifest test codes incorrectly split"
+        )
+
+    def test_gene_symbols_correctly_not_split(self):
+        """
+        Gene symbols requested together (i.e. in the same sub list of tests)
+        should _not_ be split, but those not requested together (i.e. in
+        different sub lists of tests) do _not_ get combined, test this works
+        """
+        manifest = {
+            "sample1" : {'tests': [['_HGNC:235']]},
+            "sample2" : {'tests': [['_HGNC:1623', '_HGNC:4401']]},
+            "sample3" : {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+        }
+
+        split_manifest = utils.split_manifest_tests(manifest)
+
+        correct_split = manifest = {
+            "sample1" : {'tests': [['_HGNC:235']]},
+            "sample2" : {'tests': [['_HGNC:1623', '_HGNC:4401']]},
+            "sample3" : {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+        }
+
+        assert split_manifest == correct_split, (
+            'Gene symbols incorrectly split'
+        )
+
+    def test_panels_and_gene_symbols_handled_together_correctly(self):
+        """
+        Combining the above to test mix of panels and gene symbols
+        are correctly split
+        """
+        manifest = {
+            "sample1" : {'tests': [['R1.1', 'R134.1', '_HGNC:235']]},
+            "sample2" : {'tests': [['R228.1']]},
+            "sample3" : {'tests': [['R218.2'], ['R2.1', '_HGNC:1623', '_HGNC:4401']]},
+            "sample4" : {'tests': [['R1.1', '_HGNC:152'], ['R1.2', '_HGNC:18']]}
+        }
+
+        split_tests = utils.split_manifest_tests(manifest)
+
+        correct_split = manifest = {
+            "sample1" : {'tests': [['R1.1'], ['R134.1'], ['_HGNC:235']]},
+            "sample2" : {'tests': [['R228.1']]},
+            "sample3" : {'tests': [['R218.2'], ['R2.1'], ['_HGNC:1623', '_HGNC:4401']]},
+            "sample4" : {'tests': [['R1.1'], ['_HGNC:152'], ['R1.2'], ['_HGNC:18']]}
+        }
+
+        assert split_tests == correct_split, (
+            'Mix of panels and gene symbols incorrectly split'
+        )
 
 
 class TestAddPanelsAndIndicationsToManifest():
