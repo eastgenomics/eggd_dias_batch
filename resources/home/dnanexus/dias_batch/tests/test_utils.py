@@ -514,8 +514,157 @@ class TestParseManifest:
 
 class TestFilterManifestSamplesByFiles():
     """
-    TODO
+    Tests for utils.filter_manifest_samples_by_files()
+
+    Function filters out sample names that either don't meet a specified
+    regex pattern (i.e. [\w\d]+-[\w\d]+- for Epic sample naming) or have
+    no files available against a list of samples found to use as inputs  
     """
+    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+        epic_data = file_handle.read().splitlines()
+        manifest, _ = utils.parse_manifest(epic_data)
+
+    # minimal dxpy.find_data_objects() return object with list of files
+    files = [
+        {'describe': {
+            'name': '123245111-23146R00111-other-name-parts_markdup.vcf.gz'}},
+        {'describe': {
+            'name': '224289111-33202R00111-other-name-parts_markdup.vcf.gz'}},
+        {'describe': {
+            'name': '324338111-43206R00111-other-name-parts_markdup.vcf.gz'}},
+        {'describe': {
+            'name': '424487111-53214R00111-other-name-parts_markdup.vcf.gz'}},
+        {'describe': {
+            'name': 'X225111-GM2308111-other-name-parts_markdup.vcf.gz'}}
+    ]
+
+
+    def test_files_not_matching_pattern_filtered_out(self, capsys):
+        """
+        Test where file name not matching the specified pattern is
+        correctly filtered out
+        """
+        # add in a non-matching file
+        file_list = deepcopy(self.files)
+        file_list.append(
+            {'describe': {'name': 'file1.txt'}}
+        )
+
+        utils.filter_manifest_samples_by_files(
+            manifest=self.manifest,
+            files=file_list,
+            name='vcf',
+            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        )
+
+        # since we don't explicitly return the filtered out files we
+        # have to pick it out of the stdout as it just gets printed
+        stdout = capsys.readouterr().out
+        expected_files = 'Total files after filtering against pattern: 5'
+
+        assert expected_files in stdout, (
+            'Files not matching given pattern not correctly filtered out'
+        )
+
+
+    def test_samples_not_matching_pattern_filtered_out(self):
+        """
+        Test where sample name not matching the specified pattern is
+        correctly filtered out
+        """
+        # bodge one of the sample names in the manifest
+        manifest_copy = deepcopy(self.manifest)
+        manifest_copy['invalid_sample_name'] = manifest_copy.pop(
+            '424487111-53214R00111'
+        )
+
+        _, pattern_no_match, _ = utils.filter_manifest_samples_by_files(
+            manifest=manifest_copy,
+            files=self.files,
+            name='vcf',
+            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        )
+
+        assert pattern_no_match == ['invalid_sample_name'], (
+            'Invalid sample name not correctly filtered out of manifest'
+        )
+
+
+    def test_sample_in_manifest_has_no_files(self):
+        """
+        Test where sample has no files that it gets removed from the manifest
+        """
+        manifest, _, sample_no_files  = utils.filter_manifest_samples_by_files(
+            manifest=self.manifest,
+            files=self.files[1:],  # exclude file for 123245111-23146R00111
+            name='vcf',
+            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        )
+
+        errors = []
+
+        if not sample_no_files == ['123245111-23146R00111']:
+            errors.append(
+                'Sample with no file not correctly added to '
+                'returned manifest_no_files list'
+            )
+        
+        if '123245111-23146R00111' in manifest.keys():
+            errors.append(
+                'Sample with no file not correctly excluded from manifest'
+            )
+        
+        assert not errors, errors
+
+
+    def test_files_correctly_added_to_manifest(self):
+        """
+        Test that files correctly get added into manifest under specified key
+        """
+        manifest_w_files = {
+            '123245111-23146R00111':  {
+                'tests': [['R207.1']],
+                'vcf': [{'describe': {
+                    'name': '123245111-23146R00111-other-name-parts_markdup.vcf.gz'
+                }}]
+            },
+            '224289111-33202R00111':  {
+                'tests': [['R208.1']],
+                'vcf': [{'describe': {
+                    'name': '224289111-33202R00111-other-name-parts_markdup.vcf.gz'
+                }}]
+            },
+            '324338111-43206R00111':  {
+                'tests': [['R134.1']],
+                'vcf': [{'describe': {
+                    'name': '324338111-43206R00111-other-name-parts_markdup.vcf.gz'
+                }}]
+            },
+            '424487111-53214R00111':  {
+                'tests': [['R208.1', 'R216.1']],
+                'vcf': [{'describe': {
+                    'name': '424487111-53214R00111-other-name-parts_markdup.vcf.gz'
+                }}]
+            },
+            'X225111-GM2308111':  {
+                'tests': [['R149.1']],
+                'vcf': [{'describe': {
+                    'name': 'X225111-GM2308111-other-name-parts_markdup.vcf.gz'
+                }}]
+            }
+        }
+
+
+        manifest, _, _ = utils.filter_manifest_samples_by_files(
+            manifest=self.manifest,
+            files=self.files,
+            name='vcf',
+            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        )
+
+        assert manifest == manifest_w_files, (
+            'files incorrectly added to manifest'
+        )
 
 
 class TestCheckManifestValidTestCodes():
