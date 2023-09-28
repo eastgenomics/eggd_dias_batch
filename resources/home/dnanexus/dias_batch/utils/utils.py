@@ -395,7 +395,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     return genepanels
 
 
-def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
+def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
     """
     Parse manifest data from file read in DNAnexus
 
@@ -715,7 +715,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
                     sample_invalid_test.append(test)
             if valid_tests:
                 # one or more requested test is in genepanels
-                valid[sample]['tests'].append(list(set(valid_tests)))
+                valid[sample]['tests'].append(sorted(set(valid_tests)))
 
         if sample_invalid_test:
             # sample had one or more invalid test code
@@ -723,7 +723,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
 
     if invalid:
         raise RuntimeError(
-            "one or more samples had an invalid test code "
+            "One or more samples had an invalid test code "
             f"requested:\n\t{prettier_print(invalid)}" 
         )
     else:
