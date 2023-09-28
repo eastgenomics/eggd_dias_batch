@@ -210,7 +210,8 @@ def main(
     artemis=False,
     qc_file=None,
     testing=False,
-    sample_limit=None
+    sample_limit=None,
+    unarchive=None
 ):
     check = CheckInputs(**locals())
 
@@ -289,7 +290,8 @@ def main(
                 config=assay_config,
                 single_output_dir=single_output_dir,
                 exclude=exclude_samples,
-                wait=wait
+                wait=wait,
+                unarchive=unarchive
             )
 
             launched_jobs['CNV calling'] = [cnv_call_job_id]
@@ -306,7 +308,8 @@ def main(
                 start=start_time,
                 sample_limit=sample_limit,
                 call_job_id=cnv_call_job_id,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
@@ -322,7 +325,8 @@ def main(
                 config=assay_config['modes']['snv_reports'],
                 start=start_time,
                 sample_limit=sample_limit,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
         launched_jobs['snv_reports'] = snv_reports
 
@@ -337,7 +341,8 @@ def main(
                 config=assay_config['modes']['mosaic_reports'],
                 start=start_time,
                 sample_limit=sample_limit,
-                parent=parent
+                parent=parent,
+                unarchive=unarchive
             )
         launched_jobs['mosaic_reports'] = mosaic_reports
 

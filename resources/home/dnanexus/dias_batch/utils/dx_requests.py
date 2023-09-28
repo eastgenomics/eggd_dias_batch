@@ -7,6 +7,8 @@ import concurrent.futures
 import json
 import os
 import re
+import sys
+from time import sleep
 from timeit import default_timer as timer
 from typing import Tuple
 
@@ -226,10 +228,11 @@ class DXManage():
             if x['describe']['archivalState'] != 'live'
         ]
         if not_live:
-            raise RuntimeError(
-                f"WARNING: one or more files found in {path} are not in "
-                f"a live state: {prettier_print(not_live)}"
+            print(
+                "WARNING: some files found are in an archived state, if these "
+                "are for samples to be analysed this will raise an error..."
             )
+            prettier_print(not_live)
 
         print(f"Found {len(files)} files in {path}/{subdir}")
 
@@ -292,6 +295,147 @@ class DXManage():
             project=project, dxid=file_id).read().split('\n')
 
 
+    def check_archival_state(self, files, unarchive, samples=None) -> None:
+        """
+        Check archival state of n files, to be used before attempting
+        to launch jobs to ensure nothing fails due to archived files
+
+        Parameters
+        ---------
+        files : list
+            list of DXFile objects to check state of
+        unarchive : bool
+            if to automatically unarchive files
+        samples : list
+            list of sample names to filter down files to check
+        
+        Raises
+        ------
+        RuntimeError
+            Raised when required files are archived and -iunarchive=False
+        """
+        print(f"Checking archival state of {len(files)} files...")
+
+        # find files not in a live state, and filter these down by samples
+        # given that we're going to launch jobs for
+        not_live = [
+            f"{x['describe']['name']} ({x['id']})" for x in files
+            if x['describe']['archivalState'] != 'live'
+        ]
+
+        if samples and not_live:
+            not_live_filtered = []
+            for dx_file in not_live:
+                match = False
+                for name in samples:
+                    if dx_file['describe']['name'].startswith(name):
+                        match = True
+                        break
+
+                if match:
+                    # this file is archived and in one of our samples
+                    not_live_filtered.append(dx_file)
+
+            not_live = not_live_filtered
+
+        if not not_live:
+            # nothing archived that we need :dancing_penguin:
+            print("No required files in archived state")
+            return
+
+        not_live_ids = ' '.join([x['id'] for x in not_live])
+        not_live_printable = '\n\t'.join([
+            f"{x['describe']['name']} ({x['id']}) - {x['describe']['archivalState']}"
+            for x in not_live
+        ])
+
+        print(
+            f"WARNING: {len(not_live)} sample files to use for analysis are "
+            f"not in a live state:\n\t{not_live_printable}"
+        )
+
+        if unarchive:
+            print(
+                "-iunarchive specified, will start unarchiving..."
+            )
+            self.unarchive_files(not_live)
+        else:
+            # not unarchiving => print a handy message and rage quit
+            print(
+                f"ERROR: files required are archived and -iunarchive not "
+                f"specified, file IDs of archived files:\n\t{not_live_ids}"
+            )
+            raise RuntimeError('Files required for analysis archived')
+
+
+    def unarchive_files(self, files) -> None:
+        """
+        Unarchive given file IDs ready for analysis, will set off unarchiving
+        and terminate the app since unarchiving takes a while
+
+        Parameters
+        ----------
+        files : list
+            dx file IDs of files to unarchive
+        """
+        for idx, dx_file in enumerate(files):
+            print(
+                f"[{idx+1}/{len(files)}] Unarchiving "
+                f"{dx_file['describe']['name']} ({dx_file['id']})..."
+            )
+
+            # add some buffer in case DNAnexus gets angry at lots of requests
+            attempt = 1
+            sleepy_time = 10
+
+            while attempt <= 5:
+                try:
+                    dxpy.bindings.dxfile.DXFile(dxid=dx_file['id']).unarchive()
+                    continue
+                except Exception as error:
+                    print(
+                        f"[{attempt}/5] Error in unarchiving file:\n\t{error}"
+                        f"\n\nWaiting {sleepy_time}s to retry"
+                    )
+                    sleep(sleepy_time)
+                    attempt += 1
+                    sleepy_time = sleepy_time * 2
+
+            raise RuntimeError(
+                f"Error in unarchiving file: {dx_file['id']}"
+            )
+
+        # build a handy command to dump into the logs for people to check
+        # the state of all of the files we're unarchiving later on
+        check_state_cmd = (
+            f"echo {' '.join([x['id'] for x in files])} | xargs -n1 -d' ' -P32 "
+            "-I{} bash -c 'dx describe --json {} ' | grep archival | uniq -c"
+        )
+
+        print(
+            f"Unarchiving requested for {len(files)} files, this will take "
+            "some time...\n \n"
+        )
+
+        print(
+            "The state of all files may be checked with the following command:"
+            f"\n \n{check_state_cmd}\n \n"
+        )
+
+        print(
+            "This job can be relaunched once unarchiving is complete by "
+            "running dx run app-eggd_dias_batch --clone "
+            f"{os.environ.get('DX_JOB_ID')} -iunarchive=false"
+        )
+
+        # tag job to know its not launched any jobs
+        dxpy.bindings.dxjob.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
+            f"Archiving of {len(files)} requested, no jobs launched."
+        )
+
+        sys.exit(0)
+
+
     def format_output_folders(self, workflow, single_output, time_stamp) -> dict:
         """
         Generate dict of output folders for each stage of given workflow
@@ -348,7 +492,13 @@ class DXExecute():
     """
     Methods for handling exeuction of apps / worklfows
     """
-    def cnv_calling(self, config, single_output_dir, exclude, wait) -> str:
+    def cnv_calling(self,
+            config,
+            single_output_dir,
+            exclude,
+            wait,
+            unarchive
+        ) -> str:
         """
         Run CNV calling for given samples in manifest
 
@@ -362,6 +512,8 @@ class DXExecute():
             list of sample IDs to exclude bam files from calling
         wait : bool
             if to set hold_on_wait to wait on job to finish
+        unarchive : bool
+            controls if to automatically unarchive any archived files
 
         Returns
         -------
@@ -411,6 +563,9 @@ class DXExecute():
                 if not file['describe']['name'].split('_')[0] in exclude
             ]
             print(f"{len(files)} .bam/.bai files after exlcuding")
+
+        # check to ensure all bams are unarchived
+        DXManage().check_archival_state(files, unarchive=unarchive)
 
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['inputs']['bambais'] = files
@@ -466,7 +621,8 @@ class DXExecute():
             sample_limit=None,
             exclude_samples=None,
             call_job_id=None,
-            parent=None
+            parent=None,
+            unarchive=None
         ) -> Tuple[list, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
@@ -499,6 +655,8 @@ class DXExecute():
         parent : list | None
             single item list of parent dias batch job ID to use when
             testing to stop jobs running, or None when not running in test
+        unarchive : bool
+            controls if to automatically unarchive any archived files
 
         Returns
         -------
@@ -530,6 +688,8 @@ class DXExecute():
             pattern = r'^[\d\w]+-[\d\w]+'
         else:
             pattern = r'X[\d]+'
+
+        vcf_files = mosdepth_files = []
 
         # set up required files for each running mode
         if mode == 'CNV':
@@ -678,6 +838,12 @@ class DXExecute():
                     f"({len(manifest_no_mosdepth)}):"
                 ] = manifest_no_mosdepth
 
+        # check to ensure all vcfs (and mosdepth files for SNVs) are unarchived
+        DXManage().check_archival_state(
+            files=vcf_files + mosdepth_files,
+            samples=manifest.keys(),
+            unarchive=unarchive
+        )
 
         workflow_details = dxpy.describe(workflow_id)
 
