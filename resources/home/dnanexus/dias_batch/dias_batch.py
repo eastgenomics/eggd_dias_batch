@@ -253,10 +253,9 @@ def main(
         manifest_data = DXManage().read_dxfile(manifest_file)
         manifest, manifest_source = parse_manifest(manifest_data)
 
-
         # filter manifest tests against genepanels to ensure what has been
         # requested are test codes or HGNC IDs we recognise
-        manifest, invalid_tests = check_manifest_valid_test_codes(
+        manifest = check_manifest_valid_test_codes(
             manifest=manifest,
             genepanels=genepanels
         )
@@ -398,7 +397,6 @@ def main(
         assay_config=assay_config,
         manifest=manifest,
         launched_jobs=launched_jobs,
-        invalid_tests=invalid_tests,
         snv_report_errors=snv_report_errors,
         cnv_report_errors=cnv_report_errors,
         mosaic_report_errors=mosaic_report_errors,

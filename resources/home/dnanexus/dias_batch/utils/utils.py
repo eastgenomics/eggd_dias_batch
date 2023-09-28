@@ -395,7 +395,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     return genepanels
 
 
-def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
+def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
     """
     Parse manifest data from file read in DNAnexus
 
@@ -454,21 +454,21 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
 
         for sample in contents:
             test_codes = sample[1].replace(' ', '').split(',')
-            if not all([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x) for x in test_codes
-            ]):
-                # TODO - as above, error or throw out
-                raise RuntimeError(
-                    'Invalid test code(s) provided for sample '
-                    f'{sample[0]} : {sample[1]}'
-                )
-            # add test codes to samples list, keeping just the code part
-            # and not full string (i.e. R134.2 from
-            # R134.1_Familialhypercholesterolaemia_P)
-            data[sample[0]]['tests'][0].extend([
-                re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", x).group()
-                for x in test_codes
-            ])
+
+            for test_code in test_codes:
+                # add test codes to samples list, keeping just the code part
+                # and not full string (i.e. R134.2 from
+                # R134.1_Familialhypercholesterolaemia_P)
+                match = re.match(r"[RC][\d]+\.[\d]+|_HGNC:[\d]+", test_code)
+                if match:
+                    code = match.group()
+                else:
+                    # this likely isn't valid, but will raise an error
+                    # when we validate all test codes against genepanels
+                    # in utils.check_manifest_valid_test_codes()
+                    code = test_code
+
+                data[sample[0]]['tests'][0].append(code)
 
         manifest_source = 'Gemini'
 
@@ -525,13 +525,6 @@ def parse_manifest(contents, split_tests=False) -> pd.DataFrame:
             test_codes = [
                 x for x in row['Test Codes'].replace(' ', '').split(',') if x
             ]
-            if not all([
-                re.match(r"[RC][\d]+\.[\d]+|HGNC", x) for x in test_codes
-            ]):
-                # TODO - do we want to raise an error here or just throw it out?
-                raise RuntimeError(
-                    f'Badly formatted test code provided for sample {row}'
-                )
 
             # prefentially use ReanalysisID if present
             if re.match(r"[\d\w]+-[\d\w]+", row.ReanalysisID):
@@ -660,7 +653,7 @@ def filter_manifest_samples_by_files(
     return manifest_with_files, manifest_no_match, manifest_no_files
 
 
-def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
+def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     """
     Parse through manifest dict of sampleID -> test codes to check
     all codes are valid and exlcude those that are invalid against
@@ -675,14 +668,13 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
 
     Returns
     -------
-    Tuple[dict, dict]
-        2 dicts of manifest with valid test codes and those that are invalid
+    dict
+        dict of manifest with valid test codes
     
     Raises
     ------
     RuntimeError
-        Raised if all samples in manifest had a test that doesn't exist in
-        genepanels file => nothing to run
+        Raised if any invalid test codes requested for one or more samples
     """
     print("Checking test codes in manifest are valid...")
     invalid = defaultdict(list)
@@ -695,10 +687,16 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
 
+        if test_codes['tests'] == [[]]:
+            # sample has no booked tests => chuck it in the error bucket
+            invalid[sample].append('No tests booked for sample')
+            continue
+
         # test codes stored under 'tests' key and is a list of lists
         # dependent on what genes / panels have been requested
         for test_list in test_codes['tests']:
             valid_tests = []
+
             for test in test_list:
                 if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
                     #TODO: should we check that we have a transcript assigned
@@ -707,39 +705,36 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
                         # ensure HGNC IDs have an _ prefix for generate_bed
                         test = f"_{test.lstrip('_')}"
                     valid_tests.append(test)
+                elif test == 'Research Use':
+                    # more Epic weirdness, chuck these out but don't break
+                    print(
+                        f"WARNING: {sample} booked for 'Research Use' test, "
+                        f"skipping this test code and continuing..."
+                    )
                 else:
                     sample_invalid_test.append(test)
             if valid_tests:
                 # one or more requested test is in genepanels
-                valid[sample]['tests'].append(list(set(valid_tests)))
+                valid[sample]['tests'].append(sorted(set(valid_tests)))
 
         if sample_invalid_test:
             # sample had one or more invalid test code
             invalid[sample].extend(sample_invalid_test)
 
+    print(
+        "One or more samples had an invalid test code "
+        f"requested:\n\t{prettier_print(invalid)}"
+    )
+
     if invalid:
-        print(
-            "WARNING: one or more samples had an invalid test "
-            f"requested:\n\t{invalid}" 
+        raise RuntimeError(
+            f"One or more samples had an invalid test code requested: {invalid}"
         )
     else:
         print("All sample test codes valid!")
 
-    # check if any samples only had test codes that are invalid -> won't
-    # have any reports generated
-    no_tests = set(manifest.keys()) - set(valid.keys())
-    if no_tests:
-        print(
-            "WARNING: samples with invalid test codes resulting in having "
-            f"no tests to run reports for: {no_tests}"
-        )
 
-    if not valid:
-        raise RuntimeError(
-            "All samples had invalid test codes resulting in an empty manifest"
-        )
-
-    return valid, invalid
+    return valid
 
 
 def split_manifest_tests(data) -> dict:
