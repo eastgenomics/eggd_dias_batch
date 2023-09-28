@@ -173,12 +173,17 @@ The top level section should be structured as follows:
         "genes2transcripts": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GV4P970433Gj6812zGVBZvB4",
         "exonsfile": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gf99pBPbJkV7bq"
     },
+    "name_patterns": {
+        "Epic": "^[\\d\\w]+-[\\d\\w]+[-_]",
+        "Gemini": "^X[\\d]+[-_]"
+    },
     ...
 ```
 - `assay` (`str`) : assay type the config is for, used  for finding highest version config file when `-iassay` is specified
 - `version` (`str`) : the version of this config file
 - `{cnv_call_app|_report_workflow}_id` (`str`) : the IDs of CNV calling and reports workflows to use
 - `reference_files` (`dict`) : mapping of reference file name : DNAnexus file ID, reference file name _must_ be given as shown above, and DNAnexus file ID should be provided as `project-xxx:file-xxx`
+- `name_patterns` (`dict`) : mapping of the manifest source and a regex pattern to use for filtering sample names and files etc.
 
 The definitions of inputs for CNV calling and each reports workflow should be defined under the key `modes`, containing a mapping of all inputs and other inputs for controlling running of analyses.
 
