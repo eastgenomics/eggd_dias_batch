@@ -653,7 +653,7 @@ def filter_manifest_samples_by_files(
     return manifest_with_files, manifest_no_match, manifest_no_files
 
 
-def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
+def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     """
     Parse through manifest dict of sampleID -> test codes to check
     all codes are valid and exlcude those that are invalid against
@@ -668,8 +668,8 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
 
     Returns
     -------
-    Tuple[dict, dict]
-        2 dicts of manifest with valid test codes and those that are invalid
+    dict
+        dict of manifest with valid test codes
     
     Raises
     ------
@@ -687,7 +687,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
 
-        if not test_codes['tests']:
+        if test_codes['tests'] == [[]]:
             # sample has no booked tests => chuck it in the error bucket
             invalid[sample].append('No tests booked for sample')
             continue
@@ -721,29 +721,20 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> Tuple[dict, dict]:
             # sample had one or more invalid test code
             invalid[sample].extend(sample_invalid_test)
 
+    print(
+        "One or more samples had an invalid test code "
+        f"requested:\n\t{prettier_print(invalid)}" 
+    )
+
     if invalid:
         raise RuntimeError(
-            "One or more samples had an invalid test code "
-            f"requested:\n\t{prettier_print(invalid)}" 
+            f"One or more samples had an invalid test code requested: {invalid}"
         )
     else:
         print("All sample test codes valid!")
 
-    # check if any samples only had test codes that are invalid -> won't
-    # have any reports generated
-    no_tests = set(manifest.keys()) - set(valid.keys())
-    if no_tests:
-        print(
-            "WARNING: samples with invalid test codes resulting in having "
-            f"no tests to run reports for: {no_tests}"
-        )
 
-    if not valid:
-        raise RuntimeError(
-            "All samples had invalid test codes resulting in an empty manifest"
-        )
-
-    return valid, invalid
+    return valid
 
 
 def split_manifest_tests(data) -> dict:
