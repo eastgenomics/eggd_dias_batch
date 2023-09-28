@@ -192,7 +192,7 @@ class DXManage():
         return files[0]
 
 
-    def find_files(self, path, subdir='', pattern=None) -> list:
+    def find_files(self, path, subdir='', limit=None, pattern=None) -> list:
         """
         Search given path in DNAnexus, optionally filter down by a sub
         directory and / or with a file name regex pattern. Default
@@ -204,6 +204,8 @@ class DXManage():
             path to where to search
         subdir : str (optional)
             sub directory to search, will partially match as /path/dir.*
+        limit : integer
+            no. of files to limit searching to
         pattern : str (optional)
             regex file pattern to search for
 
@@ -232,6 +234,7 @@ class DXManage():
             name_mode='regexp',
             project=project,
             folder=path,
+            limit=limit,
             describe=True
         ))
 
@@ -582,7 +585,7 @@ class DXExecute():
                 file for file in files
                 if not file['describe']['name'].split('_')[0] in exclude
             ]
-            print(f"{len(files)} .bam/.bai files after exlcuding")
+            print(f"{len(files)} .bam/.bai files after excluding")
 
         # check to ensure all bams are unarchived
         DXManage().check_archival_state(files, unarchive=unarchive)
@@ -738,14 +741,13 @@ class DXExecute():
             ))
             excluded_intervals_bed = list(DXManage().find_files(
                 path=f"{job_details.get('project')}:{job_details.get('folder')}",
-                pattern="_excluded_intervals.bed$"
+                pattern="_excluded_intervals.bed$",
+                limit=1
             ))
-
-            # TODO : check if file is always output (i.e. if its empty)
 
             if not excluded_intervals_bed:
                 raise RuntimeError(
-                    f"Failed to find exlcuded intervals bed file from {call_job_id}"
+                    f"Failed to find excluded intervals bed file from {call_job_id}"
             )
             if not vcf_files:
                 raise RuntimeError(
@@ -758,8 +760,6 @@ class DXExecute():
                     "id": excluded_intervals_bed[0]['id']
                 }
             }
-
-            # TODO use exclude samples here to drop from manifest
 
             print(
                 f"Found {len(vcf_files)} segments.vcf files from "
