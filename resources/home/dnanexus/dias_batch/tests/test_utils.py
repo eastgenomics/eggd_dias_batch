@@ -526,6 +526,74 @@ class TestCheckManifestValidTestCodes():
     they are valid against what we have in genepanels. If any are invalid
     for any sample, an error is raised.
     """
+    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+        epic_data = file_handle.read().splitlines()
+        manifest, _ = utils.parse_manifest(epic_data)
+
+    # read in genepanels file in the same manner as utils.parse_genepanels()
+    # up to the point of calling split_gene_panels_test_codes()
+    with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
+        # parse genepanels file like is done in dias_batch.main()
+        genepanels_data = file_handle.read().splitlines()
+        genepanels = utils.parse_genepanels(genepanels_data)
+
+
+    def test_error_not_raised_on_valid_codes(self):
+        """
+        If all test codes are valid, the function should return the same
+        format dict of the manifest -> test codes as is passed in, therefore
+        test that this is true
+        """
+        tested_manifest, _ = utils.check_manifest_valid_test_codes(
+            manifest=self.manifest, genepanels=self.genepanels
+        )
+
+        assert tested_manifest.items() == self.manifest.items(), (
+            "Manifest changed when checking test codes with valid test codes"
+        )
+
+    def test_error_raised_when_manifest_contains_invalid_test_code(self):
+        """
+        RuntimeError should be raised if an invalid test code is provided
+        in the manifest, check that the correct error is returned
+        """
+        # add in an invalid test code to a manifest sample
+        manifest_copy = deepcopy(self.manifest)
+        manifest_copy['424487111-53214R00111']['tests'].append([
+            'invalidTestCode'])
+
+        correct_error = (
+            'One or more samples had an invalid test code requested:\n\t{'
+            '\n\t424487111-53214R00111": [\n\t\t"invalid_test"\n\t]\t}'
+        )
+
+        with pytest.raises(RuntimeError):
+            tested_manifest, _ = utils.check_manifest_valid_test_codes(
+                manifest=manifest_copy, genepanels=self.genepanels
+            )
+
+    def test_error_not_raised_when_research_use_test_code_present(self):
+        """
+        Sometimes from Epic 'Research Use' can be present in the Test Codes
+        column, we want to skip these as they're not a valid test code and
+        not raise an error
+        """
+        # add in 'Research Use' as a test code to a manifest sample
+        manifest_copy = deepcopy(self.manifest)
+        manifest_copy['424487111-53214R00111']['tests'].append([
+            'Research Use'])
+
+        correct_test_codes = [['R208.1', 'R216.1']]
+
+        tested_manifest, _ = utils.check_manifest_valid_test_codes(
+            manifest=manifest_copy, genepanels=self.genepanels
+        )
+        sample_test_codes = tested_manifest['424487111-53214R00111']['tests']
+
+        assert sample_test_codes == correct_test_codes, (
+            'Test codes not correctly parsed when "Research Use" present'
+        )
+        
 
 
 class TestSplitManifestTests():
