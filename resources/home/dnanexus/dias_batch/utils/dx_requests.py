@@ -6,6 +6,7 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
+from packaging.version import Version, parse
 import re
 import sys
 from time import sleep
@@ -27,17 +28,50 @@ class DXManage():
     """
     Methods for generic handling of dx related things
     """
-
-    def get_assay_config(self, path, file, assay) -> dict:
+    def read_assay_config_file(self, file):
         """
-        Get highest config file from given path for given assay
+        Read assay config file specified with -iassay_config_file
+
+        Parameters
+        ----------
+        file : str
+            DNAnexus file ID of config to read
+        """
+        print("Reading in specified assay config file...")
+        file = file.get('$dnanexus_link')
+
+        if not file.startswith('project'):
+            # just file-xxx provided => find a project the file is in
+            file_details = self.get_file_project_context(file)
+        else:
+            project, file_id = file.split(':')
+            file_details = dxpy.bindings.dxfile.DXFile(
+                project=project, dxid=file_id).describe()
+        print(
+            f"Using assay config file: {file_details['describe']['name']} "
+            f"({file_details['project']}:{file_details['id']})"
+        )
+
+        config = json.loads(dxpy.bindings.dxfile.DXFile(
+            project=file_details['project'], dxid=file_details['id']).read())
+
+        config['name'] = file_details['describe']['name']
+        config['dxid'] = file_details['id']
+
+        print("Assay config file contents:")
+        prettier_print(config)
+        return config
+
+
+    def get_assay_config(self, path, assay) -> dict:
+        """
+        Get highest config file from given path for given assay and
+        read in to a dict
 
         Parameters
         ----------
         path : str
             DNAnexus project:path to dir containing assay configs
-        file: str
-            DNAnexus file ID of config file to use instead of searching
         assay : str
             assay string to return configs for (i.e. CEN or WES)
 
@@ -45,34 +79,16 @@ class DXManage():
         -------
         dict
             contents of config file
+        
+        Raises
+        ------
+        AssertionError
+            Raised if 'path' parameter not a valid project-xxx:/ path
+        AssertionError
+            Raised if no config files found at the given path
+        AssertionError
+            Raised if no config files found for the given assay string
         """
-        if file:
-            # specified file to use => read in and return
-            print("Reading in specified assay config file")
-            file = file.get('$dnanexus_link')
-
-            if not file.startswith('project'):
-                # just file-xxx provided => find a project the file is in
-                file_details = self.get_file_project_context(file)
-            else:
-                project, file_id = file.split(':')
-                file_details = dxpy.bindings.dxfile.DXFile(
-                    project=project, dxid=file_id).describe()
-            print(
-                f"Using assay config file: {file_details['describe']['name']} "
-                f"({file_details['project']}:{file_details['id']})"
-            )
-
-            config = json.loads(dxpy.bindings.dxfile.DXFile(
-                project=file_details['project'], dxid=file_details['id']).read())
-
-            config['name'] = file_details['describe']['name']
-            config['dxid'] = file_details['id']
-
-            print("Assay config file contents:")
-            prettier_print(config)
-            return config
-
         # searching dir for configs, check for valid project:path structure
         assert re.match(r'project-[\d\w]*:/.*', path), (
             f'path to assay configs appears invalid: {path}'
@@ -115,10 +131,14 @@ class DXManage():
             if not config_data.get('assay') == assay:
                 continue
 
-            if config_data.get('version') > highest_config.get('version'):
+            if Version(config_data.get('version')) > Version(highest_config.get('version', '0')):
                 config_data['dxid'] = file['id']
                 config_data['name'] = file['describe']['name']
                 highest_config = config_data
+
+        assert highest_config, (
+            f"No config file was found for {assay} from {path}"
+        )
 
         print(
             f"Highest version config found for {assay} was "
