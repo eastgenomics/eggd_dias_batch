@@ -905,7 +905,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     # we already validated earlier all the test codes so
                     # shouldn't get here
                     raise RuntimeError(
-                        f"Error occured selecting testing from genepanels for "
+                        "Error occured selecting test from genepanels for "
                         f"test {test}"
                     )
             sample_tests['panels'].append(panels)

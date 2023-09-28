@@ -679,8 +679,7 @@ class TestCheckManifestValidTestCodes():
         epic_data = file_handle.read().splitlines()
         manifest, _ = utils.parse_manifest(epic_data)
 
-    # read in genepanels file in the same manner as utils.parse_genepanels()
-    # up to the point of calling split_gene_panels_test_codes()
+    # read in genepanels file
     with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
         # parse genepanels file like is done in dias_batch.main()
         genepanels_data = file_handle.read().splitlines()
@@ -836,5 +835,106 @@ class TestSplitManifestTests():
 
 class TestAddPanelsAndIndicationsToManifest():
     """
-    TODO
+    Tests for utils.add_panel_and_indications_to_manifest()
+
+    Function goes over the test list for each sample in the manifest and
+    adds equal length lists of clinical indications and panel strings
+    as separate keys to be used later for inputs such as names in reports etc.
     """
+    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+        epic_data = file_handle.read().splitlines()
+        manifest, _ = utils.parse_manifest(epic_data)
+
+    with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
+        genepanels_data = file_handle.read().splitlines()
+        genepanels = utils.parse_genepanels(genepanels_data)
+
+
+    def test_invalid_test_code_caught(self):
+        """
+        Test if an invalid test code is present in the manifest that it gets
+        caught when trying to select it from genepanels. This shouldn't
+        happen as we test for valid test codes in
+        utils.check_manifest_valid_test_codes() but lets add another check
+        in because why not, never trust the things coming from humans
+        """
+        manifest_copy = deepcopy(self.manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [['R10000000001.1']]
+
+        with pytest.raises(
+            AssertionError,
+            match='Filtering genepanels for R10000000001.1 returned empty df'
+        ):
+            utils.add_panels_and_indications_to_manifest(
+                manifest=manifest_copy,
+                genepanels=self.genepanels
+            )
+
+    def test_correct_indications_panels(self):
+        """
+        Test that the correct panel and indication strings are added in for
+        our test manifest.
+
+        This includes testing of joyous panels such as R208.1 which is a
+        'single' gene panel that is actually has multiple panel entries in
+        genepanels under the same indication, for these we just join them
+        all together with ';' and return a single string of all of these
+        as the panel name (this is ugo but is only used in displaying in
+        the report and nobody has complained so far so ¯\_(ツ)_/¯)
+        """
+        manifest = utils.add_panels_and_indications_to_manifest(
+            manifest=self.manifest,
+            genepanels=self.genepanels
+        )
+
+        correct_manifest = {
+            "123245111-23146R00111": {
+                "tests": [["R207.1"]],
+                "panels": [
+                    ["Inherited ovarian cancer (without breast cancer)_4.0"]
+                ],
+                "indications": [
+                    ["R207.1_Inherited ovarian cancer (without breast cancer)_P"]
+                ]
+            },
+            "224289111-33202R00111": {
+                "tests": [["R208.1"]],
+                "panels": [
+                    ["HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;HGNC:9823_SG_panel_1.0.0"]
+                ],
+                "indications": [
+                    ["R208.1_Inherited breast cancer and ovarian cancer_P"]
+                ]
+            },
+            "324338111-43206R00111": {
+                "tests": [["R134.1"]],
+                "panels": [
+                    ["Familial hypercholesterolaemia (GMS)_2.0"]
+                ],
+                "indications": [
+                    ["R134.1_Familial hypercholesterolaemia_P"]
+                ]
+            },
+            "424487111-53214R00111": {
+                "tests": [["R208.1", "R216.1"]],
+                "panels": [
+                    ["HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;HGNC:9823_SG_panel_1.0.0", "HGNC:11998_SG_panel_1.0.0;HGNC:17284_SG_panel_1.0.0"]
+                ],
+                "indications": [
+                    ["R208.1_Inherited breast cancer and ovarian cancer_P", "R216.1_Li Fraumeni Syndrome_P"]
+                ]
+            },
+            "X225111-GM2308111": {
+                "tests": [ ["R149.1"] ],
+                "panels": [
+                    ["Severe early-onset obesity_4.0"]
+                ],
+                "indications": [
+                    ["R149.1_Severe early-onset obesity_P"]
+                ]
+            }
+        }
+        
+        assert manifest == correct_manifest, (
+            'Clinical indications and panels incorrectly added to manifest'
+        )
