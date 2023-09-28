@@ -723,7 +723,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
 
     print(
         "One or more samples had an invalid test code "
-        f"requested:\n\t{prettier_print(invalid)}" 
+        f"requested:\n\t{prettier_print(invalid)}"
     )
 
     if invalid:
