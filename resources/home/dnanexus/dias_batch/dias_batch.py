@@ -123,10 +123,10 @@ class CheckInputs():
                     self.inputs['single_output_dir'] = prefix_path
                     return
 
-            self.errors.append(
-                "Given Dias single output dir appears to be empty: "
-                f"{self.inputs['single_output_dir']}"
-            )
+        self.errors.append(
+            "Given Dias single output dir appears to be empty: "
+            f"{self.inputs['single_output_dir']}"
+        )
 
     def check_mode_set(self):
         """Check at least one running mode set and manifest passed if running reports"""
@@ -134,9 +134,9 @@ class CheckInputs():
         if not any(self.inputs.get(x) for x in modes):
             self.errors.append('No mode specified to run in')
 
-        report_modes = modes.pop(0)
+        modes.pop(0)
         if any([
-            self.inputs.get(x) for x in report_modes
+            self.inputs.get(x) for x in modes
         ]) and not self.inputs.get('manifest_file'):
             self.errors.append(
                 'Reports argument specified with no manifest file'
@@ -422,4 +422,6 @@ def main(
         "launched_jobs": launched_jobs
     }
 
-dxpy.run()
+if os.path.exists('/home/dnanexus'):
+    # check for env to allow importing CheckInputs for unit tests
+    dxpy.run()
