@@ -608,12 +608,12 @@ class TestFilterManifestSamplesByFiles():
                 'Sample with no file not correctly added to '
                 'returned manifest_no_files list'
             )
-        
+
         if '123245111-23146R00111' in manifest.keys():
             errors.append(
                 'Sample with no file not correctly excluded from manifest'
             )
-        
+
         assert not errors, errors
 
 
@@ -893,14 +893,19 @@ class TestAddPanelsAndIndicationsToManifest():
                 "panels": [
                     ["Inherited ovarian cancer (without breast cancer)_4.0"]
                 ],
-                "indications": [
-                    ["R207.1_Inherited ovarian cancer (without breast cancer)_P"]
-                ]
+                "indications": [[
+                    "R207.1_Inherited ovarian cancer (without breast cancer)_P"
+                ]]
             },
             "224289111-33202R00111": {
                 "tests": [["R208.1"]],
                 "panels": [
-                    ["HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;HGNC:9823_SG_panel_1.0.0"]
+                    [
+                        "HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;"
+                        "HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;"
+                        "HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;"
+                        "HGNC:9823_SG_panel_1.0.0"
+                    ]
                 ],
                 "indications": [
                     ["R208.1_Inherited breast cancer and ovarian cancer_P"]
@@ -918,10 +923,19 @@ class TestAddPanelsAndIndicationsToManifest():
             "424487111-53214R00111": {
                 "tests": [["R208.1", "R216.1"]],
                 "panels": [
-                    ["HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;HGNC:9823_SG_panel_1.0.0", "HGNC:11998_SG_panel_1.0.0;HGNC:17284_SG_panel_1.0.0"]
+                    [
+                        "HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;"
+                        "HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;"
+                        "HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;"
+                        "HGNC:9823_SG_panel_1.0.0",
+                        "HGNC:11998_SG_panel_1.0.0;HGNC:17284_SG_panel_1.0.0"
+                    ]
                 ],
                 "indications": [
-                    ["R208.1_Inherited breast cancer and ovarian cancer_P", "R216.1_Li Fraumeni Syndrome_P"]
+                    [
+                        "R208.1_Inherited breast cancer and ovarian cancer_P",
+                        "R216.1_Li Fraumeni Syndrome_P"
+                    ]
                 ]
             },
             "X225111-GM2308111": {
@@ -934,7 +948,7 @@ class TestAddPanelsAndIndicationsToManifest():
                 ]
             }
         }
-        
+
         assert manifest == correct_manifest, (
             'Clinical indications and panels incorrectly added to manifest'
         )
