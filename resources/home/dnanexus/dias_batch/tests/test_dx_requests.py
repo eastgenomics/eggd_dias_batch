@@ -12,18 +12,13 @@ Functions not covered by unit tests:
         going to test these manually by running the app (probably, we shall
         see if I get the motivation to try patch things well to test them)
 """
-from copy import deepcopy
-import json
-import os
-import pytest
-import re
-import subprocess
 import sys
 import unittest
 from unittest.mock import patch
 
 import dxpy
 import pandas as pd
+import pytest
 
 
 sys.path.append(os.path.abspath(
@@ -288,6 +283,18 @@ class TestDXManageFindFiles(unittest.TestCase):
         assert files == [mock_find.return_value[0]], (
             'Incorrect file returned when filtering to subdir'
         )
+
+
+class TestDXManageCheckArchivalState(unittest.TestCase):
+    """
+    TODO
+    """
+
+
+class TestDXManageUnarchiveFiles(unittest.TestCase):
+    """
+    TODO
+    """
 
 
 class TestDXManageFormatOutputFolders(unittest.TestCase):

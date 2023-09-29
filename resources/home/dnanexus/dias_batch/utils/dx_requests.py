@@ -6,7 +6,6 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
-from packaging.version import Version, parse
 import re
 import sys
 from time import sleep
