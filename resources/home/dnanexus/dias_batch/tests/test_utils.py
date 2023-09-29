@@ -1,12 +1,9 @@
 """
 Tests for general functions in utils.py
 
-The following functions are not covered as they are either
-not needed to be tested (i.e. prettier_print()) or are a
-pain to write tests for (i.e. write_summary_report()):
-
-- prettier_print()
-- write_summary_report()
+The following functions are not covered (yet):
+    - prettier_print()
+    - write_summary_report()
 """
 from copy import deepcopy
 from datetime import datetime
