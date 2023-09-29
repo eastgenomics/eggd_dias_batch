@@ -12,6 +12,8 @@ Functions not covered by unit tests:
         going to test these manually by running the app (probably, we shall
         see if I get the motivation to try patch things well to test them)
 """
+from copy import deepcopy
+import os
 import sys
 import unittest
 from unittest.mock import patch
@@ -285,10 +287,126 @@ class TestDXManageFindFiles(unittest.TestCase):
         )
 
 
-class TestDXManageCheckArchivalState(unittest.TestCase):
+class TestDXManageCheckArchivalState():
     """
-    TODO
+    Tests for DXManage.check_archival_state()
+
+    Function takes in a list of files (and optionally a list of sample names
+    to filter by), and checks the archival state of the files to ensure all
+    are live before launching jobs
     """
+    # minimal dxpy.find_data_objects() return that we expect to pass in
+    files = [
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample1-file1',
+                'archivalState': 'live'
+            }
+        },
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample2-file1',
+                'archivalState': 'live'
+            }
+        },
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample3-file1',
+                'archivalState': 'live'
+            }
+        },
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample4-file1',
+                'archivalState': 'live'
+            }
+        },
+    ]
+
+    # same as above but with an archived file added in
+    files_w_archive = files + [
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample5-file1',
+                'archivalState': 'archived'
+            }
+        }
+    ]
+
+    def test_all_live(self, capsys):
+        """
+        Test no error is raised when all provided files are live
+        """
+        DXManage().check_archival_state(
+            files=self.files,
+            unarchive=False
+        )
+
+        # since we don't explicitly return anything for all being live check
+        # stdout for expected string printed to ensure we got where we expect
+        stdout = capsys.readouterr().out
+
+        assert 'No required files in archived state' in stdout, (
+            'Expected print for all lives files not in captured stdout'
+        )
+
+
+    def test_error_raised_for_archived_files(self):
+        """
+        Test when files contains an archived file that a RuntimeError
+        is correctly raised
+        """
+        with pytest.raises(
+            RuntimeError,
+            match='Files required for analysis archived'
+        ):
+            DXManage().check_archival_state(
+            files=self.files_w_archive,
+            unarchive=False
+        )
+
+
+    def test_archived_files_filtered_out_when_not_in_sample_list(self, capsys):
+        """
+        Test when a list of sample names is provided that any files for other
+        samples are filtered out, we will test this by adding an archived file
+        for a non-matching sample and checking it is removed
+        """
+        # provide list of sample names to filter by
+        DXManage().check_archival_state(
+            files=self.files_w_archive,
+            unarchive=False,
+            samples=['sample1', 'sample2', 'sample3', 'sample4']
+        )
+
+        # since we don't explicitly return anything for all being live check
+        # stdout for expected string printed to ensure we got where we expect
+        stdout = capsys.readouterr().out
+
+        assert 'No required files in archived state' in stdout, (
+            'Expected print for all lives files not in captured stdout'
+        )
+
+
+    @patch('utils.dx_requests.DXManage.unarchive_files')
+    def test_unarchive_files_called_when_specified(self, mock_unarchive):
+        """
+        Test when we have archived files and unarchive=True specified that
+        we call the function to start unarchiving
+        """
+        DXManage().check_archival_state(
+            files=self.files_w_archive,
+            unarchive=True
+        )
+
+        assert mock_unarchive.called, (
+            'DXManage.unarchive_files not called for unarchive=True'
+        )
 
 
 class TestDXManageUnarchiveFiles(unittest.TestCase):
