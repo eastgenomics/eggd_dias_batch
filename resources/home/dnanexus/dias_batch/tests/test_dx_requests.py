@@ -32,6 +32,50 @@ TEST_DATA_DIR = (
     os.path.join(os.path.dirname(__file__), 'test_data')
 )
 
+class TestReadAssayConfigFile():
+    """
+    Tests for DXManage.read_assaay_config_file()
+
+    Function is used where a specific assay config file is provided, and
+    reads this into a dict object
+    """
+
+    @patch('utils.dx_requests.dxpy.DXFile')
+    @patch('utils.dx_requests.DXManage.read_dxfile')
+    def test_config_correctly_read(self, mock_read, mock_file):
+        """
+        Test config file is correctly read in, function uses already tested
+        DXManage.read_dxfile() to read the contents into a list, so this will
+        just test that the contents is returned as a dict and the filename
+        is added under the key 'name'
+        """
+        # minimal describe call return from config file
+        mock_file.return_value.describe.return_value = {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'testAssayConfig.json'
+            }
+        }
+
+        # minimal example of what would be returned from DXManage.read_dxfile
+        mock_read.return_value = [
+            '{"assay": "test", "version": "1.0.0"}'
+        ]
+
+        contents = DXManage().read_assay_config_file(file='file-xxx')
+
+        correct_contents = {
+            "assay": "test",
+            "version": "1.0.0",
+            "dxid": "file-xxx",
+            "name": "testAssayConfig.json"
+        }
+
+        assert contents == correct_contents, (
+            "Contents parsed from config file incorrect"
+        )
+
+
 
 class TestDXManageGetAssayConfig(unittest.TestCase):
     """

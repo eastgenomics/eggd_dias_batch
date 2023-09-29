@@ -39,7 +39,7 @@ class DXManage():
         """
         print("Reading in specified assay config file...")
         contents = self.read_dxfile(file)
-        config = json.loads(contents)
+        config = json.loads('\n'.join(contents))
 
         # get the name of the file used for displaying in summary report
         file_details = dxpy.DXFile(
