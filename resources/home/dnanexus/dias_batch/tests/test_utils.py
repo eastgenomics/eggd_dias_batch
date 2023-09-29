@@ -5,19 +5,22 @@ The following functions are not covered as they are either
 not needed to be tested (i.e. prettier_print()) or are a
 pain to write tests for (i.e. write_summary_report()):
 
-- time_stamp()
 - prettier_print()
 - write_summary_report()
 """
 from copy import deepcopy
+from datetime import datetime
 import json
 import os
-import pytest
 import re
 import subprocess
 import sys
+from unittest.mock import patch
+
 
 import pandas as pd
+import pytest
+
 
 
 sys.path.append(os.path.abspath(
@@ -30,6 +33,24 @@ from utils import utils
 TEST_DATA_DIR = (
     os.path.join(os.path.dirname(__file__), 'test_data')
 )
+
+
+class TestTimeStamp():
+    """
+    Test for utils.time_stamp()
+    """
+
+    @patch("utils.utils.datetime")
+    def test_correct_format(self, datetime_mock):
+        """
+        Test datetime is returned in format expected
+        """
+        # set datetime.now() to a fixed value
+        datetime_mock.now.return_value = datetime(2013, 2, 1, 10, 9, 8)
+
+        assert utils.time_stamp() == '130201_1009', (
+            "Wrong datetime format returned"
+        )
 
 
 class TestCheckReportIndex():
