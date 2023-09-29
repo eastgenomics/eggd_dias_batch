@@ -118,16 +118,16 @@ def write_summary_report(output, manifest=None, **summary) -> None:
 
     with open(output, 'w') as file_handle:
         file_handle.write(
-            f"Assay config file used {summary.get('assay_config')['name']} "
-            f"({summary.get('assay_config')['dxid']})\n"
-        )
-
-        file_handle.write(
             f"\nJobs launched from {app['name']} ({app['version']}) at {time} "
             f"by {job['launchedBy'].replace('user-', '')} in {job['id']}\n"
         )
 
-        file_handle.write(f"Job inputs:\n\t{inputs}\n")
+        file_handle.write(
+            f"\nAssay config file used {summary.get('assay_config')['name']} "
+            f"({summary.get('assay_config')['dxid']})\n"
+        )
+
+        file_handle.write(f"\nJob inputs:\n\t{inputs}\n")
 
         if manifest:
             file_handle.write(
@@ -136,7 +136,7 @@ def write_summary_report(output, manifest=None, **summary) -> None:
 
         if summary.get('excluded'):
             file_handle.write(
-                "Samples specified to exclude from CNV calling and CNV "
+                "\nSamples specified to exclude from CNV calling and CNV "
                 f"reports ({len(summary.get('excluded'))}): "
                 f"{', '.join(sorted(summary.get('excluded')))}"
             )
