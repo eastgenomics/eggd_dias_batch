@@ -225,6 +225,8 @@ def main(
     sample_limit=None,
     unarchive=None
 ):
+    dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
+
     check = CheckInputs(**locals())
 
     # assign single out dir in case of missing /output prefix to path
@@ -232,8 +234,6 @@ def main(
 
     # time of running for naming output folders
     start_time = time_stamp()
-
-    dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
     if assay_config_file:
         assay_config = DXManage().read_assay_config_file(
