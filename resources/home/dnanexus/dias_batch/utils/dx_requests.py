@@ -6,6 +6,7 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
+from packaging.version import Version
 import re
 import sys
 from time import sleep
@@ -338,8 +339,7 @@ class DXManage():
         # find files not in a live state, and filter these down by samples
         # given that we're going to launch jobs for
         not_live = [
-            f"{x['describe']['name']} ({x['id']})" for x in files
-            if x['describe']['archivalState'] != 'live'
+            x for x in files if x['describe']['archivalState'] != 'live'
         ]
 
         if samples and not_live:
