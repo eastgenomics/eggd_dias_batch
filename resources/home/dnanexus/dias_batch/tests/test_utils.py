@@ -784,17 +784,17 @@ class TestSplitManifestTests():
         Test that any panels are correctly split to their own test list
         """
         manifest = {
-            "sample1" : {'tests': [['R1.1', 'R134.1']]},
-            "sample2" : {'tests': [['R228.1']]},
-            "sample3" : {'tests': [['R218.2'], ['R2.1']]},
+            "sample1": {'tests': [['R1.1', 'R134.1']]},
+            "sample2": {'tests': [['R228.1']]},
+            "sample3": {'tests': [['R218.2'], ['R2.1']]},
         }
 
         split_manifest = utils.split_manifest_tests(manifest)
 
         correct_split = {
-            "sample1" : {'tests': [['R1.1'], ['R134.1']]},
-            "sample2" : {'tests': [['R228.1']]},
-            "sample3" : {'tests': [['R218.2'], ['R2.1']]},
+            "sample1": {'tests': [['R1.1'], ['R134.1']]},
+            "sample2": {'tests': [['R228.1']]},
+            "sample3": {'tests': [['R218.2'], ['R2.1']]},
         }
 
         assert split_manifest == correct_split, (
@@ -808,17 +808,17 @@ class TestSplitManifestTests():
         different sub lists of tests) do _not_ get combined, test this works
         """
         manifest = {
-            "sample1" : {'tests': [['_HGNC:235']]},
-            "sample2" : {'tests': [['_HGNC:1623', '_HGNC:4401']]},
-            "sample3" : {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+            "sample1": {'tests': [['_HGNC:235']]},
+            "sample2": {'tests': [['_HGNC:1623', '_HGNC:4401']]},
+            "sample3": {'tests': [['_HGNC:152'], ['_HGNC:18']]}
         }
 
         split_manifest = utils.split_manifest_tests(manifest)
 
         correct_split = manifest = {
-            "sample1" : {'tests': [['_HGNC:235']]},
-            "sample2" : {'tests': [['_HGNC:1623', '_HGNC:4401']]},
-            "sample3" : {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+            "sample1": {'tests': [['_HGNC:235']]},
+            "sample2": {'tests': [['_HGNC:1623', '_HGNC:4401']]},
+            "sample3": {'tests': [['_HGNC:152'], ['_HGNC:18']]}
         }
 
         assert split_manifest == correct_split, (
@@ -831,19 +831,19 @@ class TestSplitManifestTests():
         are correctly split
         """
         manifest = {
-            "sample1" : {'tests': [['R1.1', 'R134.1', '_HGNC:235']]},
-            "sample2" : {'tests': [['R228.1']]},
-            "sample3" : {'tests': [['R218.2'], ['R2.1', '_HGNC:1623', '_HGNC:4401']]},
-            "sample4" : {'tests': [['R1.1', '_HGNC:152'], ['R1.2', '_HGNC:18']]}
+            "sample1": {'tests': [['R1.1', 'R134.1', '_HGNC:235']]},
+            "sample2": {'tests': [['R228.1']]},
+            "sample3": {'tests': [['R218.2'], ['R2.1', '_HGNC:1623', '_HGNC:4401']]},
+            "sample4": {'tests': [['R1.1', '_HGNC:152'], ['R1.2', '_HGNC:18']]}
         }
 
         split_tests = utils.split_manifest_tests(manifest)
 
         correct_split = manifest = {
-            "sample1" : {'tests': [['R1.1'], ['R134.1'], ['_HGNC:235']]},
-            "sample2" : {'tests': [['R228.1']]},
-            "sample3" : {'tests': [['R218.2'], ['R2.1'], ['_HGNC:1623', '_HGNC:4401']]},
-            "sample4" : {'tests': [['R1.1'], ['_HGNC:152'], ['R1.2'], ['_HGNC:18']]}
+            "sample1": {'tests': [['R1.1'], ['R134.1'], ['_HGNC:235']]},
+            "sample2": {'tests': [['R228.1']]},
+            "sample3": {'tests': [['R218.2'], ['R2.1'], ['_HGNC:1623', '_HGNC:4401']]},
+            "sample4": {'tests': [['R1.1'], ['_HGNC:152'], ['R1.2'], ['_HGNC:18']]}
         }
 
         assert split_tests == correct_split, (
@@ -958,12 +958,12 @@ class TestAddPanelsAndIndicationsToManifest():
             },
             "X225111-GM2308111": {
                 "tests": [ ["R149.1"] ],
-                "panels": [
-                    ["Severe early-onset obesity_4.0"]
-                ],
-                "indications": [
-                    ["R149.1_Severe early-onset obesity_P"]
-                ]
+                "panels": [[
+                    "Severe early-onset obesity_4.0"
+                ]],
+                "indications": [[
+                    "R149.1_Severe early-onset obesity_P"
+                ]]
             }
         }
 
