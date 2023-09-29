@@ -184,7 +184,7 @@ class DXManage():
         return files[0]
 
 
-    def find_files(self, path, subdir='', pattern=None) -> list:
+    def find_files(self, path, subdir='', limit=None, pattern=None) -> list:
         """
         Search given path in DNAnexus, optionally filter down by a sub
         directory and / or with a file name regex pattern. Default
@@ -196,6 +196,8 @@ class DXManage():
             path to where to search
         subdir : str (optional)
             sub directory to search, will partially match as /path/dir.*
+        limit : integer
+            no. of files to limit searching to
         pattern : str (optional)
             regex file pattern to search for
 
@@ -224,6 +226,7 @@ class DXManage():
             name_mode='regexp',
             project=project,
             folder=path,
+            limit=limit,
             describe=True
         ))
 
@@ -348,7 +351,7 @@ class DXManage():
                     # this file is archived and in one of our samples
                     not_live_filtered.append(dx_file)
 
-            not_live = not_live_filtered
+            not_live = set(not_live_filtered)
 
         if not not_live:
             # nothing archived that we need :dancing_penguin:
@@ -579,7 +582,7 @@ class DXExecute():
                 file for file in files
                 if not file['describe']['name'].split('_')[0] in exclude
             ]
-            print(f"{len(files)} .bam/.bai files after exlcuding")
+            print(f"{len(files)} .bam/.bai files after excluding")
 
         # check to ensure all bams are unarchived
         DXManage().check_archival_state(files, unarchive=unarchive)
@@ -635,6 +638,7 @@ class DXExecute():
             manifest_source,
             config,
             start,
+            name_patterns,
             sample_limit=None,
             exclude_samples=None,
             call_job_id=None,
@@ -663,6 +667,9 @@ class DXExecute():
             config for assay, defining fixed inputs for workflow
         start : str
             start time of running app for naming output folders
+        name_patterns : dict
+            set of regex patterns for matching sample names against files
+            etc. for each type of manifest (i.e. Epic -> ^[\d\w]+-[\d]\w]+[-_])
         sample_limit : int
             no. of samples to launch jobs for
         exclude_samples : list
@@ -700,14 +707,20 @@ class DXExecute():
             x['describe']['name'] for x in xlsx_reports
         ]
 
-        # patterns of sample ID and sample file prefix to match on
-        #TODO move these to config
         if manifest_source == 'Epic':
-            pattern = r'^[\d\w]+-[\d\w]+-'
+            pattern = name_patterns.get('Epic')
         else:
-            pattern = r'X[\d]+-'
+            pattern = name_patterns.get('Gemini')
+
+        assert pattern, (
+            f"No name pattern found for {manifest_source} parsed from "
+            "assay config file"
+        )
 
         vcf_files = mosdepth_files = []
+
+        # gather errors to display in summary report
+        errors = {}
 
         # set up required files for each running mode
         if mode == 'CNV':
@@ -725,13 +738,13 @@ class DXExecute():
             ))
             excluded_intervals_bed = list(DXManage().find_files(
                 path=f"{job_details.get('project')}:{job_details.get('folder')}",
-                pattern="_excluded_intervals.bed$"
+                pattern="_excluded_intervals.bed$",
+                limit=1
             ))
-            # TODO: check if file is always output (i.e. if its empty)
 
             if not excluded_intervals_bed:
                 raise RuntimeError(
-                    f"Failed to find exlcuded intervals bed file from {call_job_id}"
+                    f"Failed to find excluded intervals bed file from {call_job_id}"
             )
             if not vcf_files:
                 raise RuntimeError(
@@ -745,20 +758,6 @@ class DXExecute():
                 }
             }
 
-            # TODO use exclude samples here to drop from manifest
-
-            # TODO I DONT THINK I NEED THIS AS WE DO THE SAME LATER ON SO I SHOULD PROBABLY LOOK AT IT LATER
-            
-            # ensure we have vcf files per sample,
-            # exclude those that don't have one
-            manifest, manifest_no_match, manifest_no_vcf = \
-                filter_manifest_samples_by_files(
-                    manifest=manifest,
-                    files=vcf_files,
-                    name='vcf',
-                    pattern=pattern
-                )
-
             print(
                 f"Found {len(vcf_files)} segments.vcf files from "
                 f"{job_details.get('folder')} and {len(xlsx_reports)} "
@@ -770,10 +769,11 @@ class DXExecute():
 
             vcf_dir = config.get('inputs').get(vcf_input_field).get('folder')
             vcf_name = config.get('inputs').get(vcf_input_field).get('name')
-            mosdepth_dir = config.get(
-                    'inputs').get('stage-rpt_athena.mosdepth_files').get('folder')
-            mosdepth_name = config.get(
-                    'inputs').get('stage-rpt_athena.mosdepth_files').get('name')
+
+            mosdepth_dir = config.get('inputs').get(
+                'stage-rpt_athena.mosdepth_files').get('folder')
+            mosdepth_name = config.get('inputs').get(
+                'stage-rpt_athena.mosdepth_files').get('name')
 
             vcf_files = DXManage().find_files(
                 path=single_output_dir,
@@ -807,6 +807,19 @@ class DXExecute():
 
                 return [], errors, None
 
+            manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
+                manifest=manifest,
+                files=mosdepth_files,
+                name='mosdepth',
+                pattern=pattern
+            )
+
+            if manifest_no_mosdepth:
+                errors[
+                    f"Samples in manifest with no mosdepth files found "
+                    f"({len(manifest_no_mosdepth)}):"
+                ] = manifest_no_mosdepth
+
             print(
                 f"Found {len(vcf_files)} vcf files from "
                 f"{single_output_dir} in subdir {vcf_dir}, "
@@ -821,8 +834,6 @@ class DXExecute():
                 f"Invalid mode set for running reports: {mode}"
             )
 
-        # gather errors to display in summary report
-        errors = {}
 
         # ensure we have a vcf per sample, exclude those that don't have one
         manifest, manifest_no_match, manifest_no_vcf = \
@@ -845,20 +856,6 @@ class DXExecute():
                 f"({len(manifest_no_vcf)}):"
             ] = manifest_no_vcf
 
-        # mosdepth only in standard SNV workflow
-        if mode != 'CNV':
-            manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
-                manifest=manifest,
-                files=mosdepth_files,
-                name='mosdepth',
-                pattern=pattern
-            )
-
-            if manifest_no_mosdepth:
-                errors[
-                    f"Samples in manifest with no mosdepth files found "
-                    f"({len(manifest_no_mosdepth)}):"
-                ] = manifest_no_mosdepth
 
         # check to ensure all vcfs (and mosdepth files for SNVs) are unarchived
         DXManage().check_archival_state(

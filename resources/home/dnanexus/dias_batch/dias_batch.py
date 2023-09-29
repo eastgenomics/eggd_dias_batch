@@ -325,6 +325,7 @@ def main(
                 manifest_source=manifest_source,
                 config=assay_config['modes']['cnv_reports'],
                 start=start_time,
+                name_patterns=assay_config.get('name_patterns', {}),
                 sample_limit=sample_limit,
                 call_job_id=cnv_call_job_id,
                 parent=parent,
@@ -343,6 +344,7 @@ def main(
                 manifest_source=manifest_source,
                 config=assay_config['modes']['snv_reports'],
                 start=start_time,
+                name_patterns=assay_config.get('name_patterns', {}),
                 sample_limit=sample_limit,
                 parent=parent,
                 unarchive=unarchive
@@ -359,6 +361,7 @@ def main(
                 manifest_source=manifest_source,
                 config=assay_config['modes']['mosaic_reports'],
                 start=start_time,
+                name_patterns=assay_config.get('name_patterns', {}),
                 sample_limit=sample_limit,
                 parent=parent,
                 unarchive=unarchive
