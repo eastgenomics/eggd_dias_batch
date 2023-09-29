@@ -296,23 +296,24 @@ class DXManage():
         if re.match(r'^file-[\d\w]+$', file):
             # just file-xxx provided => find a project context to use
             file_details = self.get_file_project_context(file)
-            project = file_details['project']
-            file_id = file_details['id']
-            file_name = file_details['describe']['name']
+            project = file_details.get('project')
+            file_id = file_details.get('id')
         elif re.match(r'^project-[\d\w]+:file-[\d\w]+', file):
             # nicely provided as project-xxx:file-xxx
             project, file_id = file.split(':')
-            file_details = dxpy.bindings.dxfile.DXFile(
-                project=project, dxid=file_id).describe()
-            file_name = file_details['name']
         else:
             # who knows what's happened, not for me to deal with
             raise RuntimeError(
                 f"DXFile not in an expected format: {file}"
             )
 
-        return dxpy.bindings.dxfile.DXFile(
-            project=project, dxid=file_id).read().split('\n')
+        # sense check that we actually got a project and file ID from above
+        assert all([project, file_id]), (
+            "Missing project and / or file ID - "
+            f"project: {project}, file: {file_id}"
+        )
+
+        return dxpy.DXFile(project=project, dxid=file_id).read().split('\n')
 
 
     def check_archival_state(self, files, unarchive, samples=None) -> None:

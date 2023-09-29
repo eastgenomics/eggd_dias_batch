@@ -6,8 +6,6 @@ launching jobs (in DXExecute).
 Functions not covered by unit tests:
     - DXManage.read_assay_config() - mostly just calls DXFile.read() on
         provided dx file ID
-    - DXManage().read_dxfile() - reads file object from given dx
-        file ID, not expected to raise any errors
     - Everything in DXExecute - all functions relate to launching jobs,
         going to test these manually by running the app (probably, we shall
         see if I get the motivation to try patch things well to test them)
@@ -284,6 +282,110 @@ class TestDXManageFindFiles(unittest.TestCase):
         assert files == [mock_find.return_value[0]], (
             'Incorrect file returned when filtering to subdir'
         )
+
+
+class TestReadDXfile():
+    """
+    Tests for DXManage.read_dxfile()
+
+    Generic method for reading the contents of a DNAnexus file into a
+    list of strings, accepts file ID input as some form of string or
+    $dnanexus_link mapping
+    """
+    def test_none_object_passed(self, capsys):
+        """
+        If an empty object gets passed we should just print and return
+        """
+        DXManage().read_dxfile(file=None)
+        stdout = capsys.readouterr().out
+
+        assert 'Empty file passed to read_dxfile() :sadpepe:' in stdout, (
+            "Function didn't return as expected for empty input"
+        )
+
+    @patch('utils.dx_requests.dxpy.DXFile.read')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_file_as_dict(self, mock_file, mock_read):
+        """
+        Test when file input is a dict (i.e. $dnanexus_link mapping) that
+        we correctly parse the link to query with
+        
+        set variables for reading the file
+        """
+        file = {
+            "$dnanexus_link": "project-xxx:file-xxx"
+        }
+
+        # project and file should get split and pass the assert, we have
+        # patched DXFile.read() so nothing will get returned as we expect
+        DXManage().read_dxfile(file=file)
+
+
+    @patch('utils.dx_requests.DXManage.get_file_project_context')
+    @patch('utils.dx_requests.dxpy.DXFile.read')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_file_as_just_file_id(self, mock_file, mock_read, mock_context):
+        """
+        Test when we provide file ID as just 'file-xxx' that it we call
+        DXManage.get_file_project_context to return the project string,
+        and then this passes through the function with no errors raised
+        """
+        # patch a minimal DXObject response
+        mock_context.return_value = {
+            'project': 'project-xxx',
+            'id': 'file-xxx'
+        }
+
+        # project and file should get split from the get_file_project_context
+        # response and pass the assert, we have patched DXFile.read() so
+        # nothing will get returned as we expect
+        DXManage().read_dxfile(file='file-xxx')
+
+
+    @patch('utils.dx_requests.DXManage.get_file_project_context')
+    @patch('utils.dx_requests.dxpy.DXFile.read')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_assertion_error_raised(self, mock_file, mock_read, mock_context):
+        """
+        Test when we provide file ID as just 'file-xxx' that it we call
+        DXManage.get_file_project_context to return the project string,
+        and that if there is something wrong in the format of the response
+        (i.e. its empty but somehow didn't raise an error), we catch this
+        with an AssertionError
+        """
+        # patch a DXObject response as being empty
+        mock_context.return_value = {}
+
+        with pytest.raises(
+            AssertionError,
+            match=r'Missing project and \/ or file ID - project: None, file: None'
+        ):
+            DXManage().read_dxfile(file='file-xxx')
+
+
+    @patch('utils.dx_requests.dxpy.DXFile.read')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_file_as_project_and_file(self, mock_file, mock_read):
+        """
+        Test when file input is string with both project and file IDs
+        that this get correctly split and used
+        
+        set variables for reading the file
+        """
+        # project and file should get split and pass the assert, we have
+        # patched DXFile.read() so nothing will get returned as we expect
+        DXManage().read_dxfile(file='project-xxx:file-xxx')
+
+
+    def test_invalid_string_raises_error(self):
+        """
+        Test if an invalid string is passed that an error is raised
+        """
+        with pytest.raises(
+            RuntimeError,
+            match=r'DXFile not in an expected format: invalid_str'
+        ):
+            DXManage().read_dxfile(file='invalid_str')
 
 
 class TestDXManageCheckArchivalState():
