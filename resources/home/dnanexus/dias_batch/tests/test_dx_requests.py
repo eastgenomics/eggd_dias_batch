@@ -16,7 +16,7 @@ from copy import deepcopy
 import os
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import dxpy
 import pandas as pd
@@ -187,7 +187,6 @@ class TestDXManageGetFileProjectContext(unittest.TestCase):
         """
         # patch the DXFile object to nothing as we won't use it,
         # and the output of dx find to be a minimal set of describe calls
-        # mock_file.return_value = dxpy.DXFile(dxid='file-xxx')
         mock_describe.return_value = {}
         mock_find.return_value = [
             {
@@ -409,10 +408,94 @@ class TestDXManageCheckArchivalState():
         )
 
 
-class TestDXManageUnarchiveFiles(unittest.TestCase):
+class TestDXManageUnarchiveFiles():
     """
-    TODO
+    Tests for DXManage.unarchive_files()
+
+    Function called by DXManage.check_archival_state where one or more
+    archived files found and unarchive=True set, will go through the
+    given file IDs and start the unarchiving process
     """
+    # minimal dxpy.find_data_objects() return that we expect to unarchive
+    files = [
+        {
+            'project': 'project-xxx',
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample1-file1',
+                'archivalState': 'archived'
+            }
+        },
+        {
+            'project': 'project-xxx',
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample2-file1',
+                'archivalState': 'archived'
+            }
+        }
+    ]
+
+    @patch('utils.dx_requests.dxpy.DXJob.add_tags')
+    @patch('utils.dx_requests.dxpy.DXJob')
+    @patch('utils.dx_requests.dxpy.DXFile.unarchive')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    @patch('utils.dx_requests.sys.exit')
+    def test_unarchiving_called(
+            self,
+            exit,
+            mock_file,
+            mock_unarchive,
+            mock_job,
+            mock_tags,
+            capsys
+        ):
+        """
+        Test that DXFile.unarchive() gets called on the provided list
+        of DXFile objects
+        """
+        # mock_unarchive.return_value = True
+        DXManage().unarchive_files(
+            self.files
+        )
+
+        # lots of prints go to stdout once we have started unarchiving
+        stdout = capsys.readouterr().out
+
+        expected_stdout = [
+            "Unarchiving requested for 2 files, this will take some time...",
+            "The state of all files may be checked with the following command:",
+            (
+                "echo file-xxx file-xxx | xargs -n1 -d' ' -P32 -I{} bash -c "
+                "'dx describe --json {} ' | grep archival | uniq -c"
+            ),
+            "This job can be relaunched once unarchiving is complete by running:",
+            "dx run app-eggd_dias_batch --clone None -iunarchive=false"
+        ]
+
+        assert all(x in stdout for x in expected_stdout), (
+            "stdout does not contain the expected output"
+        )
+
+
+    @patch('utils.dx_requests.dxpy.DXFile', side_effect=Exception('Error'))
+    @patch('utils.dx_requests.sleep')
+    def test_error_raised_if_unable_to_unarchive(
+            self,
+            mock_sleep,
+            mock_dxfile
+        ):
+        """
+        Function will try and catch up to 5 times to unarchive a file,
+        if it can't unarchive a file an error should be raised. Here
+        we make it raise an Exception to test it in the loop and ensure
+        that it stops after failing.
+        """
+        with pytest.raises(
+            RuntimeError,
+            match=r'\[Attempt 5/5\] Error in unarchiving file: file-xxx'
+        ):
+           DXManage().unarchive_files(self.files)
 
 
 class TestDXManageFormatOutputFolders(unittest.TestCase):
@@ -456,7 +539,7 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         assert correct_stage_folder == returned_stage_folder, (
             "Incorrect stage folders returned for applet"
         )
-    
+
     def test_correct_folder_app(self):
         """
         Test when an app is included as a stage that the path is correctly
@@ -486,3 +569,4 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         assert correct_stage_folder == returned_stage_folder, (
             "Inavlid stage folders returned for app"
         )
+
