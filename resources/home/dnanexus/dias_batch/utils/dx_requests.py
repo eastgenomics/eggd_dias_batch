@@ -876,11 +876,18 @@ class DXExecute():
             single_output_dir, workflow_details['name'], start
         )
 
+        if not manifest:
+            # empty manifest after filtering against files etc
+            # TODO : decide if we want to break on this
+            print(f"No samples left after filtering to run {mode}reports for")
+            return [], errors, {}
+
         print(f"Launching {mode} reports per sample...")
         start = timer()
 
         launched_jobs = []
         samples_run = 0
+
 
         # initialise per sample summary dict from samples in manifest
         sample_summary = {mode: {k: [] for k in manifest.keys()}}
