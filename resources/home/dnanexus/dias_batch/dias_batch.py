@@ -225,7 +225,7 @@ def main(
 
     if assay_config_file:
         assay_config = DXManage().read_assay_config_file(
-            file=assay_config_file
+            file=assay_config_file.get('$dnanexus_link')
         )
 
     if assay and assay_config_dir:

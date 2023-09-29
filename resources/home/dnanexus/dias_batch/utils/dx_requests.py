@@ -38,28 +38,20 @@ class DXManage():
             DNAnexus file ID of config to read
         """
         print("Reading in specified assay config file...")
-        file = file.get('$dnanexus_link')
+        contents = self.read_dxfile(file)
+        config = json.loads(contents)
 
-        if not file.startswith('project'):
-            # just file-xxx provided => find a project the file is in
-            file_details = self.get_file_project_context(file)
-        else:
-            project, file_id = file.split(':')
-            file_details = dxpy.bindings.dxfile.DXFile(
-                project=project, dxid=file_id).describe()
-        print(
-            f"Using assay config file: {file_details['describe']['name']} "
-            f"({file_details['project']}:{file_details['id']})"
-        )
-
-        config = json.loads(dxpy.bindings.dxfile.DXFile(
-            project=file_details['project'], dxid=file_details['id']).read())
+        # get the name of the file used for displaying in summary report
+        file_details = dxpy.DXFile(
+            re.match(r'file-[\d\w]+', file).group()
+        ).describe()
 
         config['name'] = file_details['describe']['name']
         config['dxid'] = file_details['id']
 
         print("Assay config file contents:")
         prettier_print(config)
+
         return config
 
 
