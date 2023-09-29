@@ -953,6 +953,7 @@ class DXExecute():
                     input['stage-cnv_generate_bed_excluded.panel'] = indications
                     input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
                     input['stage-cnv_generate_workbook.clinical_indication'] = indications
+                    input['stage-cnv_generate_workbook.output_prefix'] = name
                     input['stage-cnv_generate_workbook.panel'] = panels
 
                     # add run level excluded regions file to input
