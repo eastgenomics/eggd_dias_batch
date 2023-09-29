@@ -489,12 +489,13 @@ class TestDXManageCheckArchivalState():
             unarchive=False
         )
 
-        # since we don't explicitly return anything for all being live check
-        # stdout for expected string printed to ensure we got where we expect
+        # since we don't explicitly return anything when there are no
+        # archived files, check stdout for expected string printed
+        # to ensure the function passed through all checks to the end
         stdout = capsys.readouterr().out
 
         assert 'No required files in archived state' in stdout, (
-            'Expected print for all lives files not in captured stdout'
+            'Expected print for all live files not in captured stdout'
         )
 
 
@@ -531,7 +532,7 @@ class TestDXManageCheckArchivalState():
         stdout = capsys.readouterr().out
 
         assert 'No required files in archived state' in stdout, (
-            'Expected print for all lives files not in captured stdout'
+            'Expected print for all live files not in captured stdout'
         )
 
 
