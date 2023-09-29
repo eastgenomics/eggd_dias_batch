@@ -395,34 +395,39 @@ class DXManage():
         Parameters
         ----------
         files : list
-            dx file IDs of files to unarchive
+            DXFile objects of files to unarchive
         """
         for idx, dx_file in enumerate(files):
             print(
                 f"[{idx+1}/{len(files)}] Unarchiving "
-                f"{dx_file['describe']['name']} ({dx_file['id']})..."
+                f"{dx_file['describe']['name']} ({dx_file['id']})"
             )
 
             # add some buffer in case DNAnexus gets angry at lots of requests
-            attempt = 1
             sleepy_time = 10
+            unarchived = False
 
-            while attempt <= 5:
+            for attempt in range(1, 6):
                 try:
-                    dxpy.bindings.dxfile.DXFile(dxid=dx_file['id']).unarchive()
-                    continue
+                    dxpy.DXFile(dxid=dx_file['id']).unarchive()
+                    unarchived = True
+                    break
                 except Exception as error:
                     print(
-                        f"[{attempt}/5] Error in unarchiving file:\n\t{error}"
-                        f"\n\nWaiting {sleepy_time}s to retry"
+                        f"\n[Attempt {attempt}/5] Error in unarchiving file:\n"
+                        f"\t{error}\n\nWaiting {sleepy_time}s to retry"
                     )
                     sleep(sleepy_time)
-                    attempt += 1
                     sleepy_time = sleepy_time * 2
-
-            raise RuntimeError(
-                f"Error in unarchiving file: {dx_file['id']}"
-            )
+            print(
+                    f"[Attempt {attempt}/5] Error in unarchiving "
+                    f"file: {dx_file['id']}"
+                )
+            if not unarchived:
+                raise RuntimeError(
+                    f"[Attempt {attempt}/5] Error in unarchiving "
+                    f"file: {dx_file['id']}"
+                )
 
         # build a handy command to dump into the logs for people to check
         # the state of all of the files we're unarchiving later on
@@ -432,23 +437,23 @@ class DXManage():
         )
 
         print(
-            f"Unarchiving requested for {len(files)} files, this will take "
+            f"\nUnarchiving requested for {len(files)} files, this will take "
             "some time...\n \n"
         )
 
         print(
             "The state of all files may be checked with the following command:"
-            f"\n \n{check_state_cmd}\n \n"
+            f"\n \n\t{check_state_cmd}\n \n"
         )
 
         print(
             "This job can be relaunched once unarchiving is complete by "
-            "running dx run app-eggd_dias_batch --clone "
+            "running:\n \n\tdx run app-eggd_dias_batch --clone "
             f"{os.environ.get('DX_JOB_ID')} -iunarchive=false"
         )
 
         # tag job to know its not launched any jobs
-        dxpy.bindings.dxjob.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
+        dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
             f"Archiving of {len(files)} requested, no jobs launched."
         )
 
