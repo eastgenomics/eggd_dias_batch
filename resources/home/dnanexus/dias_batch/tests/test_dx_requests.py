@@ -567,5 +567,5 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         )
 
         assert correct_stage_folder == returned_stage_folder, (
-            "Inavlid stage folders returned for app"
+            "Invalid stage folders returned for app"
         )
