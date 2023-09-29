@@ -46,7 +46,7 @@ class DXManage():
             re.match(r'file-[\d\w]+', file).group()
         ).describe()
 
-        config['name'] = file_details['describe']['name']
+        config['name'] = file_details['name']
         config['dxid'] = file_details['id']
 
         print("Assay config file contents:")
