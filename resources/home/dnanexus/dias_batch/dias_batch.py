@@ -135,10 +135,10 @@ class CheckInputs():
                     self.inputs['single_output_dir'] = prefix_path
                     return
 
-        self.errors.append(
-            "Given Dias single output dir appears to be empty: "
-            f"{self.inputs['single_output_dir']}"
-        )
+            self.errors.append(
+                "Given Dias single output dir appears to be empty: "
+                f"{self.inputs['single_output_dir']}"
+            )
 
     def check_mode_set(self):
         """Check at least one running mode set and manifest passed if running reports"""
