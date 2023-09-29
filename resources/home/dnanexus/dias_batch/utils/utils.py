@@ -78,9 +78,6 @@ def check_report_index(name, reports) -> int:
                 int(x.group().replace('.xlsx', '')) for x in suffixes if x
             ])
 
-    print(f"Previous xlsx reports found for {name}: {len(previous_reports)}")
-    print(f"Using suffix: {suffix + 1}")
-
     return suffix + 1
 
 
@@ -101,7 +98,7 @@ def write_summary_report(output, manifest=None, **summary) -> None:
     -------
     {output}.txt file of launched job summary
     """
-    print(f"Writing summary report to {output}")
+    print(f"\n \nWriting summary report to {output}")
     batch_job_id = os.environ.get('DX_JOB_ID')
     job = dxpy.bindings.dxjob.DXJob(dxid=batch_job_id).describe()
     app = dxpy.bindings.dxapp.DXApp(dxid=job['executable']).describe()
@@ -229,7 +226,7 @@ def fill_config_reference_inputs(config) -> dict:
     RuntimeError
         Raised when provided reference in assay config has no file-[\d\w]+ ID
     """
-    print("Filling config file with reference files, before:")
+    print("\n \nFilling config file with reference files, before:")
     prettier_print(config)
 
     print("Reference files to add:")
@@ -427,7 +424,7 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
         Raised when file doesn't appear to have either ';' or '\t' as delimeter
     """
     print(
-        "Parsing manifest file, file contents read from DNAnexus:\n\t",
+        "\n \nParsing manifest file, file contents read from DNAnexus:\n\t",
         "\n\t".join(contents)
     )
 
@@ -547,7 +544,7 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
     samples = ('\n\t').join([
         f"{x[0]} -> {x[1]['tests']}" for x in data.items()
     ])
-    print(f"{manifest_source} manifest parsed:\n\t{samples}")
+    print(f"\n \n{manifest_source} manifest parsed:\n\t{samples}")
 
     return data, manifest_source
 
@@ -594,7 +591,7 @@ def filter_manifest_samples_by_files(
     """
     # build mapping of prefix using given pattern to matching files
     # i.e. {'124801362-23230R0131': DXFileObject{'id': ...}}
-    print(f"Filtering manifest samples against available {name} files")
+    print(f"\n \nFiltering manifest samples against available {name} files")
     print(
         f"Total files before filtering against pattern "
         f"'{pattern}' : {len(files)}"
@@ -676,7 +673,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     RuntimeError
         Raised if any invalid test codes requested for one or more samples
     """
-    print("Checking test codes in manifest are valid...")
+    print("\n \nChecking test codes in manifest are valid...")
     invalid = defaultdict(list)
     valid = defaultdict(lambda: defaultdict(list))
 
@@ -836,7 +833,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     RuntimeError
         Raised when test doesn't appear to match valid R/C code or HGNC ID
     """
-    print("Finding panels and clinical indications for tests")
+    print("\n \nFinding panels and clinical indications for tests")
     print("Manifest before")
     PPRINT(manifest)
 

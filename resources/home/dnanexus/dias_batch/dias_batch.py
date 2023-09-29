@@ -55,7 +55,7 @@ class CheckInputs():
     """
     def __init__(self, **inputs) -> None:
         input_str = '\n\t'.join(f"{k} : {v}" for k, v in inputs.items())
-        print(f"Validating inputs, inputs provided:\n\t{input_str}")
+        print(f"\n \nValidating inputs, inputs provided:\n\t{input_str}")
 
         self.inputs = inputs
         self.errors = []
