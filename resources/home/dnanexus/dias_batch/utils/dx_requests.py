@@ -776,23 +776,21 @@ class DXExecute():
             if exclude:
                 # exclude samples specified and won't have been through CNV
                 # calling => exclude trying to launch CNV reports for these
-                excluded = manifest = {
-                    sample: config for sample, config in manifest.items()
-                    if sample in exclude
-                }
+                excluded = [
+                    sample for sample in manifest.keys() if sample in exclude
+                ]
 
                 manifest = {
                     sample: config for sample, config in manifest.items()
-                    if sample not in exclude
+                    if sample not in excluded
                 }
 
                 print(
-                    f"Excluded {len(excluded.keys())} samples from manifest "
-                    f"specified with -iexclude_samples: {excluded.keys()}\n"
-                    f"Total samples left in manifest to launch CNV reports "
+                    f"\n \nSamples specified to exclude: {exclude}\nExcluded "
+                    f"{len(excluded)} samples from manifest: {excluded}\n"
+                    "Total samples left in manifest to launch CNV reports "
                     f"workflows for: {len(manifest.keys())}"
                 )
-
 
             print(
                 f"\n \nFound {len(vcf_files)} segments.vcf files from "
@@ -924,7 +922,7 @@ class DXExecute():
         if not manifest:
             # empty manifest after filtering against files etc
             # TODO : decide if we want to break on this
-            print(f"No samples left after filtering to run {mode}reports for")
+            print(f"No samples left after filtering to run {mode} reports for")
             return [], errors, {}
 
         print(f"\n \nLaunching {mode} reports per sample...")
