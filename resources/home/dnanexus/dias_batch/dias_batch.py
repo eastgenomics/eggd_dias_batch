@@ -329,7 +329,8 @@ def main(
                 sample_limit=sample_limit,
                 call_job_id=cnv_call_job_id,
                 parent=parent,
-                unarchive=unarchive
+                unarchive=unarchive,
+                exclude=exclude_samples
             )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
@@ -418,6 +419,7 @@ def main(
         assay_config=assay_config,
         manifest=manifest,
         launched_jobs=launched_jobs,
+        excluded=exclude_samples,
         snv_report_errors=snv_report_errors,
         cnv_report_errors=cnv_report_errors,
         mosaic_report_errors=mosaic_report_errors,

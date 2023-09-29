@@ -643,7 +643,8 @@ class DXExecute():
             exclude_samples=None,
             call_job_id=None,
             parent=None,
-            unarchive=None
+            unarchive=None,
+            exclude=None
         ) -> Tuple[list, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
@@ -681,6 +682,8 @@ class DXExecute():
             testing to stop jobs running, or None when not running in test
         unarchive : bool
             controls if to automatically unarchive any archived files
+        exclude : list
+            list of sample IDs to exclude bam files from calling
 
         Returns
         -------
@@ -708,7 +711,7 @@ class DXExecute():
             x['describe']['name'] for x in xlsx_reports
         ]
         if xlsx_reports:
-            reports = '\nt\t'.join(xlsx_reports)
+            reports = '\nt\t'.join(sorted(xlsx_reports))
             print(f"xlsx reports found:\n\t{reports}")
 
         if manifest_source == 'Epic':
@@ -743,8 +746,8 @@ class DXExecute():
             ))
             print(
                 "VCFs found:\n\t", '\n\t'.join(
-                    [x['describe']['name'] for x in vcf_files
-                ])
+                    sorted([x['describe']['name'] for x in vcf_files])
+                )
             )
 
             print('\n \nSearching for excluded intervals bed file')
@@ -769,6 +772,27 @@ class DXExecute():
                     "id": excluded_intervals_bed[0]['id']
                 }
             }
+
+            if exclude:
+                # exclude samples specified and won't have been through CNV
+                # calling => exclude trying to launch CNV reports for these
+                excluded = manifest = {
+                    sample: config for sample, config in manifest.items()
+                    if sample in exclude
+                }
+
+                manifest = {
+                    sample: config for sample, config in manifest.items()
+                    if sample not in exclude
+                }
+
+                print(
+                    f"Excluded {len(excluded.keys())} samples from manifest "
+                    f"specified with -iexclude_samples: {excluded.keys()}\n"
+                    f"Total samples left in manifest to launch CNV reports "
+                    f"workflows for: {len(manifest.keys())}"
+                )
+
 
             print(
                 f"\n \nFound {len(vcf_files)} segments.vcf files from "
@@ -797,8 +821,8 @@ class DXExecute():
 
             print(
                 "VCFs found:\n\t", '\n\t'.join(
-                    [x['describe']['name'] for x in vcf_files
-                ])
+                    sorted([x['describe']['name'] for x in vcf_files])
+                )
             )
 
             print("\n \nSearching for mosdepth files")
