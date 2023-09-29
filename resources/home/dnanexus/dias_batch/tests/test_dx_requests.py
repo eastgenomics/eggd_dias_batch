@@ -10,11 +10,10 @@ Functions not covered by unit tests:
         going to test these manually by running the app (probably, we shall
         see if I get the motivation to try patch things well to test them)
 """
-from copy import deepcopy
 import os
 import sys
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
 import dxpy
 import pandas as pd
