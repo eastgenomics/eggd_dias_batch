@@ -414,8 +414,13 @@ def main(
     project_name = dxpy.describe(os.environ.get('DX_PROJECT_CONTEXT_ID'))['name']
     summary_file = f"{project_name}_{start_time}_job_summary.txt"
 
+    job_details = dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).describe()
+    app_details = dxpy.DXApp(dxid=job['executable']).describe()
+
     write_summary_report(
         summary_file,
+        job=job_details,
+        app=app_details,
         assay_config=assay_config,
         manifest=manifest,
         launched_jobs=launched_jobs,

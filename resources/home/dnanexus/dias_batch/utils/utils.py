@@ -81,7 +81,7 @@ def check_report_index(name, reports) -> int:
     return suffix + 1
 
 
-def write_summary_report(output, manifest=None, **summary) -> None:
+def write_summary_report(output, job, app, manifest=None, **summary) -> None:
     """
     Write output summary file with jobs launched and any errors etc.
 
@@ -89,6 +89,10 @@ def write_summary_report(output, manifest=None, **summary) -> None:
     ----------
     output : str
         name for output file
+    job : dict
+        details from dxpy.describe() call on job ID
+    app : dict
+        details from dxpy.describe() call on app ID
     manifest : dict
         mapping of samples in manifest -> requested test codes
     summary : kwargs
@@ -99,9 +103,7 @@ def write_summary_report(output, manifest=None, **summary) -> None:
     {output}.txt file of launched job summary
     """
     print(f"\n \nWriting summary report to {output}")
-    batch_job_id = os.environ.get('DX_JOB_ID')
-    job = dxpy.bindings.dxjob.DXJob(dxid=batch_job_id).describe()
-    app = dxpy.bindings.dxapp.DXApp(dxid=job['executable']).describe()
+
     time = strftime('%Y-%m-%d %H:%M:%S', localtime(job['created'] / 1000))
     inputs = job['runInput']
 
@@ -118,7 +120,7 @@ def write_summary_report(output, manifest=None, **summary) -> None:
 
     with open(output, 'w') as file_handle:
         file_handle.write(
-            f"\nJobs launched from {app['name']} ({app['version']}) at {time} "
+            f"Jobs launched from {app['name']} ({app['version']}) at {time} "
             f"by {job['launchedBy'].replace('user-', '')} in {job['id']}\n"
         )
 
