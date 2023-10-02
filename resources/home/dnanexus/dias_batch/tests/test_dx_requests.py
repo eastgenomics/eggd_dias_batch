@@ -49,9 +49,7 @@ class TestReadAssayConfigFile():
         # minimal describe call return from config file
         mock_file.return_value.describe.return_value = {
             'id': 'file-xxx',
-            'describe': {
-                'name': 'testAssayConfig.json'
-            }
+            'name': 'testAssayConfig.json'
         }
 
         # minimal example of what would be returned from DXManage.read_dxfile

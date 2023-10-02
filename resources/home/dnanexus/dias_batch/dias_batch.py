@@ -55,7 +55,7 @@ class CheckInputs():
     """
     def __init__(self, **inputs) -> None:
         input_str = '\n\t'.join(f"{k} : {v}" for k, v in inputs.items())
-        print(f"Validating inputs, inputs provided:\n\t{input_str}")
+        print(f"\n \nValidating inputs, inputs provided:\n\t{input_str}")
 
         self.inputs = inputs
         self.errors = []
@@ -135,10 +135,10 @@ class CheckInputs():
                     self.inputs['single_output_dir'] = prefix_path
                     return
 
-        self.errors.append(
-            "Given Dias single output dir appears to be empty: "
-            f"{self.inputs['single_output_dir']}"
-        )
+            self.errors.append(
+                "Given Dias single output dir appears to be empty: "
+                f"{self.inputs['single_output_dir']}"
+            )
 
     def check_mode_set(self):
         """Check at least one running mode set and manifest passed if running reports"""
@@ -225,6 +225,8 @@ def main(
     sample_limit=None,
     unarchive=None
 ):
+    dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
+
     check = CheckInputs(**locals())
 
     # assign single out dir in case of missing /output prefix to path
@@ -232,8 +234,6 @@ def main(
 
     # time of running for naming output folders
     start_time = time_stamp()
-
-    dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
     if assay_config_file:
         assay_config = DXManage().read_assay_config_file(
@@ -329,7 +329,8 @@ def main(
                 sample_limit=sample_limit,
                 call_job_id=cnv_call_job_id,
                 parent=parent,
-                unarchive=unarchive
+                unarchive=unarchive,
+                exclude=exclude_samples
             )
 
         launched_jobs['cnv_reports'] = cnv_report_jobs
@@ -384,18 +385,21 @@ def main(
             job for job_list in launched_jobs.values() for job in job_list
         ]
 
-        artemis_job = DXExecute().artemis(
-            single_output_dir=single_output_dir,
-            app_id=assay_config.get('artemis_app_id'),
-            dependent_jobs=dependent_jobs,
-            start=start_time,
-            qc_xlsx=qc_file,
-            snv_output=snv_path,
-            cnv_output=cnv_path,
-            capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed']
-        )
+        if snv_path or cnv_path:
+            artemis_job = DXExecute().artemis(
+                single_output_dir=single_output_dir,
+                app_id=assay_config.get('artemis_app_id'),
+                dependent_jobs=dependent_jobs,
+                start=start_time,
+                qc_xlsx=qc_file,
+                snv_output=snv_path,
+                cnv_output=cnv_path,
+                capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed']
+            )
 
-        launched_jobs['artemis'] = [artemis_job]
+            launched_jobs['artemis'] = [artemis_job]
+        else:
+            print("No SNV or CNV reports launched to run Artemis for!")
 
     print(
         'All jobs launched:\n\t',
@@ -415,6 +419,7 @@ def main(
         assay_config=assay_config,
         manifest=manifest,
         launched_jobs=launched_jobs,
+        excluded=exclude_samples,
         snv_report_errors=snv_report_errors,
         cnv_report_errors=cnv_report_errors,
         mosaic_report_errors=mosaic_report_errors,

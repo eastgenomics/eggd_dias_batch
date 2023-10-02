@@ -37,7 +37,7 @@ class DXManage():
         file : str
             DNAnexus file ID of config to read
         """
-        print("Reading in specified assay config file...")
+        print("\n \nReading in specified assay config file...")
         contents = self.read_dxfile(file)
         config = json.loads('\n'.join(contents))
 
@@ -46,7 +46,7 @@ class DXManage():
             re.match(r'file-[\d\w]+', file).group()
         ).describe()
 
-        config['name'] = file_details['describe']['name']
+        config['name'] = file_details['name']
         config['dxid'] = file_details['id']
 
         print("Assay config file contents:")
@@ -86,7 +86,7 @@ class DXManage():
             f'path to assay configs appears invalid: {path}'
         )
 
-        print(f"\nSearching following path for assay configs: {path}")
+        print(f"\n \nSearching following path for assay configs: {path}")
 
         project, project_path = path.split(':')
 
@@ -330,7 +330,7 @@ class DXManage():
         RuntimeError
             Raised when required files are archived and -iunarchive=False
         """
-        print(f"Checking archival state of {len(files)} files...")
+        print(f"\n \nChecking archival state of {len(files)} files...")
 
         # find files not in a live state, and filter these down by samples
         # given that we're going to launch jobs for
@@ -485,7 +485,7 @@ class DXManage():
         dict
             mapping of stage ID -> output folder path
         """
-        print("Generating output folder structure")
+        print("\n \nGenerating output folder structure")
         stage_folders = {}
 
         for stage in workflow['stages']:
@@ -545,7 +545,7 @@ class DXExecute():
         dxpy.exceptions.DXJobFailureError
             Raised when CNV calling fails / terminates / timed out
         """
-        print("Building inputs for CNV calling")
+        print("\n \nBuilding inputs for CNV calling")
         cnv_config = config['modes']['cnv_call']
 
         # find BAM files and format as $dnanexus_link inputs to add to config
@@ -643,7 +643,8 @@ class DXExecute():
             exclude_samples=None,
             call_job_id=None,
             parent=None,
-            unarchive=None
+            unarchive=None,
+            exclude=None
         ) -> Tuple[list, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
@@ -681,6 +682,8 @@ class DXExecute():
             testing to stop jobs running, or None when not running in test
         unarchive : bool
             controls if to automatically unarchive any archived files
+        exclude : list
+            list of sample IDs to exclude bam files from calling
 
         Returns
         -------
@@ -696,9 +699,10 @@ class DXExecute():
         RuntimeError
             Raised when invalid mode set
         """
-        print(f"Configuring inputs for {mode} reports")
+        print(f"\n \nConfiguring inputs for {mode} reports")
 
         # find all previous xlsx reports to use for indexing report names
+        print(f"\n \nSearching for previous xlsx reports")
         xlsx_reports = DXManage().find_files(
             path=single_output_dir,
             pattern=r".xlsx$"
@@ -706,6 +710,9 @@ class DXExecute():
         xlsx_reports = [
             x['describe']['name'] for x in xlsx_reports
         ]
+        if xlsx_reports:
+            reports = '\nt\t'.join(sorted(xlsx_reports))
+            print(f"xlsx reports found:\n\t{reports}")
 
         if manifest_source == 'Epic':
             pattern = name_patterns.get('Epic')
@@ -732,10 +739,18 @@ class DXExecute():
             vcf_dir = f"{job_details.get('project')}:{job_details.get('folder')}"
             vcf_name = config.get('inputs').get(vcf_input_field).get('name')
 
+            print("\n \nSearching for VCF files")
             vcf_files = list(DXManage().find_files(
                 path=vcf_dir,
                 pattern=vcf_name
             ))
+            print(
+                "VCFs found:\n\t", '\n\t'.join(
+                    sorted([x['describe']['name'] for x in vcf_files])
+                )
+            )
+
+            print('\n \nSearching for excluded intervals bed file')
             excluded_intervals_bed = list(DXManage().find_files(
                 path=f"{job_details.get('project')}:{job_details.get('folder')}",
                 pattern="_excluded_intervals.bed$",
@@ -758,8 +773,27 @@ class DXExecute():
                 }
             }
 
+            if exclude:
+                # exclude samples specified and won't have been through CNV
+                # calling => exclude trying to launch CNV reports for these
+                excluded = [
+                    sample for sample in manifest.keys() if sample in exclude
+                ]
+
+                manifest = {
+                    sample: config for sample, config in manifest.items()
+                    if sample not in excluded
+                }
+
+                print(
+                    f"\n \nSamples specified to exclude: {exclude}\nExcluded "
+                    f"{len(excluded)} samples from manifest: {excluded}\n"
+                    "Total samples left in manifest to launch CNV reports "
+                    f"workflows for: {len(manifest.keys())}"
+                )
+
             print(
-                f"Found {len(vcf_files)} segments.vcf files from "
+                f"\n \nFound {len(vcf_files)} segments.vcf files from "
                 f"{job_details.get('folder')} and {len(xlsx_reports)} "
                 f"previous xlsx reports"
             )
@@ -775,12 +809,21 @@ class DXExecute():
             mosdepth_name = config.get('inputs').get(
                 'stage-rpt_athena.mosdepth_files').get('name')
 
+            print("\n \nSearching for VCF files")
+
             vcf_files = DXManage().find_files(
                 path=single_output_dir,
                 subdir=vcf_dir,
                 pattern=vcf_name
             )
 
+            print(
+                "VCFs found:\n\t", '\n\t'.join(
+                    sorted([x['describe']['name'] for x in vcf_files])
+                )
+            )
+
+            print("\n \nSearching for mosdepth files")
             mosdepth_files = DXManage().find_files(
                 path=single_output_dir,
                 subdir=mosdepth_dir,
@@ -876,11 +919,18 @@ class DXExecute():
             single_output_dir, workflow_details['name'], start
         )
 
-        print(f"Launching {mode} reports per sample...")
+        if not manifest:
+            # empty manifest after filtering against files etc
+            # TODO : decide if we want to break on this
+            print(f"No samples left after filtering to run {mode} reports for")
+            return [], errors, {}
+
+        print(f"\n \nLaunching {mode} reports per sample...")
         start = timer()
 
         launched_jobs = []
         samples_run = 0
+
 
         # initialise per sample summary dict from samples in manifest
         sample_summary = {mode: {k: [] for k in manifest.keys()}}
@@ -946,6 +996,7 @@ class DXExecute():
                     input['stage-cnv_generate_bed_excluded.panel'] = indications
                     input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
                     input['stage-cnv_generate_workbook.clinical_indication'] = indications
+                    input['stage-cnv_generate_workbook.output_prefix'] = name
                     input['stage-cnv_generate_workbook.panel'] = panels
 
                     # add run level excluded regions file to input
