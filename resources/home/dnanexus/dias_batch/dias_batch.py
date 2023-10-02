@@ -415,7 +415,7 @@ def main(
     summary_file = f"{project_name}_{start_time}_job_summary.txt"
 
     job_details = dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).describe()
-    app_details = dxpy.DXApp(dxid=job['executable']).describe()
+    app_details = dxpy.DXApp(dxid=job_details['executable']).describe()
 
     write_summary_report(
         summary_file,
