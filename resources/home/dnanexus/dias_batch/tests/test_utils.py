@@ -783,6 +783,21 @@ class TestParseManifest:
             utils.parse_manifest(data)
 
 
+    def test_split_tests_called(self):
+        """
+        Test when split_tests specified it gets called
+        """
+        manifest, _ = utils.parse_manifest(
+            contents=self.epic_data,
+            split_tests=True
+        )
+
+        assert manifest['424487111-53214R00111']['tests'] == [
+            ['R208.1'], ['R216.1']
+        ], (
+            'Splitting tests when parsing manifest not as expected'
+        )
+
 class TestFilterManifestSamplesByFiles():
     """
     Tests for utils.filter_manifest_samples_by_files()

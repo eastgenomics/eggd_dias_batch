@@ -534,7 +534,7 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
         raise RuntimeError("Manifest file provided does not seem valid")
 
     if split_tests:
-        manifest = split_manifest_tests(manifest)
+        data = split_manifest_tests(data)
 
     samples = ('\n\t').join([
         f"{x[0]} -> {x[1]['tests']}" for x in data.items()
@@ -760,6 +760,7 @@ def split_manifest_tests(data) -> dict:
         mapping of SampleID: 'tests': [testCodes] with all codes are sub lists
     """
     split_data = defaultdict(lambda: defaultdict(list))
+
     for sample, test_codes in data.items():
         all_split_test_codes = []
         for test_list in test_codes['tests']:
