@@ -860,7 +860,7 @@ class DXExecute():
             if manifest_no_mosdepth:
                 errors[
                     f"Samples in manifest with no mosdepth files found "
-                    f"({len(manifest_no_mosdepth)}):"
+                    f"({len(manifest_no_mosdepth)})"
                 ] = manifest_no_mosdepth
 
             print(
@@ -890,13 +890,13 @@ class DXExecute():
         if manifest_no_match:
             errors[
                 f"Samples in manifest not matching expected {manifest_source} "
-                f"pattern ({len(manifest_no_match)}) {pattern}:"
+                f"pattern ({len(manifest_no_match)}) {pattern}"
             ] = manifest_no_match
 
         if manifest_no_vcf:
             errors[
                 f"Samples in manifest with no VCF found "
-                f"({len(manifest_no_vcf)}):"
+                f"({len(manifest_no_vcf)})"
             ] = manifest_no_vcf
 
 
