@@ -1173,6 +1173,7 @@ class TestAddPanelsAndIndicationsToManifest():
                 genepanels=self.genepanels
             )
 
+
     def test_correct_indications_panels(self):
         """
         Test that the correct panel and indication strings are added in for
@@ -1255,3 +1256,47 @@ class TestAddPanelsAndIndicationsToManifest():
         assert manifest == correct_manifest, (
             'Clinical indications and panels incorrectly added to manifest'
         )
+
+
+    def test_hgnc_ids_added(self):
+        """
+        HGNC IDs should be added to clinical indications and panels lists
+        as is, test this happens
+        """
+        manifest = deepcopy(self.manifest)
+        manifest['424487111-53214R00111']['tests'] = [['_HGNC:12345']]
+
+        manifest = utils.add_panels_and_indications_to_manifest(
+            manifest=manifest,
+            genepanels=self.genepanels
+        )
+
+        correct_added = {
+            'tests': [['_HGNC:12345']],
+            'indications': [['_HGNC:12345']],
+            'panels': [['_HGNC:12345']]
+        }
+
+        assert manifest['424487111-53214R00111'] == correct_added, (
+            'Clinical indication and / or panel wrongly added for HGNC ID'
+        )
+
+
+    def test_error_raised_invalid_test(self):
+        """
+        Test RuntimeError raised if invalid test code makes it through
+        """
+        manifest = deepcopy(self.manifest)
+        manifest['424487111-53214R00111']['tests'] = [['invalidTestCode']]
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                'Error occured selecting test from genepanels '
+                'for test invalidTestCode'
+            )
+        ):
+            utils.add_panels_and_indications_to_manifest(
+                manifest=manifest,
+                genepanels=self.genepanels
+            )

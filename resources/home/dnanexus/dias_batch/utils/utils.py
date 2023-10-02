@@ -459,7 +459,7 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
                     # when we validate all test codes against genepanels
                     # in utils.check_manifest_valid_test_codes()
                     code = test_code
-
+                
                 data[sample[0]]['tests'][0].append(code)
 
         manifest_source = 'Gemini'
@@ -691,11 +691,6 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
 
             for test in test_list:
                 if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
-                    #TODO: should we check that we have a transcript assigned
-                    # to this HGNC ID?
-                    if re.search(r'HGNC:[\d]+', test):
-                        # ensure HGNC IDs have an _ prefix for generate_bed
-                        test = f"_{test.lstrip('_')}"
                     valid_tests.append(test)
                 elif test == 'Research Use':
                     # more Epic weirdness, chuck these out but don't break
