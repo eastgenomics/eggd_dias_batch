@@ -106,16 +106,6 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
 
     time = strftime('%Y-%m-%d %H:%M:%S', localtime(job['created'] / 1000))
     inputs = job['runInput']
-
-    # nicer formatting of inputs for job report
-    if inputs.get('manifest_file'):
-        inputs['manifest_file'] = dxpy.describe(
-            inputs['manifest_file']['$dnanexus_link'])['name']
-
-    if inputs.get('assay_config_file'):
-        inputs['assay_config_file'] = dxpy.describe(
-            inputs['assay_config_file']['$dnanexus_link'])['name']
-
     inputs = "\n\t".join([f"{x[0]}: {x[1]}" for x in sorted(inputs.items())])
 
     with open(output, 'w') as file_handle:
@@ -144,21 +134,12 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
             )
 
         launched_jobs = '\n\t'.join([
-            f"{k} : {len(v)} jobs" for k, v
-            in summary.get('launched_jobs').items()
+            f"{k} : {len(v)} jobs" if len(v) > 1
+            else f"{k} : {len(v)} job"
+            for k, v in summary.get('launched_jobs').items()
         ])
 
         file_handle.write(f"\nTotal jobs launched:\n\t{launched_jobs}\n")
-
-        if summary.get('invalid_tests'):
-            invalid_tests = '\n\t'.join([
-                f"{k} : {v}" for k, v
-                in summary.get('invalid_tests').items()
-            ])
-
-            file_handle.write(
-                f"\nInvalid tests excluded from manifest:\n\t{invalid_tests}\n"
-            )
 
         report_summaries = {
             "snv_report_errors": "SNV",

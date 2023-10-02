@@ -417,6 +417,11 @@ def main(
     job_details = dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).describe()
     app_details = dxpy.DXApp(dxid=job_details['executable']).describe()
 
+    # overwrite manifest job ID in job details with name to write to summary
+    job_details['runInput']['manifest_file'] = dxpy.describe(
+        job_details['runInput']['manifest_file']['$dnanexus_link']
+    )['name']
+
     write_summary_report(
         summary_file,
         job=job_details,
