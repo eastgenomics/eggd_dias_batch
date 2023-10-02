@@ -753,7 +753,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         self.dxapp_patch = mock.patch('utils.dx_requests.dxpy.DXApp')
         self.run_patch = mock.patch('utils.dx_requests.dxpy.run')
         self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
-        self.wait_patch = mock.patch('utils.dx_requests.dxpy.DXJob.wait_on_done')
+        self.wait_patch = mock.patch('utils.dx_requests.dxpy.bindings.DXJob.wait_on_done')
 
         # create our mocks to reference
         self.mock_path = self.path_patch.start()
@@ -828,6 +828,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'
             }
         ]
+
 
 
     def tearDown(self):
@@ -907,7 +908,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         assert correct_exclude in stdout, (
             'exclude samples incorrect'
         )
-    
+
 
     def test_exclude_invalid_sample(self):
         """
@@ -934,3 +935,28 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         assert correct_warning in stdout, (
             'Invalid exclude sample specified not correctly removed'
         )
+
+
+    def test_correct_error_raised_on_calling_failing(self):
+        """
+        If error raised during CNV calling whilst waiting to complete,
+        test this is caught and exits the app
+        """
+        # patch return of DXJob to be an empty DXJob object, and set the
+        # error to be raised from DXJob.wait_on_done()
+        self.mock_job.return_value = dxpy.bindings.DXJob(dxid='localjob-')
+        self.mock_wait.side_effect = dxpy.exceptions.DXJobFailureError(
+            'oh no :sadpanda:')
+
+        with pytest.raises(
+            dxpy.exceptions.DXJobFailureError, match='oh no :sadpanda:'
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[],
+                start='',
+                wait=True,
+                unarchive=False
+            )
+
