@@ -1,23 +1,23 @@
 """
 Tests for general functions in utils.py
 
-The following functions are not covered as they are either
-not needed to be tested (i.e. prettier_print()) or are a
-pain to write tests for (i.e. write_summary_report()):
-
-- time_stamp()
-- prettier_print()
-- write_summary_report()
+The following functions are not covered (yet):
+    - prettier_print()
+    - write_summary_report()
 """
 from copy import deepcopy
+from datetime import datetime
 import json
 import os
-import pytest
 import re
 import subprocess
 import sys
+from unittest.mock import patch
+
 
 import pandas as pd
+import pytest
+
 
 
 sys.path.append(os.path.abspath(
@@ -30,6 +30,24 @@ from utils import utils
 TEST_DATA_DIR = (
     os.path.join(os.path.dirname(__file__), 'test_data')
 )
+
+
+class TestTimeStamp():
+    """
+    Test for utils.time_stamp()
+    """
+
+    @patch("utils.utils.datetime")
+    def test_correct_format(self, datetime_mock):
+        """
+        Test datetime is returned in format expected
+        """
+        # set datetime.now() to a fixed value
+        datetime_mock.now.return_value = datetime(2013, 2, 1, 10, 9, 8)
+
+        assert utils.time_stamp() == '130201_1009', (
+            "Wrong datetime format returned"
+        )
 
 
 class TestCheckReportIndex():
@@ -766,17 +784,17 @@ class TestSplitManifestTests():
         Test that any panels are correctly split to their own test list
         """
         manifest = {
-            "sample1" : {'tests': [['R1.1', 'R134.1']]},
-            "sample2" : {'tests': [['R228.1']]},
-            "sample3" : {'tests': [['R218.2'], ['R2.1']]},
+            "sample1": {'tests': [['R1.1', 'R134.1']]},
+            "sample2": {'tests': [['R228.1']]},
+            "sample3": {'tests': [['R218.2'], ['R2.1']]},
         }
 
         split_manifest = utils.split_manifest_tests(manifest)
 
         correct_split = {
-            "sample1" : {'tests': [['R1.1'], ['R134.1']]},
-            "sample2" : {'tests': [['R228.1']]},
-            "sample3" : {'tests': [['R218.2'], ['R2.1']]},
+            "sample1": {'tests': [['R1.1'], ['R134.1']]},
+            "sample2": {'tests': [['R228.1']]},
+            "sample3": {'tests': [['R218.2'], ['R2.1']]},
         }
 
         assert split_manifest == correct_split, (
@@ -790,17 +808,17 @@ class TestSplitManifestTests():
         different sub lists of tests) do _not_ get combined, test this works
         """
         manifest = {
-            "sample1" : {'tests': [['_HGNC:235']]},
-            "sample2" : {'tests': [['_HGNC:1623', '_HGNC:4401']]},
-            "sample3" : {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+            "sample1": {'tests': [['_HGNC:235']]},
+            "sample2": {'tests': [['_HGNC:1623', '_HGNC:4401']]},
+            "sample3": {'tests': [['_HGNC:152'], ['_HGNC:18']]}
         }
 
         split_manifest = utils.split_manifest_tests(manifest)
 
         correct_split = manifest = {
-            "sample1" : {'tests': [['_HGNC:235']]},
-            "sample2" : {'tests': [['_HGNC:1623', '_HGNC:4401']]},
-            "sample3" : {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+            "sample1": {'tests': [['_HGNC:235']]},
+            "sample2": {'tests': [['_HGNC:1623', '_HGNC:4401']]},
+            "sample3": {'tests': [['_HGNC:152'], ['_HGNC:18']]}
         }
 
         assert split_manifest == correct_split, (
@@ -813,19 +831,19 @@ class TestSplitManifestTests():
         are correctly split
         """
         manifest = {
-            "sample1" : {'tests': [['R1.1', 'R134.1', '_HGNC:235']]},
-            "sample2" : {'tests': [['R228.1']]},
-            "sample3" : {'tests': [['R218.2'], ['R2.1', '_HGNC:1623', '_HGNC:4401']]},
-            "sample4" : {'tests': [['R1.1', '_HGNC:152'], ['R1.2', '_HGNC:18']]}
+            "sample1": {'tests': [['R1.1', 'R134.1', '_HGNC:235']]},
+            "sample2": {'tests': [['R228.1']]},
+            "sample3": {'tests': [['R218.2'], ['R2.1', '_HGNC:1623', '_HGNC:4401']]},
+            "sample4": {'tests': [['R1.1', '_HGNC:152'], ['R1.2', '_HGNC:18']]}
         }
 
         split_tests = utils.split_manifest_tests(manifest)
 
         correct_split = manifest = {
-            "sample1" : {'tests': [['R1.1'], ['R134.1'], ['_HGNC:235']]},
-            "sample2" : {'tests': [['R228.1']]},
-            "sample3" : {'tests': [['R218.2'], ['R2.1'], ['_HGNC:1623', '_HGNC:4401']]},
-            "sample4" : {'tests': [['R1.1'], ['_HGNC:152'], ['R1.2'], ['_HGNC:18']]}
+            "sample1": {'tests': [['R1.1'], ['R134.1'], ['_HGNC:235']]},
+            "sample2": {'tests': [['R228.1']]},
+            "sample3": {'tests': [['R218.2'], ['R2.1'], ['_HGNC:1623', '_HGNC:4401']]},
+            "sample4": {'tests': [['R1.1'], ['_HGNC:152'], ['R1.2'], ['_HGNC:18']]}
         }
 
         assert split_tests == correct_split, (
@@ -940,12 +958,12 @@ class TestAddPanelsAndIndicationsToManifest():
             },
             "X225111-GM2308111": {
                 "tests": [ ["R149.1"] ],
-                "panels": [
-                    ["Severe early-onset obesity_4.0"]
-                ],
-                "indications": [
-                    ["R149.1_Severe early-onset obesity_P"]
-                ]
+                "panels": [[
+                    "Severe early-onset obesity_4.0"
+                ]],
+                "indications": [[
+                    "R149.1_Severe early-onset obesity_P"
+                ]]
             }
         }
 

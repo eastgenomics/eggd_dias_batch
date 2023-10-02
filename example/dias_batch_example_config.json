@@ -11,6 +11,10 @@
         "genes2transcripts": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GV4P970433Gj6812zGVBZvB4",
         "exonsfile": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gf99pBPbJkV7bq"
     },
+    "name_patterns": {
+        "Epic": "^[\\d\\w]+-[\\d\\w]+[-_]",
+        "Gemini": "^X[\\d]+[-_]"
+    },
     "modes": {
         "cnv_call": {
             "instance_type": "mem2_ssd1_v2_x8",

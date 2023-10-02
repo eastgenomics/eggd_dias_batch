@@ -4,26 +4,18 @@ DNAnexus via dxpy API calls to either manage data (in DXManage) or for
 launching jobs (in DXExecute).
 
 Functions not covered by unit tests:
-    - DXManage.read_assay_config() - mostly just calls DXFile.read() on
-        provided dx file ID
-    - DXManage().read_dxfile() - reads file object from given dx
-        file ID, not expected to raise any errors
     - Everything in DXExecute - all functions relate to launching jobs,
         going to test these manually by running the app (probably, we shall
         see if I get the motivation to try patch things well to test them)
 """
-from copy import deepcopy
-import json
 import os
-import pytest
-import re
-import subprocess
 import sys
 import unittest
 from unittest.mock import patch
 
 import dxpy
 import pandas as pd
+import pytest
 
 
 sys.path.append(os.path.abspath(
@@ -36,6 +28,50 @@ from utils.dx_requests import DXManage
 TEST_DATA_DIR = (
     os.path.join(os.path.dirname(__file__), 'test_data')
 )
+
+class TestReadAssayConfigFile():
+    """
+    Tests for DXManage.read_assaay_config_file()
+
+    Function is used where a specific assay config file is provided, and
+    reads this into a dict object
+    """
+
+    @patch('utils.dx_requests.dxpy.DXFile')
+    @patch('utils.dx_requests.DXManage.read_dxfile')
+    def test_config_correctly_read(self, mock_read, mock_file):
+        """
+        Test config file is correctly read in, function uses already tested
+        DXManage.read_dxfile() to read the contents into a list, so this will
+        just test that the contents is returned as a dict and the filename
+        is added under the key 'name'
+        """
+        # minimal describe call return from config file
+        mock_file.return_value.describe.return_value = {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'testAssayConfig.json'
+            }
+        }
+
+        # minimal example of what would be returned from DXManage.read_dxfile
+        mock_read.return_value = [
+            '{"assay": "test", "version": "1.0.0"}'
+        ]
+
+        contents = DXManage().read_assay_config_file(file='file-xxx')
+
+        correct_contents = {
+            "assay": "test",
+            "version": "1.0.0",
+            "dxid": "file-xxx",
+            "name": "testAssayConfig.json"
+        }
+
+        assert contents == correct_contents, (
+            "Contents parsed from config file incorrect"
+        )
+
 
 
 class TestDXManageGetAssayConfig(unittest.TestCase):
@@ -190,7 +226,6 @@ class TestDXManageGetFileProjectContext(unittest.TestCase):
         """
         # patch the DXFile object to nothing as we won't use it,
         # and the output of dx find to be a minimal set of describe calls
-        # mock_file.return_value = dxpy.DXFile(dxid='file-xxx')
         mock_describe.return_value = {}
         mock_find.return_value = [
             {
@@ -290,6 +325,323 @@ class TestDXManageFindFiles(unittest.TestCase):
         )
 
 
+class TestReadDXfile():
+    """
+    Tests for DXManage.read_dxfile()
+
+    Generic method for reading the contents of a DNAnexus file into a
+    list of strings, accepts file ID input as some form of string or
+    $dnanexus_link mapping
+    """
+    def test_none_object_passed(self, capsys):
+        """
+        If an empty object gets passed we should just print and return
+        """
+        DXManage().read_dxfile(file=None)
+        stdout = capsys.readouterr().out
+
+        assert 'Empty file passed to read_dxfile() :sadpepe:' in stdout, (
+            "Function didn't return as expected for empty input"
+        )
+
+    @patch('utils.dx_requests.dxpy.DXFile.read')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_file_as_dict(self, mock_file, mock_read):
+        """
+        Test when file input is a dict (i.e. $dnanexus_link mapping) that
+        we correctly parse the link to query with
+        
+        set variables for reading the file
+        """
+        file = {
+            "$dnanexus_link": "project-xxx:file-xxx"
+        }
+
+        # project and file should get split and pass the assert, we have
+        # patched DXFile.read() so nothing will get returned as we expect
+        DXManage().read_dxfile(file=file)
+
+
+    @patch('utils.dx_requests.DXManage.get_file_project_context')
+    @patch('utils.dx_requests.dxpy.DXFile.read')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_file_as_just_file_id(self, mock_file, mock_read, mock_context):
+        """
+        Test when we provide file ID as just 'file-xxx' that it we call
+        DXManage.get_file_project_context to return the project string,
+        and then this passes through the function with no errors raised
+        """
+        # patch a minimal DXObject response
+        mock_context.return_value = {
+            'project': 'project-xxx',
+            'id': 'file-xxx'
+        }
+
+        # project and file should get split from the get_file_project_context
+        # response and pass the assert, we have patched DXFile.read() so
+        # nothing will get returned as we expect
+        DXManage().read_dxfile(file='file-xxx')
+
+
+    @patch('utils.dx_requests.DXManage.get_file_project_context')
+    @patch('utils.dx_requests.dxpy.DXFile.read')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_assertion_error_raised(self, mock_file, mock_read, mock_context):
+        """
+        Test when we provide file ID as just 'file-xxx' that it we call
+        DXManage.get_file_project_context to return the project string,
+        and that if there is something wrong in the format of the response
+        (i.e. its empty but somehow didn't raise an error), we catch this
+        with an AssertionError
+        """
+        # patch a DXObject response as being empty
+        mock_context.return_value = {}
+
+        with pytest.raises(
+            AssertionError,
+            match=r'Missing project and \/ or file ID - project: None, file: None'
+        ):
+            DXManage().read_dxfile(file='file-xxx')
+
+
+    @patch('utils.dx_requests.dxpy.DXFile.read')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_file_as_project_and_file(self, mock_file, mock_read):
+        """
+        Test when file input is string with both project and file IDs
+        that this get correctly split and used
+        
+        set variables for reading the file
+        """
+        # project and file should get split and pass the assert, we have
+        # patched DXFile.read() so nothing will get returned as we expect
+        DXManage().read_dxfile(file='project-xxx:file-xxx')
+
+
+    def test_invalid_string_raises_error(self):
+        """
+        Test if an invalid string is passed that an error is raised
+        """
+        with pytest.raises(
+            RuntimeError,
+            match=r'DXFile not in an expected format: invalid_str'
+        ):
+            DXManage().read_dxfile(file='invalid_str')
+
+
+class TestDXManageCheckArchivalState():
+    """
+    Tests for DXManage.check_archival_state()
+
+    Function takes in a list of files (and optionally a list of sample names
+    to filter by), and checks the archival state of the files to ensure all
+    are live before launching jobs
+    """
+    # minimal dxpy.find_data_objects() return that we expect to pass in
+    files = [
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample1-file1',
+                'archivalState': 'live'
+            }
+        },
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample2-file1',
+                'archivalState': 'live'
+            }
+        },
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample3-file1',
+                'archivalState': 'live'
+            }
+        },
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample4-file1',
+                'archivalState': 'live'
+            }
+        },
+    ]
+
+    # same as above but with an archived file added in
+    files_w_archive = files + [
+        {
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample5-file1',
+                'archivalState': 'archived'
+            }
+        }
+    ]
+
+    def test_all_live(self, capsys):
+        """
+        Test no error is raised when all provided files are live
+        """
+        DXManage().check_archival_state(
+            files=self.files,
+            unarchive=False
+        )
+
+        # since we don't explicitly return anything when there are no
+        # archived files, check stdout for expected string printed
+        # to ensure the function passed through all checks to the end
+        stdout = capsys.readouterr().out
+
+        assert 'No required files in archived state' in stdout, (
+            'Expected print for all live files not in captured stdout'
+        )
+
+
+    def test_error_raised_for_archived_files(self):
+        """
+        Test when files contains an archived file that a RuntimeError
+        is correctly raised
+        """
+        with pytest.raises(
+            RuntimeError,
+            match='Files required for analysis archived'
+        ):
+            DXManage().check_archival_state(
+            files=self.files_w_archive,
+            unarchive=False
+        )
+
+
+    def test_archived_files_filtered_out_when_not_in_sample_list(self, capsys):
+        """
+        Test when a list of sample names is provided that any files for other
+        samples are filtered out, we will test this by adding an archived file
+        for a non-matching sample and checking it is removed
+        """
+        # provide list of sample names to filter by
+        DXManage().check_archival_state(
+            files=self.files_w_archive,
+            unarchive=False,
+            samples=['sample1', 'sample2', 'sample3', 'sample4']
+        )
+
+        # since we don't explicitly return anything for all being live check
+        # stdout for expected string printed to ensure we got where we expect
+        stdout = capsys.readouterr().out
+
+        assert 'No required files in archived state' in stdout, (
+            'Expected print for all live files not in captured stdout'
+        )
+
+
+    @patch('utils.dx_requests.DXManage.unarchive_files')
+    def test_unarchive_files_called_when_specified(self, mock_unarchive):
+        """
+        Test when we have archived files and unarchive=True specified that
+        we call the function to start unarchiving
+        """
+        DXManage().check_archival_state(
+            files=self.files_w_archive,
+            unarchive=True
+        )
+
+        assert mock_unarchive.called, (
+            'DXManage.unarchive_files not called for unarchive=True'
+        )
+
+
+class TestDXManageUnarchiveFiles():
+    """
+    Tests for DXManage.unarchive_files()
+
+    Function called by DXManage.check_archival_state where one or more
+    archived files found and unarchive=True set, will go through the
+    given file IDs and start the unarchiving process
+    """
+    # minimal dxpy.find_data_objects() return that we expect to unarchive
+    files = [
+        {
+            'project': 'project-xxx',
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample1-file1',
+                'archivalState': 'archived'
+            }
+        },
+        {
+            'project': 'project-xxx',
+            'id': 'file-xxx',
+            'describe': {
+                'name': 'sample2-file1',
+                'archivalState': 'archived'
+            }
+        }
+    ]
+
+    @patch('utils.dx_requests.dxpy.DXJob.add_tags')
+    @patch('utils.dx_requests.dxpy.DXJob')
+    @patch('utils.dx_requests.dxpy.DXFile.unarchive')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    @patch('utils.dx_requests.sys.exit')
+    def test_unarchiving_called(
+            self,
+            exit,
+            mock_file,
+            mock_unarchive,
+            mock_job,
+            mock_tags,
+            capsys
+        ):
+        """
+        Test that DXFile.unarchive() gets called on the provided list
+        of DXFile objects
+        """
+        # mock_unarchive.return_value = True
+        DXManage().unarchive_files(
+            self.files
+        )
+
+        # lots of prints go to stdout once we have started unarchiving
+        stdout = capsys.readouterr().out
+
+        expected_stdout = [
+            "Unarchiving requested for 2 files, this will take some time...",
+            "The state of all files may be checked with the following command:",
+            (
+                "echo file-xxx file-xxx | xargs -n1 -d' ' -P32 -I{} bash -c "
+                "'dx describe --json {} ' | grep archival | uniq -c"
+            ),
+            "This job can be relaunched once unarchiving is complete by running:",
+            "dx run app-eggd_dias_batch --clone None -iunarchive=false"
+        ]
+
+        assert all(x in stdout for x in expected_stdout), (
+            "stdout does not contain the expected output"
+        )
+
+
+    @patch('utils.dx_requests.dxpy.DXFile', side_effect=Exception('Error'))
+    @patch('utils.dx_requests.sleep')
+    def test_error_raised_if_unable_to_unarchive(
+            self,
+            mock_sleep,
+            mock_dxfile
+        ):
+        """
+        Function will try and catch up to 5 times to unarchive a file,
+        if it can't unarchive a file an error should be raised. Here
+        we make it raise an Exception to test it in the loop and ensure
+        that it stops after failing.
+        """
+        with pytest.raises(
+            RuntimeError,
+            match=r'\[Attempt 5/5\] Error in unarchiving file: file-xxx'
+        ):
+           DXManage().unarchive_files(self.files)
+
+
 class TestDXManageFormatOutputFolders(unittest.TestCase):
     """
     Tests for DXManage.format_output_folders()
@@ -331,7 +683,7 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         assert correct_stage_folder == returned_stage_folder, (
             "Incorrect stage folders returned for applet"
         )
-    
+
     def test_correct_folder_app(self):
         """
         Test when an app is included as a stage that the path is correctly
@@ -359,5 +711,5 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         )
 
         assert correct_stage_folder == returned_stage_folder, (
-            "Inavlid stage folders returned for app"
+            "Invalid stage folders returned for app"
         )

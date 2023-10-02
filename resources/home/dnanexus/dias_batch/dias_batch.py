@@ -12,16 +12,28 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
-    from dias_batch.utils.utils import parse_manifest, \
-        split_genepanels_test_codes, check_manifest_valid_test_codes, \
-        add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        make_path, time_stamp, write_summary_report, parse_genepanels
+    from dias_batch.utils.utils import (
+        add_panels_and_indications_to_manifest,
+        check_manifest_valid_test_codes,
+        fill_config_reference_inputs,
+        make_path,
+        parse_manifest,
+        parse_genepanels,
+        time_stamp,
+        write_summary_report
+    )
 else:
     from .utils.dx_requests import DXExecute, DXManage
-    from .utils.utils import parse_manifest, \
-        split_genepanels_test_codes, check_manifest_valid_test_codes, \
-        add_panels_and_indications_to_manifest, fill_config_reference_inputs, \
-        make_path, time_stamp, write_summary_report, parse_genepanels
+    from .utils.utils import (
+        add_panels_and_indications_to_manifest,
+        check_manifest_valid_test_codes,
+        fill_config_reference_inputs,
+        make_path,
+        parse_manifest,
+        parse_genepanels,
+        time_stamp,
+        write_summary_report
+    )
 
 import dxpy
 import pandas as pd
@@ -225,7 +237,7 @@ def main(
 
     if assay_config_file:
         assay_config = DXManage().read_assay_config_file(
-            file=assay_config_file
+            file=assay_config_file.get('$dnanexus_link')
         )
 
     if assay and assay_config_dir:
@@ -313,6 +325,7 @@ def main(
                 manifest_source=manifest_source,
                 config=assay_config['modes']['cnv_reports'],
                 start=start_time,
+                name_patterns=assay_config.get('name_patterns', {}),
                 sample_limit=sample_limit,
                 call_job_id=cnv_call_job_id,
                 parent=parent,
@@ -331,6 +344,7 @@ def main(
                 manifest_source=manifest_source,
                 config=assay_config['modes']['snv_reports'],
                 start=start_time,
+                name_patterns=assay_config.get('name_patterns', {}),
                 sample_limit=sample_limit,
                 parent=parent,
                 unarchive=unarchive
@@ -347,6 +361,7 @@ def main(
                 manifest_source=manifest_source,
                 config=assay_config['modes']['mosaic_reports'],
                 start=start_time,
+                name_patterns=assay_config.get('name_patterns', {}),
                 sample_limit=sample_limit,
                 parent=parent,
                 unarchive=unarchive
