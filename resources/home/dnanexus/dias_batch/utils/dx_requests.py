@@ -516,6 +516,7 @@ class DXExecute():
             config,
             single_output_dir,
             exclude,
+            start,
             wait,
             unarchive
         ) -> str:
@@ -530,6 +531,8 @@ class DXExecute():
             path to single output directory
         exclude : list
             list of sample IDs to exclude bam files from calling
+        start : str
+            start time of running app for naming output folders
         wait : bool
             if to set hold_on_wait to wait on job to finish
         unarchive : bool
@@ -558,7 +561,11 @@ class DXExecute():
             path=f"{os.environ.get('DX_PROJECT_CONTEXT_ID')}:{bam_dir}"
         )
 
-        print(f"Found {len(files)} .bam/.bai files in {bam_dir}")
+        printable_files = '\n\t'.join([x['describe']['name'] for x in files])
+        print(
+            f"Found {len(files)} .bam/.bai files in {bam_dir}:"
+            f"\n\t{printable_files}"
+        )
 
         if exclude:
             samples = '\n\t'.join(exclude)
@@ -569,7 +576,9 @@ class DXExecute():
             # samplesheet and that bam files are named as sampleID_other_stuff.bam
             exclude_not_present = [
                 name for name in exclude
-                if name not in [x['describe']['name'] for x in files]
+                if not any([
+                    x['describe']['name'].startswith(name) for x in files
+                ])
             ]
             if exclude_not_present:
                 print(
@@ -578,11 +587,19 @@ class DXExecute():
                     "\nIgnoring these and continuing..."
                 )
 
+            # get the files of samples we're not excluding
             files = [
                 file for file in files
-                if not file['describe']['name'].split('_')[0] in exclude
+                if not any([
+                    file['describe']['name'].startswith(x) for x in exclude
+                ])
             ]
-            print(f"{len(files)} .bam/.bai files after excluding")
+
+            printable_files = '\n\t'.join([x['describe']['name'] for x in files])
+            print(
+                f"{len(files)} .bam/.bai files after excluding:"
+                f"\n\t{printable_files}"
+            )
 
         # check to ensure all bams are unarchived
         DXManage().check_archival_state(files, unarchive=unarchive)
@@ -595,12 +612,12 @@ class DXExecute():
         folder = make_path(
             single_output_dir,
             f"{app_details['name']}-{app_details['version']}",
-            time_stamp()
+            start
         )
 
         print(f"Running CNV calling, outputting to {folder}")
 
-        job = dxpy.bindings.dxapp.DXApp(dxid=config.get('cnv_call_app_id')).run(
+        job = dxpy.DXApp(dxid=config.get('cnv_call_app_id')).run(
             app_input=cnv_config['inputs'],
             project=os.environ.get('DX_PROJECT_CONTEXT_ID'),
             folder=folder,
@@ -610,7 +627,7 @@ class DXExecute():
         )
 
         job_id = job.describe().get('id')
-        job_handle = dxpy.bindings.dxjob.DXJob(dxid=job_id)
+        job_handle = dxpy.DXJob(dxid=job_id)
 
         if wait:
             print("Holding app until CNV calling completes...")

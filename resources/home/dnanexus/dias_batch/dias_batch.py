@@ -309,6 +309,7 @@ def main(
                 config=assay_config,
                 single_output_dir=single_output_dir,
                 exclude=exclude_samples,
+                start=start_time,
                 wait=wait,
                 unarchive=unarchive
             )
