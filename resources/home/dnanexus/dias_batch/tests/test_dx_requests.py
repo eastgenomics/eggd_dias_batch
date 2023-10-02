@@ -8,9 +8,11 @@ Functions not covered by unit tests:
         going to test these manually by running the app (probably, we shall
         see if I get the motivation to try patch things well to test them)
 """
+from copy import deepcopy
 import os
 import sys
 import unittest
+from unittest import mock
 from unittest.mock import patch
 
 import dxpy
@@ -22,14 +24,14 @@ sys.path.append(os.path.abspath(
     os.path.join(os.path.realpath(__file__), '../../')
 ))
 
-from utils.dx_requests import DXManage
+from utils.dx_requests import DXExecute, DXManage
 
 
 TEST_DATA_DIR = (
     os.path.join(os.path.dirname(__file__), 'test_data')
 )
 
-class TestReadAssayConfigFile():
+class TestDXManageReadAssayConfigFile():
     """
     Tests for DXManage.read_assaay_config_file()
 
@@ -69,7 +71,6 @@ class TestReadAssayConfigFile():
         assert contents == correct_contents, (
             "Contents parsed from config file incorrect"
         )
-
 
 
 class TestDXManageGetAssayConfig(unittest.TestCase):
@@ -323,7 +324,7 @@ class TestDXManageFindFiles(unittest.TestCase):
         )
 
 
-class TestReadDXfile():
+class TestDXManageReadDXfile():
     """
     Tests for DXManage.read_dxfile()
 
@@ -710,4 +711,226 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
 
         assert correct_stage_folder == returned_stage_folder, (
             "Invalid stage folders returned for app"
+        )
+
+
+class TestDXExecuteCNVCalling(unittest.TestCase):
+    """
+    Tests for DXExecute.cnv_calling
+
+    This is the main function that calls all others to set up inputs for
+    CNV calling and runs the app. The majority of what is called here is
+    already covered by other unit tests, and therefore a lot will be
+    mocked where called functions make dx requests etc themselves.
+
+    We will mostly be testing that where the different inputs are given,
+    that expected prints go to stdout since that is the most we can test
+    """
+    config = {
+        'modes': {
+            'cnv_call': {
+                'inputs': {
+                    'bambais': {
+                        'folder': '/sentieon-dnaseq',
+                        'name': '.bam$|.bam.bai$'
+                    }
+                }
+            }
+        }
+    }
+
+    def setUp(self):
+        """
+        Set up test class wide patches
+        """
+        # set up patches for each sub function call in DXExecute.cnv_calling
+        self.path_patch = mock.patch('utils.dx_requests.make_path')
+        self.find_patch = mock.patch('utils.dx_requests.DXManage.find_files')
+        self.check_archival_state_patch = mock.patch(
+            'utils.dx_requests.DXManage.check_archival_state'
+        )
+        self.describe_patch = mock.patch('utils.dx_requests.dxpy.describe')
+        self.dxapp_patch = mock.patch('utils.dx_requests.dxpy.DXApp')
+        self.run_patch = mock.patch('utils.dx_requests.dxpy.run')
+        self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
+        self.wait_patch = mock.patch('utils.dx_requests.dxpy.DXJob.wait_on_done')
+
+        # create our mocks to reference
+        self.mock_path = self.path_patch.start()
+        self.mock_find = self.find_patch.start()
+        self.mock_archive = self.check_archival_state_patch.start()
+        self.mock_describe = self.describe_patch.start()
+        self.mock_dxapp = self.dxapp_patch.start()
+        self.mock_run = self.run_patch.start()
+        self.mock_job = self.job_patch.start()
+        self.mock_wait = self.wait_patch.start()
+
+        # our test returns to use for the mocks
+
+        # utils.make_path called twice, once to get path for searching for
+        # BAM files then again for setting app output
+        self.mock_path.side_effect = [
+            'project-GZ025k04VjykZx3bJ7YP837:/output/CEN-230719_1604/sentieon',
+            (
+                'project-GZ025k04VjykZx3bJ7YP837:/output/CEN-230719_1604/'
+                'GATK_gCNV_call-1.2.3/0925-17'
+            )
+        ]
+
+        # mocked return of calling DXManage.find_files to search for input BAMs
+        self.mock_find.return_value = [
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1.bam'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1.bam.bai'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample2.bam'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample2.bam.bai'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample3.bam'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample3.bam.bai'
+                }
+            }            
+        ]
+
+        # first dxpy.describe call is on app ID, second is on job ID
+        # patch in minimal responses with required keys
+        self.mock_describe.side_effect = [
+            {
+                'name': 'GATK_gCNV_call',
+                'version': '1.2.3'
+            },
+            {
+                'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'
+            }
+        ]
+
+
+    def tearDown(self):
+        """
+        Remove test class wide patches
+        """
+        self.mock_path.stop()
+        self.mock_find.stop()
+        self.mock_archive.stop()
+        self.mock_describe.stop()
+        self.mock_dxapp.stop()
+        self.mock_run.stop()
+        self.mock_job.stop()
+        self.mock_wait.stop()
+
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_cnv_call(self):
+        """
+        Test with everything patched that no errors are raised
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=[],
+            start='',
+            wait=False,
+            unarchive=False
+        )
+
+
+    def test_wait_on_done(self):
+        """
+        Test if wait=True is specified that the app will be held until
+        calling completes
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=[],
+            start='',
+            wait=True,
+            unarchive=False
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        assert 'Holding app until CNV calling completes...' in stdout, (
+            'App not waiting with wait=True specified'
+        )
+
+
+    def test_exclude(self):
+        """
+        Test when exclude samples is specified that these are used
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=['sample2', 'sample3'],
+            start='',
+            wait=False,
+            unarchive=False
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        correct_exclude = (
+            '2 .bam/.bai files after excluding:\n\tsample1.bam\n\tsample1.bam.bai'
+        )
+
+        assert correct_exclude in stdout, (
+            'exclude samples incorrect'
+        )
+    
+
+    def test_exclude_invalid_sample(self):
+        """
+        Test when exclude samples is specified with a sample not in BAM
+        files that a warning is printed
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=['sample1000'],
+            start='',
+            wait=False,
+            unarchive=False
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        correct_warning = (
+            "WARNING: sample ID(s) provided to exclude not present in bam "
+            "files found for CNV calling:\n\t['sample1000']\nIgnoring "
+            "these and continuing..."
+        )
+
+        assert correct_warning in stdout, (
+            'Invalid exclude sample specified not correctly removed'
         )
