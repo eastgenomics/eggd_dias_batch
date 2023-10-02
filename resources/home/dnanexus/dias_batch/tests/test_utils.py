@@ -661,6 +661,22 @@ class TestParseManifest:
         )
 
 
+    def test_gemini_invalid_codes_added_as_is(self):
+        """
+        Invalid test codes will be gathered up and raised as a single error
+        in utils.check_manifest_valid_test_codes, check that if an invalid
+        code is provided that it is written out as found
+        """
+        manifest = deepcopy(self.gemini_data)
+        manifest.append('anotherSample\tnotValidTest')
+
+        manifest, _ = utils.parse_manifest(manifest)
+
+        assert manifest['anotherSample']['tests'] == [['notValidTest']], (
+            'Invalid test code not kept correctly in manifest'
+        )
+
+
     def test_epic_correct_number_lines_parsed(self):
         """
         Test when reading Epic manifest we get the correct number of
@@ -797,6 +813,7 @@ class TestParseManifest:
         ], (
             'Splitting tests when parsing manifest not as expected'
         )
+
 
 class TestFilterManifestSamplesByFiles():
     """
