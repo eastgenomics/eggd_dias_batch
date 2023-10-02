@@ -329,8 +329,9 @@ class TestWriteSummaryReport():
         Test when report summaries are passed that these correctly get
         formatted into a markdown table
         """
-        # print(self.summary_contents)
 
+        # markdown table as it should be written to report (without spacing)
+        # as this makes it huge
         correct_table = (
             '+---------+--------------------------+--------------------------+'
             '-----------------------------+||CNV|SNV|mosaic|+=========+='
@@ -464,6 +465,26 @@ class TestFillConfigReferenceInputs():
 
         with pytest.raises(RuntimeError):
             utils.fill_config_reference_inputs(config_copy)
+
+    def test_app_no_inputs(self, capsys):
+        """
+        Test when an app/workflow in the config has no inputs dict defined
+        that we print a warning and continue
+        """
+        config_copy = deepcopy(self.config)
+        config_copy['modes']['app1'] = {}
+
+        utils.fill_config_reference_inputs(config_copy)
+        stdout = capsys.readouterr().out
+
+        correct_print = (
+            "WARNING: app1 in the config does not appear to "
+            "have an 'inputs' key, skipping adding reference files"
+        )
+
+        assert correct_print in stdout, (
+            'App missing inputs did not print expected warning'
+        )
 
 
 class TestParseGenePanels():

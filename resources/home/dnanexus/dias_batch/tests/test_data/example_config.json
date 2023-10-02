@@ -16,7 +16,8 @@
         "workflow_2": {
             "inputs": {
                 "stage_1.input_1": "INPUT-exons_nirvana",
-                "stage_2.input_1": "INPUT-exonsfile"
+                "stage_2.input_1": "INPUT-exonsfile",
+                "stage2.input_2": "other_non_reference_input"
             }
         }
     }
