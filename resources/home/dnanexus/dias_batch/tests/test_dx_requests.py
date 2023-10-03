@@ -713,6 +713,51 @@ class TestDXManageCheckArchivalState():
             )
 
 
+    def test_error_raised_when_non_live_files_can_not_be_unarchived(self):
+        """
+        When non-live files are found their archivalState is checked and
+        those in 'archiving' or 'unarchiving' states are removed from
+        those to request unarchiving on, as this would raise an error.
+
+        If no files are left after removing these and error should be
+        raised as we are in a state of not being able to run jobs and
+        also not able to call unarchiving
+        """
+        # minimal test file objects where one file is unarchiving and
+        # another is archiving
+        files = [
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1-file1',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample2-file1',
+                    'archivalState': 'unarchiving'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample3-file1',
+                    'archivalState': 'archiving'
+                }
+            }
+        ]
+
+        with pytest.raises(
+            RuntimeError,
+            match='non-live files not in a state that can be unarchived'
+        ):
+            DXManage().check_archival_state(
+                files=files,
+                unarchive=True
+            )
+
 
     @patch('utils.dx_requests.DXManage.unarchive_files')
     def test_unarchive_files_called_when_specified(self, mock_unarchive):
