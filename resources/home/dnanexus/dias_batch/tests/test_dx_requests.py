@@ -8,9 +8,11 @@ Functions not covered by unit tests:
         going to test these manually by running the app (probably, we shall
         see if I get the motivation to try patch things well to test them)
 """
+from copy import deepcopy
 import os
 import sys
 import unittest
+from unittest import mock
 from unittest.mock import patch
 
 import dxpy
@@ -22,14 +24,14 @@ sys.path.append(os.path.abspath(
     os.path.join(os.path.realpath(__file__), '../../')
 ))
 
-from utils.dx_requests import DXManage
+from utils.dx_requests import DXExecute, DXManage
 
 
 TEST_DATA_DIR = (
     os.path.join(os.path.dirname(__file__), 'test_data')
 )
 
-class TestReadAssayConfigFile():
+class TestDXManageReadAssayConfigFile():
     """
     Tests for DXManage.read_assaay_config_file()
 
@@ -71,7 +73,6 @@ class TestReadAssayConfigFile():
         )
 
 
-
 class TestDXManageGetAssayConfig(unittest.TestCase):
     """
     Tests for DXManage.get_assay_config()
@@ -79,6 +80,33 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
     Function either takes a path and assay string to search in DNAnexus
     and return the highest config file version for
     """
+    def setUp(self):
+        """
+        Setup our mocks
+        """
+        # set up patches for each sub function call in DXExecute.cnv_calling
+        self.loads_patch = mock.patch('utils.dx_requests.json.loads')
+        self.find_patch = mock.patch('utils.dx_requests.dxpy.find_data_objects')
+        self.file_patch = mock.patch('utils.dx_requests.dxpy.bindings.dxfile.DXFile')
+
+        # create our mocks to reference
+        self.mock_loads = self.loads_patch.start()
+        self.mock_find = self.find_patch.start()
+        self.mock_file = self.file_patch.start()
+
+
+    def tearDown(self):
+        self.loads_patch.stop()
+        self.mock_find.stop()
+        self.mock_file.stop()
+
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
     def test_error_raised_when_path_invalid(self):
         """
         AssertionError should be raised if path param is not valid
@@ -89,14 +117,13 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             DXManage().get_assay_config(path='invalid_path', assay='')
 
 
-    @patch('utils.dx_requests.dxpy.find_data_objects')
-    def test_error_raised_when_no_config_files_found(self, test_patch):
+    def test_error_raised_when_no_config_files_found(self):
         """
         AssertionError should be raised if no JSON files found, patch
         the return of the dxpy.find_data_objects() call to be empty and
         check we raise an error correctly
         """
-        test_patch.return_value = []
+        self.find_patch.return_value = []
 
         expected_error = (
             'No config files found in given path: project-xxx:/test_path'
@@ -105,15 +132,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             DXManage().get_assay_config(path='project-xxx:/test_path', assay='')
 
 
-    @patch('utils.dx_requests.json.loads')
-    @patch('utils.dx_requests.dxpy.bindings.dxfile.DXFile')
-    @patch('utils.dx_requests.dxpy.find_data_objects')
-    def test_error_raised_when_no_config_file_found_for_assay(
-            self,
-            mock_find,
-            mock_file,
-            mock_read
-        ):
+    def test_error_raised_when_no_config_file_found_for_assay(self):
         """
         AssertionError should be raised if we find some JSON files but
         after parsing through none of them match our given assay string
@@ -121,7 +140,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         """
         # set output of find to be minimal describe call output with
         # required keys for iterating over
-        mock_find.return_value = [
+        self.mock_find.return_value = [
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
@@ -133,10 +152,10 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         ]
 
         # patch the DXFile object that read() gets called on
-        mock_file.return_value = dxpy.bindings.dxfile.DXFile
+        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
 
         # patch the output from DXFile.read() to just be all the same dict
-        mock_read.return_value = {'assay': 'CEN', 'version': '1.0.0'}
+        self.mock_loads.return_value = {'assay': 'CEN', 'version': '1.0.0'}
 
         expected_error = (
             "No config file was found for test from project-xxx:/test_path"
@@ -149,15 +168,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             )
 
 
-    @patch('utils.dx_requests.json.loads')
-    @patch('utils.dx_requests.dxpy.bindings.dxfile.DXFile')
-    @patch('utils.dx_requests.dxpy.find_data_objects')
-    def test_highest_version_correctly_selected(
-            self,
-            mock_find,
-            mock_file,
-            mock_read
-        ):
+    def test_highest_version_correctly_selected(self):
         """
         Test that when multiple configs are found for an assay, the
         highest version is correctly returned. We're using
@@ -167,7 +178,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         # set output of find to be minimal describe call output with
         # required keys for iterating over, here we need a dict per
         # `mock_read` return values that we want to test with
-        mock_find.return_value = [
+        self.mock_find.return_value = [
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
@@ -179,11 +190,11 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         ] * 5
 
         # patch the DXFile object that read() gets called on
-        mock_file.return_value = dxpy.bindings.dxfile.DXFile
+        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
 
         # patch the output from DXFile.read() to simulate looping over
         # the return of reading multiple configs
-        mock_read.side_effect = [
+        self.mock_loads.side_effect = [
             {'assay': 'test', 'version': '1.0.0'},
             {'assay': 'test', 'version': '1.1.0'},
             {'assay': 'test', 'version': '1.0.10'},
@@ -201,7 +212,73 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         )
 
 
-class TestDXManageGetFileProjectContext(unittest.TestCase):
+    def test_non_live_files_skipped(self):
+        """
+        Test when one or more configs are not in a live state that these
+        are skipped
+        """
+        # minimal dxpy.find_data_objects return of a live and archived config
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'config1.json',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'config2.json',
+                    'archivalState': 'archived'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'config3.json',
+                    'archivalState': 'archival'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'config4.json',
+                    'archivalState': 'unarchiving'
+                }
+            }
+        ]
+
+        # patch the DXFile object that read() gets called on
+        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
+
+        # patch the output from DXFile.read() for our live config
+        self.mock_loads.side_effect = [
+            {'assay': 'test', 'version': '1.0.0'}
+        ]
+
+        DXManage().get_assay_config(
+            path='project-xxx:/test_path',
+            assay='test'
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        expected_warning = (
+            "Config file not in live state - will not be used: "
+            "config2.json (file-xxx)"
+        )
+
+        assert expected_warning in stdout, (
+            "Warning not printed for archived file"
+        )
+
+
+class TestDXManageGetFileProjectContext():
     """
     Tests for DXManage.get_file_project_context()
 
@@ -248,7 +325,56 @@ class TestDXManageGetFileProjectContext(unittest.TestCase):
             DXManage().get_file_project_context(file='file-xxx')
 
 
-class TestDXManageFindFiles(unittest.TestCase):
+    @patch('utils.dx_requests.dxpy.DXFile.describe')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    @patch('utils.dx_requests.dxpy.find_data_objects')
+    def test_live_files(
+        self,
+        mock_find,
+        mock_file,
+        mock_describe,
+        capsys
+    ):
+        # patch the DXFile object to nothing as we won't use it,
+        # and the output of dx find to be a minimal set of describe calls
+        mock_describe.return_value = {}
+        mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-yyy',
+                'id': 'file-xxx',
+                'describe': {
+                    'archivalState': 'live'
+                }
+            }
+        ]
+
+        returned = DXManage().get_file_project_context(file='file-xxx')
+
+        errors = []
+
+        # check we print what we expect
+        stdout = capsys.readouterr().out
+        expected_print = (
+            'Found file-xxx in 2 projects, using project-xxx as project context'
+        )
+
+        if expected_print not in stdout:
+            errors.append('Did not print expected file project context')
+
+        if not returned == mock_find.return_value[0]:
+            errors.append('Incorrect file context returned')
+
+        assert not errors, errors
+
+
+class TestDXManageFindFiles():
     """
     Tests for DXManage.find_files()
 
@@ -323,7 +449,42 @@ class TestDXManageFindFiles(unittest.TestCase):
         )
 
 
-class TestReadDXfile():
+    @patch('utils.dx_requests.dxpy.find_data_objects')
+    def test_archived_files_flagged_in_logs(self, mock_find, capsys):
+        """
+        If any files are found to be not live, a warning should be added
+        to the logs, and then this will raises an error when
+        DXManage.check_archival_state is called before running any jobs
+        """
+        mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'file1',
+                    'archivalState': 'archived',
+                    'folder': '/path_to_files/subdir1/app1'
+                }
+            }
+        ]
+
+        DXManage().find_files(
+            path='project-xxx:/path_to_files/'
+        )
+
+        stdout = capsys.readouterr().out
+        expected_warning = (
+            'WARNING: some files found are in an archived state, if these are '
+            'for samples to be analysed this will raise an error...'
+            '\n[\n    "file1 (file-xxx)"\n]'
+        )
+
+        assert expected_warning in stdout, (
+            'Expected warning for archived files not printed'
+        )
+
+
+class TestDXManageReadDXfile():
     """
     Tests for DXManage.read_dxfile()
 
@@ -534,6 +695,25 @@ class TestDXManageCheckArchivalState():
         )
 
 
+    def test_archived_files_kept_when_in_sample_list(self):
+        """
+        Test when we have some archived files and a provided list of samples,
+        and the archived files are for those selected samples
+        """
+        with pytest.raises(
+            RuntimeError,
+            match='Files required for analysis archived'
+        ):
+            # provide list of sample names to filter by, sample5 has
+            # archived file and unarchive=False => should raise error
+            DXManage().check_archival_state(
+                files=self.files_w_archive,
+                unarchive=False,
+                samples=['sample5']
+            )
+
+
+
     @patch('utils.dx_requests.DXManage.unarchive_files')
     def test_unarchive_files_called_when_specified(self, mock_unarchive):
         """
@@ -711,3 +891,249 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         assert correct_stage_folder == returned_stage_folder, (
             "Invalid stage folders returned for app"
         )
+
+
+class TestDXExecuteCNVCalling(unittest.TestCase):
+    """
+    Tests for DXExecute.cnv_calling
+
+    This is the main function that calls all others to set up inputs for
+    CNV calling and runs the app. The majority of what is called here is
+    already covered by other unit tests, and therefore a lot will be
+    mocked where called functions make dx requests etc themselves.
+
+    We will mostly be testing that where the different inputs are given,
+    that expected prints go to stdout since that is the most we can test
+    """
+    config = {
+        'modes': {
+            'cnv_call': {
+                'inputs': {
+                    'bambais': {
+                        'folder': '/sentieon-dnaseq',
+                        'name': '.bam$|.bam.bai$'
+                    }
+                }
+            }
+        }
+    }
+
+    def setUp(self):
+        """
+        Set up test class wide patches
+        """
+        # set up patches for each sub function call in DXExecute.cnv_calling
+        self.path_patch = mock.patch('utils.dx_requests.make_path')
+        self.find_patch = mock.patch('utils.dx_requests.DXManage.find_files')
+        self.check_archival_state_patch = mock.patch(
+            'utils.dx_requests.DXManage.check_archival_state'
+        )
+        self.describe_patch = mock.patch('utils.dx_requests.dxpy.describe')
+        self.dxapp_patch = mock.patch('utils.dx_requests.dxpy.DXApp')
+        self.run_patch = mock.patch('utils.dx_requests.dxpy.run')
+        self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
+        self.wait_patch = mock.patch('utils.dx_requests.dxpy.bindings.DXJob.wait_on_done')
+
+        # create our mocks to reference
+        self.mock_path = self.path_patch.start()
+        self.mock_find = self.find_patch.start()
+        self.mock_archive = self.check_archival_state_patch.start()
+        self.mock_describe = self.describe_patch.start()
+        self.mock_dxapp = self.dxapp_patch.start()
+        self.mock_run = self.run_patch.start()
+        self.mock_job = self.job_patch.start()
+        self.mock_wait = self.wait_patch.start()
+
+        # Below we define some returns in expected format to use for the mocks
+
+        # utils.make_path called twice, once to get path for searching for
+        # BAM files then again for setting app output
+        self.mock_path.side_effect = [
+            'project-GZ025k04VjykZx3bJ7YP837:/output/CEN-230719_1604/sentieon',
+            (
+                'project-GZ025k04VjykZx3bJ7YP837:/output/CEN-230719_1604/'
+                'GATK_gCNV_call-1.2.3/0925-17'
+            )
+        ]
+
+        # mocked return of calling DXManage.find_files to search for input BAMs
+        self.mock_find.return_value = [
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1.bam'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1.bam.bai'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample2.bam'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample2.bam.bai'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample3.bam'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample3.bam.bai'
+                }
+            }
+        ]
+
+        # first dxpy.describe call is on app ID, second is on job ID
+        # patch in minimal responses with required keys
+        self.mock_describe.side_effect = [
+            {
+                'name': 'GATK_gCNV_call',
+                'version': '1.2.3'
+            },
+            {
+                'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'
+            }
+        ]
+
+
+    def tearDown(self):
+        """
+        Remove test class wide patches
+        """
+        self.mock_path.stop()
+        self.mock_find.stop()
+        self.mock_archive.stop()
+        self.mock_describe.stop()
+        self.mock_dxapp.stop()
+        self.mock_run.stop()
+        self.mock_job.stop()
+        self.mock_wait.stop()
+
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_cnv_call(self):
+        """
+        Test with everything patched that no errors are raised
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=[],
+            start='',
+            wait=False,
+            unarchive=False
+        )
+
+
+    def test_wait_on_done(self):
+        """
+        Test if wait=True is specified that the app will be held until
+        calling completes
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=[],
+            start='',
+            wait=True,
+            unarchive=False
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        assert 'Holding app until CNV calling completes...' in stdout, (
+            'App not waiting with wait=True specified'
+        )
+
+
+    def test_exclude(self):
+        """
+        Test when exclude samples is specified that these are used
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=['sample2', 'sample3'],
+            start='',
+            wait=False,
+            unarchive=False
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        correct_exclude = (
+            '2 .bam/.bai files after excluding:\n\tsample1.bam\n\tsample1.bam.bai'
+        )
+
+        assert correct_exclude in stdout, (
+            'exclude samples incorrect'
+        )
+
+
+    def test_exclude_invalid_sample(self):
+        """
+        Test when exclude samples is specified with a sample not in BAM
+        files that a warning is printed
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=['sample1000'],
+            start='',
+            wait=False,
+            unarchive=False
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        correct_warning = (
+            "WARNING: sample ID(s) provided to exclude not present in bam "
+            "files found for CNV calling:\n\t['sample1000']\nIgnoring "
+            "these and continuing..."
+        )
+
+        assert correct_warning in stdout, (
+            'Invalid exclude sample specified not correctly removed'
+        )
+
+
+    def test_correct_error_raised_on_calling_failing(self):
+        """
+        If error raised during CNV calling whilst waiting to complete,
+        test this is caught and exits the app
+        """
+        # patch return of DXJob to be an empty DXJob object, and set the
+        # error to be raised from DXJob.wait_on_done()
+        self.mock_job.return_value = dxpy.bindings.DXJob(dxid='localjob-')
+        self.mock_wait.side_effect = dxpy.exceptions.DXJobFailureError(
+            'oh no :sadpanda:')
+
+        with pytest.raises(
+            dxpy.exceptions.DXJobFailureError, match='oh no :sadpanda:'
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[],
+                start='',
+                wait=True,
+                unarchive=False
+            )

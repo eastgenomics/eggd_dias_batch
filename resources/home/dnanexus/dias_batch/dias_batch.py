@@ -309,6 +309,7 @@ def main(
                 config=assay_config,
                 single_output_dir=single_output_dir,
                 exclude=exclude_samples,
+                start=start_time,
                 wait=wait,
                 unarchive=unarchive
             )
@@ -414,8 +415,18 @@ def main(
     project_name = dxpy.describe(os.environ.get('DX_PROJECT_CONTEXT_ID'))['name']
     summary_file = f"{project_name}_{start_time}_job_summary.txt"
 
+    job_details = dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).describe()
+    app_details = dxpy.DXApp(dxid=job_details['executable']).describe()
+
+    # overwrite manifest job ID in job details with name to write to summary
+    job_details['runInput']['manifest_file'] = dxpy.describe(
+        job_details['runInput']['manifest_file']['$dnanexus_link']
+    )['name']
+
     write_summary_report(
         summary_file,
+        job=job_details,
+        app=app_details,
         assay_config=assay_config,
         manifest=manifest,
         launched_jobs=launched_jobs,

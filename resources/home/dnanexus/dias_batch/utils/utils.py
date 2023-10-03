@@ -5,7 +5,6 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 import json
-import os
 from pprint import PrettyPrinter
 import re
 from time import strftime, localtime
@@ -81,7 +80,7 @@ def check_report_index(name, reports) -> int:
     return suffix + 1
 
 
-def write_summary_report(output, manifest=None, **summary) -> None:
+def write_summary_report(output, job, app, manifest=None, **summary) -> None:
     """
     Write output summary file with jobs launched and any errors etc.
 
@@ -89,6 +88,10 @@ def write_summary_report(output, manifest=None, **summary) -> None:
     ----------
     output : str
         name for output file
+    job : dict
+        details from dxpy.describe() call on job ID
+    app : dict
+        details from dxpy.describe() call on app ID
     manifest : dict
         mapping of samples in manifest -> requested test codes
     summary : kwargs
@@ -99,26 +102,14 @@ def write_summary_report(output, manifest=None, **summary) -> None:
     {output}.txt file of launched job summary
     """
     print(f"\n \nWriting summary report to {output}")
-    batch_job_id = os.environ.get('DX_JOB_ID')
-    job = dxpy.bindings.dxjob.DXJob(dxid=batch_job_id).describe()
-    app = dxpy.bindings.dxapp.DXApp(dxid=job['executable']).describe()
+
     time = strftime('%Y-%m-%d %H:%M:%S', localtime(job['created'] / 1000))
     inputs = job['runInput']
-
-    # nicer formatting of inputs for job report
-    if inputs.get('manifest_file'):
-        inputs['manifest_file'] = dxpy.describe(
-            inputs['manifest_file']['$dnanexus_link'])['name']
-
-    if inputs.get('assay_config_file'):
-        inputs['assay_config_file'] = dxpy.describe(
-            inputs['assay_config_file']['$dnanexus_link'])['name']
-
     inputs = "\n\t".join([f"{x[0]}: {x[1]}" for x in sorted(inputs.items())])
 
     with open(output, 'w') as file_handle:
         file_handle.write(
-            f"\nJobs launched from {app['name']} ({app['version']}) at {time} "
+            f"Jobs launched from {app['name']} ({app['version']}) at {time} "
             f"by {job['launchedBy'].replace('user-', '')} in {job['id']}\n"
         )
 
@@ -142,21 +133,12 @@ def write_summary_report(output, manifest=None, **summary) -> None:
             )
 
         launched_jobs = '\n\t'.join([
-            f"{k} : {len(v)} jobs" for k, v
-            in summary.get('launched_jobs').items()
+            f"{k} : {len(v)} jobs" if len(v) > 1
+            else f"{k} : {len(v)} job"
+            for k, v in summary.get('launched_jobs').items()
         ])
 
         file_handle.write(f"\nTotal jobs launched:\n\t{launched_jobs}\n")
-
-        if summary.get('invalid_tests'):
-            invalid_tests = '\n\t'.join([
-                f"{k} : {v}" for k, v
-                in summary.get('invalid_tests').items()
-            ])
-
-            file_handle.write(
-                f"\nInvalid tests excluded from manifest:\n\t{invalid_tests}\n"
-            )
 
         report_summaries = {
             "snv_report_errors": "SNV",
@@ -551,7 +533,7 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
         raise RuntimeError("Manifest file provided does not seem valid")
 
     if split_tests:
-        manifest = split_manifest_tests(manifest)
+        data = split_manifest_tests(data)
 
     samples = ('\n\t').join([
         f"{x[0]} -> {x[1]['tests']}" for x in data.items()
@@ -708,11 +690,6 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
 
             for test in test_list:
                 if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
-                    #TODO: should we check that we have a transcript assigned
-                    # to this HGNC ID?
-                    if re.search(r'HGNC:[\d]+', test):
-                        # ensure HGNC IDs have an _ prefix for generate_bed
-                        test = f"_{test.lstrip('_')}"
                     valid_tests.append(test)
                 elif test == 'Research Use':
                     # more Epic weirdness, chuck these out but don't break
@@ -777,6 +754,7 @@ def split_manifest_tests(data) -> dict:
         mapping of SampleID: 'tests': [testCodes] with all codes are sub lists
     """
     split_data = defaultdict(lambda: defaultdict(list))
+
     for sample, test_codes in data.items():
         all_split_test_codes = []
         for test_list in test_codes['tests']:
@@ -921,4 +899,3 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     PPRINT(manifest_with_panels)
 
     return manifest_with_panels
-
