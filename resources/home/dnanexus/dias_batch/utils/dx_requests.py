@@ -111,8 +111,8 @@ class DXManage():
         for file in files:
             if not file['describe']['archivalState'] == 'live':
                 print(
-                    "Config file not in live state - will not be used:"
-                    f"{file['describe']['name']} ({file['id']}"
+                    "Config file not in live state - will not be used: "
+                    f"{file['describe']['name']} ({file['id']})"
                 )
                 continue
 
@@ -347,11 +347,11 @@ class DXManage():
                         match = True
                         break
 
-                if match:
+                if match and dx_file not in not_live_filtered:
                     # this file is archived and in one of our samples
                     not_live_filtered.append(dx_file)
 
-            not_live = set(not_live_filtered)
+            not_live = not_live_filtered
 
         if not not_live:
             # nothing archived that we need :dancing_penguin:
