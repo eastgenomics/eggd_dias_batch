@@ -372,9 +372,8 @@ class DXManage():
             print("No required files in archived state")
             return
 
-        # check for files currently unarchiving or being archived
-        # (i.e. in 'unarchiving' or 'archival' states) since an error
-        # will be raised if we try unarchive these in this state
+        # check for files currently unarchiving (i.e. in 'unarchiving') since
+        # an error will be raised if we try unarchive these in this state
         unarchiving = []
         to_unarchive = []
 
@@ -795,7 +794,7 @@ class DXExecute():
         # set up required files for each running mode
         if mode == 'CNV':
             # get required files
-            job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
+            job_details = dxpy.DXJob(dxid=call_job_id).describe()
 
             vcf_input_field = 'stage-cnv_vep.vcf'
 
@@ -1088,7 +1087,7 @@ class DXExecute():
 
 
                 # now we can finally run the reports workflow
-                job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
+                job_handle = dxpy.DXWorkflow(
                     dxid=workflow_id
                 ).run(
                     workflow_input=input,
