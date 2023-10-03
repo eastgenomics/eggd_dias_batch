@@ -716,8 +716,8 @@ class TestDXManageCheckArchivalState():
     def test_error_raised_when_non_live_files_can_not_be_unarchived(self):
         """
         When non-live files are found their archivalState is checked and
-        those in 'archiving' or 'unarchiving' states are removed from
-        those to request unarchiving on, as this would raise an error.
+        those in 'unarchiving' state are removed from those to request
+        unarchiving on, as this would raise an error.
 
         If no files are left to unarchive after removing these an error
         should be raised as we are in a state of not being able to run
@@ -738,13 +738,6 @@ class TestDXManageCheckArchivalState():
                 'describe': {
                     'name': 'sample2-file1',
                     'archivalState': 'unarchiving'
-                }
-            },
-            {
-                'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample3-file1',
-                    'archivalState': 'archiving'
                 }
             }
         ]

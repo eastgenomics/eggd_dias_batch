@@ -318,7 +318,16 @@ class DXManage():
     def check_archival_state(self, files, unarchive, samples=None) -> None:
         """
         Check archival state of n files, to be used before attempting
-        to launch jobs to ensure nothing fails due to archived files
+        to launch jobs to ensure nothing fails due to archived files.
+
+        Files may be in the following states:
+
+        - live => nothing to do
+        - archival => archiving has been requested but not yet happened
+            and / or not all instances of the file have been archived =>
+            can be unarchived
+        - archived => file fully archived, will take time to unarchive fully
+        - unarchiving => unarchiving has already been requested
 
         Parameters
         ---------
@@ -366,14 +375,11 @@ class DXManage():
         # (i.e. in 'unarchiving' or 'archival' states) since an error
         # will be raised if we try unarchive these in this state
         unarchiving = []
-        archiving = []
         to_unarchive = []
 
         for file in not_live:
             if file['describe']['archivalState'] == 'unarchiving':
                 unarchiving.append(file)
-            elif file['describe']['archivalState'] == 'archiving':
-                archiving.append(file)
             else:
                 to_unarchive.append(file)
 
@@ -389,7 +395,6 @@ class DXManage():
         )
 
         print(f"{len(unarchiving)} files are currently in state 'unarchiving'")
-        print(f"{len(archiving)} files are currently in state 'archiving'")
         print(f"{len(to_unarchive)} files are in state 'archived'")
 
         if unarchive:
