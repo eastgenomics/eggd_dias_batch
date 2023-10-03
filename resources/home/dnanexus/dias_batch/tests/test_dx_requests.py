@@ -358,7 +358,7 @@ class TestDXManageGetFileProjectContext():
         assert not errors, errors
 
 
-class TestDXManageFindFiles(unittest.TestCase):
+class TestDXManageFindFiles():
     """
     Tests for DXManage.find_files()
 
@@ -431,6 +431,45 @@ class TestDXManageFindFiles(unittest.TestCase):
         assert files == [mock_find.return_value[0]], (
             'Incorrect file returned when filtering to subdir'
         )
+
+
+    @patch('utils.dx_requests.dxpy.find_data_objects')
+    def test_archived_files_flagged_in_logs(self, mock_find, capsys):
+        """
+        If any files are found to be not live, a warning should be added
+        to the logs, and then this will raises an error when
+        DXManage.check_archival_state is called before running any jobs
+        """
+        mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'file1',
+                    'archivalState': 'archived',
+                    'folder': '/path_to_files/subdir1/app1'
+                }
+            }
+        ]
+
+        DXManage().find_files(
+            path='project-xxx:/path_to_files/'
+        )
+
+        stdout = capsys.readouterr().out
+        expected_warning = (
+            'WARNING: some files found are in an archived state, if these are '
+            'for samples to be analysed this will raise an error...'
+            '\n[\n    "file1 (file-xxx)"\n]'
+        )
+
+        assert expected_warning in stdout, (
+            'Expected warning for archived files not printed'
+        )
+
+
+
+
 
 
 class TestDXManageReadDXfile():
