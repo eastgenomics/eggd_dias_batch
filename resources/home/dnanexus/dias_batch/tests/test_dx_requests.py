@@ -80,6 +80,33 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
     Function either takes a path and assay string to search in DNAnexus
     and return the highest config file version for
     """
+    def setUp(self):
+        """
+        Setup our mocks
+        """
+        # set up patches for each sub function call in DXExecute.cnv_calling
+        self.loads_patch = mock.patch('utils.dx_requests.json.loads')
+        self.find_patch = mock.patch('utils.dx_requests.dxpy.find_data_objects')
+        self.file_patch = mock.patch('utils.dx_requests.dxpy.bindings.dxfile.DXFile')
+
+        # create our mocks to reference
+        self.mock_loads = self.loads_patch.start()
+        self.mock_find = self.find_patch.start()
+        self.mock_file = self.file_patch.start()
+
+
+    def tearDown(self):
+        self.loads_patch.stop()
+        self.mock_find.stop()
+        self.mock_file.stop()
+
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
     def test_error_raised_when_path_invalid(self):
         """
         AssertionError should be raised if path param is not valid
@@ -90,14 +117,13 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             DXManage().get_assay_config(path='invalid_path', assay='')
 
 
-    @patch('utils.dx_requests.dxpy.find_data_objects')
-    def test_error_raised_when_no_config_files_found(self, test_patch):
+    def test_error_raised_when_no_config_files_found(self):
         """
         AssertionError should be raised if no JSON files found, patch
         the return of the dxpy.find_data_objects() call to be empty and
         check we raise an error correctly
         """
-        test_patch.return_value = []
+        self.find_patch.return_value = []
 
         expected_error = (
             'No config files found in given path: project-xxx:/test_path'
@@ -106,15 +132,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             DXManage().get_assay_config(path='project-xxx:/test_path', assay='')
 
 
-    @patch('utils.dx_requests.json.loads')
-    @patch('utils.dx_requests.dxpy.bindings.dxfile.DXFile')
-    @patch('utils.dx_requests.dxpy.find_data_objects')
-    def test_error_raised_when_no_config_file_found_for_assay(
-            self,
-            mock_find,
-            mock_file,
-            mock_read
-        ):
+    def test_error_raised_when_no_config_file_found_for_assay(self):
         """
         AssertionError should be raised if we find some JSON files but
         after parsing through none of them match our given assay string
@@ -122,7 +140,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         """
         # set output of find to be minimal describe call output with
         # required keys for iterating over
-        mock_find.return_value = [
+        self.mock_find.return_value = [
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
@@ -134,10 +152,10 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         ]
 
         # patch the DXFile object that read() gets called on
-        mock_file.return_value = dxpy.bindings.dxfile.DXFile
+        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
 
         # patch the output from DXFile.read() to just be all the same dict
-        mock_read.return_value = {'assay': 'CEN', 'version': '1.0.0'}
+        self.mock_loads.return_value = {'assay': 'CEN', 'version': '1.0.0'}
 
         expected_error = (
             "No config file was found for test from project-xxx:/test_path"
@@ -150,15 +168,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             )
 
 
-    @patch('utils.dx_requests.json.loads')
-    @patch('utils.dx_requests.dxpy.bindings.dxfile.DXFile')
-    @patch('utils.dx_requests.dxpy.find_data_objects')
-    def test_highest_version_correctly_selected(
-            self,
-            mock_find,
-            mock_file,
-            mock_read
-        ):
+    def test_highest_version_correctly_selected(self):
         """
         Test that when multiple configs are found for an assay, the
         highest version is correctly returned. We're using
@@ -168,7 +178,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         # set output of find to be minimal describe call output with
         # required keys for iterating over, here we need a dict per
         # `mock_read` return values that we want to test with
-        mock_find.return_value = [
+        self.mock_find.return_value = [
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
@@ -180,11 +190,11 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         ] * 5
 
         # patch the DXFile object that read() gets called on
-        mock_file.return_value = dxpy.bindings.dxfile.DXFile
+        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
 
         # patch the output from DXFile.read() to simulate looping over
         # the return of reading multiple configs
-        mock_read.side_effect = [
+        self.mock_loads.side_effect = [
             {'assay': 'test', 'version': '1.0.0'},
             {'assay': 'test', 'version': '1.1.0'},
             {'assay': 'test', 'version': '1.0.10'},
@@ -199,6 +209,56 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
 
         assert config['version'] == '1.2.1', (
             "Incorrect config file version returned"            
+        )
+
+
+    def test_non_live_files_skipped(self):
+        """
+        Test when one or more configs are not in a live state that these
+        are skipped
+        """
+        # minimal dxpy.find_data_objects return of a live and archived config
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'config1.json',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'config2.json',
+                    'archivalState': 'archived'
+                }
+            }
+        ]
+
+        # patch the DXFile object that read() gets called on
+        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
+
+        # patch the output from DXFile.read() for our live config
+        self.mock_loads.side_effect = [
+            {'assay': 'test', 'version': '1.0.0'}
+        ]
+
+        DXManage().get_assay_config(
+            path='project-xxx:/test_path',
+            assay='test'
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        expected_warning = (
+            "Config file not in live state - will not be used: "
+            "config2.json (file-xxx)" 
+        )
+
+        assert expected_warning in stdout, (
+            "Warning not printed for archived file"
         )
 
 
@@ -535,6 +595,25 @@ class TestDXManageCheckArchivalState():
         )
 
 
+    def test_archived_files_kept_when_in_sample_list(self):
+        """
+        Test when we have some archived files and a provided list of samples,
+        and the archived files are for those selected samples
+        """
+        with pytest.raises(
+            RuntimeError,
+            match='Files required for analysis archived'
+        ):
+            # provide list of sample names to filter by, sample5 has
+            # archived file and unarchive=False => should raise error
+            DXManage().check_archival_state(
+                files=self.files_w_archive,
+                unarchive=False,
+                samples=['sample5']
+            )
+
+
+
     @patch('utils.dx_requests.DXManage.unarchive_files')
     def test_unarchive_files_called_when_specified(self, mock_unarchive):
         """
@@ -828,7 +907,6 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'
             }
         ]
-
 
 
     def tearDown(self):
