@@ -1193,9 +1193,9 @@ class DXExecute():
         def terminate_one(job) -> None:
             """dx call to terminate single job"""
             if job.startswith('job'):
-                dxpy.bindings.dxjob.DXJob(dxid=job).terminate()
+                dxpy.DXJob(dxid=job).terminate()
             else:
-                dxpy.bindings.dxanalysis.DXAnalysis(dxid=job).terminate()
+                dxpy.DXAnalysis(dxid=job).terminate()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
             concurrent_jobs = {

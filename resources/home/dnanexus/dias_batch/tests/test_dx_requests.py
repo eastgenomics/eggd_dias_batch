@@ -1175,3 +1175,85 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 wait=True,
                 unarchive=False
             )
+
+
+class TestDXExecuteTerminate(unittest.TestCase):
+    """
+    Unit tests for DXExecute.terminate
+
+    Function takes in a list of jobs / analysis IDs and calls relevant
+    dxpy call to terminate it, used when running testing to stop all
+    launched jobs
+    """
+    def setUp(self):
+        """Setup up mocks of terminate"""
+        self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
+        self.job_terminate_patch = mock.patch(
+            'utils.dx_requests.dxpy.bindings.DXJob.terminate')
+        self.analysis_patch = mock.patch(
+            'utils.dx_requests.dxpy.DXAnalysis'
+        )
+        self.analysis_terminate_patch = mock.patch(
+            'utils.dx_requests.dxpy.bindings.DXAnalysis.terminate')
+
+        self.mock_job = self.job_patch.start()
+        self.mock_job_terminate = self.job_terminate_patch.start()
+        self.mock_analysis = self.analysis_patch.start()
+        self.mock_analysis_terminate = self.analysis_terminate_patch.start()
+
+
+    def tearDown(self):
+        self.mock_job.stop()
+        self.mock_job_terminate.stop()
+        self.mock_analysis.stop()
+        self.mock_analysis_terminate.stop()
+
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_jobs_terminate(self):
+        """
+        Test when jobs provided they get terminate() called
+        """
+        # patch job object on which terminate() will get calleds
+        self.mock_job.return_value = dxpy.bindings.DXJob(dxid='localjob-')
+
+        DXExecute().terminate(['job-xxx', 'job-yyy'])
+
+        self.mock_job_terminate.assert_called()
+
+
+    def test_analysis_terminate(self):
+        """
+        Test when analysis IDs provided they get terminate() called
+        """
+        # patch job object on which terminate() will get called
+        self.mock_analysis.return_value = dxpy.bindings.DXAnalysis(
+            dxid='analysis-QaTZ9qEwkEsovKLs14DSdNqb')
+
+        DXExecute().terminate(['analysis-xxx', 'analysis-yyy'])
+
+        self.mock_analysis_terminate.assert_called()
+
+
+    def test_errors_caught(self):
+        """
+        Test if any errors are raised these are caught
+        """
+        # patch this wrong which will raise an error
+        self.mock_job.return_value = dxpy.bindings.DXJob(
+            dxid='job-QaTZ9qEwkEsovKLs14DSdNqb')
+
+        self.mock_job_terminate.side_effect = Exception('oh no :sadpepe:')
+
+        DXExecute().terminate(['job-xxx'])
+
+        stdout = self.capsys.readouterr().out
+
+        assert 'Error terminating job job-xxx: oh no :sadpepe:' in stdout, (
+            'Error in terminating job not correctly caught'
+        )
