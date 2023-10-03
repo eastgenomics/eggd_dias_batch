@@ -322,12 +322,13 @@ class DXManage():
 
         Files may be in the following states:
 
-        - live => nothing to do
-        - archival => archiving has been requested but not yet happened
+        - live -> nothing to do
+        - archival -> archiving has been requested but not yet happened
             and / or not all instances of the file have been archived =>
             can be unarchived
-        - archived => file fully archived, will take time to unarchive fully
-        - unarchiving => unarchiving has already been requested
+        - archived -> file fully archived, will take time to unarchive fully
+        - unarchiving -> already requested unarchiving but not yet
+            completed, skip trying to unarchive again 
 
         Parameters
         ---------
