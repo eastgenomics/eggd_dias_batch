@@ -234,6 +234,22 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
                     'name': 'config2.json',
                     'archivalState': 'archived'
                 }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'config3.json',
+                    'archivalState': 'archival'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'config4.json',
+                    'archivalState': 'unarchiving'
+                }
             }
         ]
 
@@ -466,10 +482,6 @@ class TestDXManageFindFiles():
         assert expected_warning in stdout, (
             'Expected warning for archived files not printed'
         )
-
-
-
-
 
 
 class TestDXManageReadDXfile():
@@ -932,7 +944,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         self.mock_job = self.job_patch.start()
         self.mock_wait = self.wait_patch.start()
 
-        # our test returns to use for the mocks
+        # Below we define some returns in expected format to use for the mocks
 
         # utils.make_path called twice, once to get path for searching for
         # BAM files then again for setting app output
