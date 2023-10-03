@@ -1315,7 +1315,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         we raise an error if this is missing
         """
         pass
-    
+
 
     def test_cnv_mode_correct_vcf_name_pattern_used(self):
         """
@@ -1323,7 +1323,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         config, check that the correct one is selected and used
         """
         pass
-    
+
 
     def test_cnv_mode_error_raised_when_missing_vcf_files(self):
         """
@@ -1340,7 +1340,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         pass
 
-    
+
     def test_cnv_mode_total_file_prints_correct(self):
         """
         There's a print with total files found, check these are correct
