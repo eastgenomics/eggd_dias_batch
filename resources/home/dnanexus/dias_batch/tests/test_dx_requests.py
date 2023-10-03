@@ -719,9 +719,9 @@ class TestDXManageCheckArchivalState():
         those in 'archiving' or 'unarchiving' states are removed from
         those to request unarchiving on, as this would raise an error.
 
-        If no files are left after removing these and error should be
-        raised as we are in a state of not being able to run jobs and
-        also not able to call unarchiving
+        If no files are left to unarchive after removing these an error
+        should be raised as we are in a state of not being able to run
+        jobs and also not able to call unarchiving
         """
         # minimal test file objects where one file is unarchiving and
         # another is archiving
