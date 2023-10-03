@@ -262,7 +262,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         )
 
 
-class TestDXManageGetFileProjectContext(unittest.TestCase):
+class TestDXManageGetFileProjectContext():
     """
     Tests for DXManage.get_file_project_context()
 
@@ -307,6 +307,55 @@ class TestDXManageGetFileProjectContext(unittest.TestCase):
 
         with pytest.raises(AssertionError, match=correct_error):
             DXManage().get_file_project_context(file='file-xxx')
+
+
+    @patch('utils.dx_requests.dxpy.DXFile.describe')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    @patch('utils.dx_requests.dxpy.find_data_objects')
+    def test_live_files(
+        self,
+        mock_find,
+        mock_file,
+        mock_describe,
+        capsys
+    ):
+        # patch the DXFile object to nothing as we won't use it,
+        # and the output of dx find to be a minimal set of describe calls
+        mock_describe.return_value = {}
+        mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-yyy',
+                'id': 'file-xxx',
+                'describe' : {
+                    'archivalState': 'live'
+                }
+            }
+        ]
+
+        returned = DXManage().get_file_project_context(file='file-xxx')
+
+        errors = []
+
+        # check we print what we expect
+        stdout = capsys.readouterr().out
+        expected_print = (
+            'Found file-xxx in 2 projects, using project-xxx as project context'
+        )
+
+        if not expected_print in stdout:
+            errors.append('Did not print expected file project context')
+
+        if not returned == mock_find.return_value[0]:
+            errors.append('Incorrect file context returned')
+
+        assert not errors, errors
 
 
 class TestDXManageFindFiles(unittest.TestCase):
