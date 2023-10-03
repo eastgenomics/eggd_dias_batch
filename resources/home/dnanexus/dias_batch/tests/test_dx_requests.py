@@ -1177,6 +1177,50 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             )
 
 
+class TestDXExecuteArtemis():
+    """
+    Test for DXExecute.artemis
+
+    This is a reasonably pointless test since we're going to patch all
+    the function calls it makes, which is all this function does, but also
+    I want the sweet dopamine hit of it going green in the test report so
+    here it is ¯\_(ツ)_/¯
+    """
+
+    @patch('utils.dx_requests.make_path')
+    @patch('utils.dx_requests.dxpy.DXApp.describe')
+    @patch('utils.dx_requests.dxpy.DXApp')
+    def test_called(
+        self,
+        mock_app,
+        mock_describe,
+        mock_path
+    ):
+        """
+        Test when we run artemis that we get back the job ID which is stored
+        as '_dxid' attribute of the DXJob dx object
+        """
+        # patch in a DXJob object to the return of calling DXApp.run()
+        job_obj = dxpy.DXJob('job-QaTZ9qEwkEsovKLs14DSdNqb')
+        job_obj._dxid = 'job-QaTZ9qEwkEsovKLs14DSdNqb'
+        mock_app.return_value.run.return_value = job_obj
+
+        job = DXExecute().artemis(
+            single_output_dir='/output_path/',
+            app_id='app-xxx',
+            dependent_jobs=[],
+            start='230922_1012',
+            qc_xlsx='file-xxx',
+            capture_bed='file-xxx',
+            snv_output=None,
+            cnv_output=None
+        )
+
+        assert job == 'job-QaTZ9qEwkEsovKLs14DSdNqb', (
+            'Job ID returned from running Artemis incorrect'
+        )
+
+
 class TestDXExecuteTerminate(unittest.TestCase):
     """
     Unit tests for DXExecute.terminate

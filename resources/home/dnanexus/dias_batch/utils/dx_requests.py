@@ -1160,7 +1160,7 @@ class DXExecute():
         str
             job ID of launched job
         """
-        details = dxpy.bindings.dxapp.DXApp(app_id).describe()
+        details = dxpy.DXApp(app_id).describe()
         path = make_path(single_output_dir, details['name'], start)
 
         app_input = {
@@ -1170,7 +1170,7 @@ class DXExecute():
             "bed_file": capture_bed
         }
 
-        job = dxpy.bindings.dxapp.DXApp(dxid=app_id).run(
+        job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
             project=os.environ.get('DX_PROJECT_CONTEXT_ID'),
             folder=path,
