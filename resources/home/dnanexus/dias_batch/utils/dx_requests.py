@@ -512,7 +512,8 @@ class DXExecute():
     """
     Methods for handling exeuction of apps / worklfows
     """
-    def cnv_calling(self,
+    def cnv_calling(
+            self,
             config,
             single_output_dir,
             exclude,

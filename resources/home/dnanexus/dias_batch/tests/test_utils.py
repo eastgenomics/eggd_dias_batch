@@ -135,7 +135,7 @@ class TestWriteSummaryReport():
     # minimal dx describe objects of app and job that would be passed
     # into the function from where it is called in dias_batch.main
     job_details = {
-        'id': 'job-GZFXvYj4VjyggGq9xXKb6qp8', 
+        'id': 'job-GZFXvYj4VjyggGq9xXKb6qp8',
         'name': 'eggd_dias_batch',
         'executable': 'app-GZ4v1Q849BP045XxfBF4VzJk',
         'executableName': 'eggd_dias_batch',
@@ -246,7 +246,7 @@ class TestWriteSummaryReport():
         start = self.summary_contents.index('Job inputs:')
         end = self.summary_contents.index('Total number of samples in manifest: 4')
 
-        written_inputs = self.summary_contents[start + 1 : end]
+        written_inputs = self.summary_contents[start + 1: end]
         written_inputs = sorted([
             x.replace('\t', '') for x in written_inputs if x
         ])
@@ -267,7 +267,7 @@ class TestWriteSummaryReport():
             if x.startswith('Total number of samples in manifest')
         ]
 
-        assert int(samples[0][-1])==4, (
+        assert int(samples[0][-1]) == 4, (
             'Total no. samples wrongly parsed from manifest'
         )
 
@@ -295,7 +295,7 @@ class TestWriteSummaryReport():
         """
         Test that if errors were generated during launching of each modes
         jobs that these are written into the file
-        """        
+        """
         # get errors for SNV and CNV written to report
         snv_errors_idx = self.summary_contents.index(
             'Errors in launching SNV reports:'

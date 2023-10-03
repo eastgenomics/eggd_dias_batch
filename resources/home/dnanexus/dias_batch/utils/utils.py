@@ -459,7 +459,7 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
                     # when we validate all test codes against genepanels
                     # in utils.check_manifest_valid_test_codes()
                     code = test_code
-                
+
                 data[sample[0]]['tests'][0].append(code)
 
         manifest_source = 'Gemini'
@@ -900,4 +900,3 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     PPRINT(manifest_with_panels)
 
     return manifest_with_panels
-

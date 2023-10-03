@@ -222,7 +222,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
+                'describe': {
                     'name': 'config1.json',
                     'archivalState': 'live'
                 }
@@ -230,7 +230,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
+                'describe': {
                     'name': 'config2.json',
                     'archivalState': 'archived'
                 }
@@ -254,7 +254,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
 
         expected_warning = (
             "Config file not in live state - will not be used: "
-            "config2.json (file-xxx)" 
+            "config2.json (file-xxx)"
         )
 
         assert expected_warning in stdout, (
@@ -326,14 +326,14 @@ class TestDXManageGetFileProjectContext():
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
+                'describe': {
                     'archivalState': 'live'
                 }
             },
             {
                 'project': 'project-yyy',
                 'id': 'file-xxx',
-                'describe' : {
+                'describe': {
                     'archivalState': 'live'
                 }
             }
@@ -349,7 +349,7 @@ class TestDXManageGetFileProjectContext():
             'Found file-xxx in 2 projects, using project-xxx as project context'
         )
 
-        if not expected_print in stdout:
+        if expected_print not in stdout:
             errors.append('Did not print expected file project context')
 
         if not returned == mock_find.return_value[0]:
@@ -444,7 +444,7 @@ class TestDXManageFindFiles():
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
+                'describe': {
                     'name': 'file1',
                     'archivalState': 'archived',
                     'folder': '/path_to_files/subdir1/app1'
@@ -981,7 +981,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 'describe': {
                     'name': 'sample3.bam.bai'
                 }
-            }            
+            }
         ]
 
         # first dxpy.describe call is on app ID, second is on job ID
@@ -1125,4 +1125,3 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 wait=True,
                 unarchive=False
             )
-
