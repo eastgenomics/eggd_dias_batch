@@ -362,6 +362,21 @@ class DXManage():
             print("No required files in archived state")
             return
 
+        # check for files currently unarchiving or being archived
+        # (i.e. in 'unarchiving' or 'archival' states) since an error
+        # will be raised if we try unarchive these in this state
+        unarchiving = []
+        archiving = []
+        to_unarchive = []
+
+        for file in not_live:
+            if file['describe']['archivalState'] == 'unarchiving':
+                unarchiving.append(file)
+            elif file['describe']['archivalState'] == 'archiving':
+                archiving.append(file)
+            else:
+                to_unarchive.append(file)
+
         not_live_ids = ' '.join([x['id'] for x in not_live])
         not_live_printable = '\n\t'.join([
             f"{x['describe']['name']} ({x['id']}) - {x['describe']['archivalState']}"
@@ -369,15 +384,32 @@ class DXManage():
         ])
 
         print(
-            f"WARNING: {len(not_live)} sample files to use for analysis are "
-            f"not in a live state:\n\t{not_live_printable}"
+            f"\n \nWARNING: {len(not_live)} sample files to use for analysis "
+            f"are not in a live state:\n\t{not_live_printable}\n \n"
         )
 
+        print(f"{len(unarchiving)} files are currently in state 'unarchiving'")
+        print(f"{len(archiving)} files are currently in state 'archiving'")
+        print(f"{len(to_unarchive)} files are in state 'archived'")
+
         if unarchive:
+            if not to_unarchive:
+                # we have specified to unarchive, but all non-live files
+                # are not in a state that can be unarchived (i.e. unarchiving
+                # already requested) => raise error
+                print(
+                    "ERROR: -unarchive=true but all non-live files found "
+                    "are not in an archived/archival state, and therefore "
+                    "unarchiving can not be performed"
+                )
+                raise RuntimeError(
+                    'non-live files not in a state that can be unarchived'
+                )
+
             print(
                 "-iunarchive specified, will start unarchiving..."
             )
-            self.unarchive_files(not_live)
+            self.unarchive_files(to_unarchive)
         else:
             # not unarchiving => print a handy message and rage quit
             print(
@@ -409,7 +441,10 @@ class DXManage():
 
             for attempt in range(1, 6):
                 try:
-                    dxpy.DXFile(dxid=dx_file['id']).unarchive()
+                    dxpy.DXFile(
+                        project=dx_file['project'],
+                        dxid=dx_file['id']
+                    ).unarchive()
                     unarchived = True
                     break
                 except Exception as error:
