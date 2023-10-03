@@ -5,7 +5,6 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 import json
-import os
 from pprint import PrettyPrinter
 import re
 from time import strftime, localtime

@@ -6,7 +6,6 @@ from copy import deepcopy
 import concurrent.futures
 import json
 import os
-from packaging.version import Version
 import re
 import sys
 from time import sleep
@@ -14,10 +13,15 @@ from timeit import default_timer as timer
 from typing import Tuple
 
 import dxpy
+from packaging.version import Version
 import pandas as pd
 
-from .utils import filter_manifest_samples_by_files, make_path, \
-    prettier_print, time_stamp, check_report_index
+from .utils import (
+    check_report_index,
+    filter_manifest_samples_by_files,
+    make_path,
+    prettier_print
+)
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
