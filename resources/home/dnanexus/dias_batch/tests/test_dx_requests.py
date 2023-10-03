@@ -855,7 +855,7 @@ class TestDXManageUnarchiveFiles():
             RuntimeError,
             match=r'\[Attempt 5/5\] Error in unarchiving file: file-xxx'
         ):
-           DXManage().unarchive_files(self.files)
+            DXManage().unarchive_files(self.files)
 
 
 class TestDXManageFormatOutputFolders(unittest.TestCase):
@@ -1175,6 +1175,177 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 wait=True,
                 unarchive=False
             )
+
+
+class TestDXExecuteReportsWorkflow(unittest.TestCase):
+    """
+    Unit tests for DXExecute.reports_workflow
+
+    This is the chonky function that handles setting up and launching all
+    reports workflows, it can be run in 3 different modes (CNV, SNV or
+    mosaic), and for each different functions and parameters are set.
+
+    There are a lot of calls to own functions inside here (such as
+    finding files and checking archival state), so there is going to
+    be a lot of mocking and patching returns etc. to test all the
+    conditional behaviour.
+    """
+    def setUp(self):
+        self.find_patch = mock.patch('utils.dx_requests.DXManage.find_files')
+        self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
+        self.filter_manifest_patch = mock.patch(
+            'utils.dx_requests.filter_manifest_samples_by_files'
+        )
+        self.archival_patch = mock.patch(
+            'utils.dx_requests.DXManage.check_archival_state'
+        )
+        self.output_folders = mock.patch(
+            'utils.dx_requests.DXManage.format_output_folders'
+        )
+        self.path_patch = mock.patch('utils.dx_requests.make_path')
+        self.index_patch = mock.patch('utils.dx_requests.check_report_index')
+        self.workflow_patch = mock.patch('utils.dx_requests.dxpy.DXWorkflow')
+        self.timer_patch = mock.patch('utils.dx_requests.timer')
+
+
+        self.mock_find = self.find_patch.start()
+        self.mock_job = self.job_patch.start()
+        self.mock_filter_manifest = self.filter_manifest_patch.start()
+        self.mock_archival = self.archival_patch.start()
+        self.mock_output_folders = self.output_folders.start()
+        self.mock_path = self.path_patch.start()
+        self.mock_index = self.index_patch.start()
+        self.mock_workflow = self.workflow_patch.start()
+        self.mock_timer = self.timer_patch.start()
+
+
+    def tearDown(self):
+        self.mock_find.stop()
+        self.mock_job.stop()
+        self.mock_filter_manifest.stop()
+        self.mock_archival.stop()
+        self.mock_output_folders.stop()
+        self.mock_path.stop()
+        self.mock_index.stop()
+        self.mock_workflow.stop()
+        self.mock_timer.stop()
+
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_error_raised_if_name_pattern_missing_from_config(self):
+        """
+        Test when 'name_patterns' parsed from assay config file doesn't
+        contain a match to the manifest source, an error is raised.
+
+        Manifest source is used to select from the name_patterns dict, and
+        expects to have Epic or Gemini as keys to use
+        """
+        with pytest.raises(
+            AssertionError,
+            match=f'No name pattern found for Gemini parsed from assay config file'
+        ):
+            DXExecute().reports_workflow(
+                mode='CNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest={},
+                manifest_source='Gemini',
+                config={},
+                start='230925_0943',
+                name_patterns={},
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
+
+
+    def test_xlsx_reports_found(self):
+        """
+        Test if xlsx reports returned from DXManage.find_files that these
+        are formatted correctly for use.
+
+        n.b. here we're setting the mode to something invalid to stop the
+        function going further and letting it raise a RuntimeError so we
+        don't have to patch lots more for this test (mainly for laziness)
+        """
+        # minimal set of xlsx reports found
+        self.mock_find.return_value = [
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1.xlsx'
+                }
+            },
+            {
+                'id': 'file-yyy',
+                'describe': {
+                    'name': 'sample2.xlsx'
+                }
+            }
+        ]
+
+        with pytest.raises(
+            RuntimeError,
+            match='Invalid mode set for running reports: test'
+        ):
+            DXExecute().reports_workflow(
+                mode='test',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest={},
+                manifest_source='Epic',
+                config={},
+                start='230925_0943',
+                name_patterns={'Epic': '[\d\w]+-[\d\w]+'},
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
+
+        stdout = self.capsys.readouterr().out
+        reports = 'xlsx reports found:\n\tsample1.xlsx\n\tsample2.xlsx'
+
+        assert reports in stdout, ('Expected xlsx reports not found')
+
+
+    def test_cnv_mode_error_raised_when_missing_intervals_bed(self):
+        """
+        Intervals bed should always be found from CNV calling, check
+        we raise an error if this is missing
+        """
+        pass
+    
+
+    def test_cnv_mode_correct_vcf_name_pattern_used(self):
+        """
+        When searching for VCF files a pattern is used from the assay
+        config, check that the correct one is selected and used
+        """
+        pass
+    
+
+    def test_cnv_mode_error_raised_when_missing_vcf_files(self):
+        """
+        Test an error is raised if no VCFs are found
+        """
+        pass
+
+
+    def test_cnv_mode_exclude_samples_correct(self):
+        """
+        Test that if exclude_samples is specified, that those samples
+        are correctly excluded from the manifest (these will have been
+        samples excluded from CNV calling)
+        """
+        pass
+
+    
+    def test_cnv_mode_total_file_prints_correct(self):
+        """
+        There's a print with total files found, check these are correct
+        """
+        pass
 
 
 class TestDXExecuteArtemis():

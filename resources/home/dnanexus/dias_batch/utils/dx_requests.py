@@ -773,7 +773,7 @@ class DXExecute():
             x['describe']['name'] for x in xlsx_reports
         ]
         if xlsx_reports:
-            reports = '\nt\t'.join(sorted(xlsx_reports))
+            reports = '\n\t'.join(sorted(xlsx_reports))
             print(f"xlsx reports found:\n\t{reports}")
 
         if manifest_source == 'Epic':
