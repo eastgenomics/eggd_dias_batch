@@ -318,7 +318,17 @@ class DXManage():
     def check_archival_state(self, files, unarchive, samples=None) -> None:
         """
         Check archival state of n files, to be used before attempting
-        to launch jobs to ensure nothing fails due to archived files
+        to launch jobs to ensure nothing fails due to archived files.
+
+        Files may be in the following states:
+
+        - live -> nothing to do
+        - archival -> archiving has been requested but not yet happened
+            and / or not all instances of the file have been archived =>
+            can be unarchived
+        - archived -> file fully archived, will take time to unarchive fully
+        - unarchiving -> already requested unarchiving but not yet
+            completed, skip trying to unarchive again 
 
         Parameters
         ---------
@@ -362,6 +372,17 @@ class DXManage():
             print("No required files in archived state")
             return
 
+        # check for files currently unarchiving (i.e. in 'unarchiving') since
+        # an error will be raised if we try unarchive these in this state
+        unarchiving = []
+        to_unarchive = []
+
+        for file in not_live:
+            if file['describe']['archivalState'] == 'unarchiving':
+                unarchiving.append(file)
+            else:
+                to_unarchive.append(file)
+
         not_live_ids = ' '.join([x['id'] for x in not_live])
         not_live_printable = '\n\t'.join([
             f"{x['describe']['name']} ({x['id']}) - {x['describe']['archivalState']}"
@@ -369,15 +390,31 @@ class DXManage():
         ])
 
         print(
-            f"WARNING: {len(not_live)} sample files to use for analysis are "
-            f"not in a live state:\n\t{not_live_printable}"
+            f"\n \nWARNING: {len(not_live)} sample files to use for analysis "
+            f"are not in a live state:\n\t{not_live_printable}\n \n"
         )
 
+        print(f"{len(unarchiving)} files are currently in state 'unarchiving'")
+        print(f"{len(to_unarchive)} files are in state 'archived'")
+
         if unarchive:
+            if not to_unarchive:
+                # we have specified to unarchive, but all non-live files
+                # are not in a state that can be unarchived (i.e. unarchiving
+                # already requested) => raise error
+                print(
+                    "ERROR: -unarchive=true but all non-live files found "
+                    "are not in an archived/archival state, and therefore "
+                    "unarchiving can not be performed"
+                )
+                raise RuntimeError(
+                    'non-live files not in a state that can be unarchived'
+                )
+
             print(
                 "-iunarchive specified, will start unarchiving..."
             )
-            self.unarchive_files(not_live)
+            self.unarchive_files(to_unarchive)
         else:
             # not unarchiving => print a handy message and rage quit
             print(
@@ -409,7 +446,10 @@ class DXManage():
 
             for attempt in range(1, 6):
                 try:
-                    dxpy.DXFile(dxid=dx_file['id']).unarchive()
+                    dxpy.DXFile(
+                        project=dx_file['project'],
+                        dxid=dx_file['id']
+                    ).unarchive()
                     unarchived = True
                     break
                 except Exception as error:
@@ -754,7 +794,7 @@ class DXExecute():
         # set up required files for each running mode
         if mode == 'CNV':
             # get required files
-            job_details = dxpy.bindings.dxjob.DXJob(dxid=call_job_id).describe()
+            job_details = dxpy.DXJob(dxid=call_job_id).describe()
 
             vcf_input_field = 'stage-cnv_vep.vcf'
 
@@ -1047,7 +1087,7 @@ class DXExecute():
 
 
                 # now we can finally run the reports workflow
-                job_handle = dxpy.bindings.dxworkflow.DXWorkflow(
+                job_handle = dxpy.DXWorkflow(
                     dxid=workflow_id
                 ).run(
                     workflow_input=input,
@@ -1119,7 +1159,7 @@ class DXExecute():
         str
             job ID of launched job
         """
-        details = dxpy.bindings.dxapp.DXApp(app_id).describe()
+        details = dxpy.DXApp(app_id).describe()
         path = make_path(single_output_dir, details['name'], start)
 
         app_input = {
@@ -1129,7 +1169,7 @@ class DXExecute():
             "bed_file": capture_bed
         }
 
-        job = dxpy.bindings.dxapp.DXApp(dxid=app_id).run(
+        job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
             project=os.environ.get('DX_PROJECT_CONTEXT_ID'),
             folder=path,
@@ -1153,9 +1193,9 @@ class DXExecute():
         def terminate_one(job) -> None:
             """dx call to terminate single job"""
             if job.startswith('job'):
-                dxpy.bindings.dxjob.DXJob(dxid=job).terminate()
+                dxpy.DXJob(dxid=job).terminate()
             else:
-                dxpy.bindings.dxanalysis.DXAnalysis(dxid=job).terminate()
+                dxpy.DXAnalysis(dxid=job).terminate()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
             concurrent_jobs = {

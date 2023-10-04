@@ -713,6 +713,44 @@ class TestDXManageCheckArchivalState():
             )
 
 
+    def test_error_raised_when_non_live_files_can_not_be_unarchived(self):
+        """
+        When non-live files are found their archivalState is checked and
+        those in 'unarchiving' state are removed from those to request
+        unarchiving on, as this would raise an error.
+
+        If no files are left to unarchive after removing these an error
+        should be raised as we are in a state of not being able to run
+        jobs and also not able to call unarchiving
+        """
+        # minimal test file objects where one file is unarchiving and
+        # another is archiving
+        files = [
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1-file1',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample2-file1',
+                    'archivalState': 'unarchiving'
+                }
+            }
+        ]
+
+        with pytest.raises(
+            RuntimeError,
+            match='non-live files not in a state that can be unarchived'
+        ):
+            DXManage().check_archival_state(
+                files=files,
+                unarchive=True
+            )
+
 
     @patch('utils.dx_requests.DXManage.unarchive_files')
     def test_unarchive_files_called_when_specified(self, mock_unarchive):
@@ -1137,3 +1175,129 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 wait=True,
                 unarchive=False
             )
+
+
+class TestDXExecuteArtemis():
+    """
+    Test for DXExecute.artemis
+
+    This is a reasonably pointless test since we're going to patch all
+    the function calls it makes, which is all this function does, but also
+    I want the sweet dopamine hit of it going green in the test report so
+    here it is ¯\_(ツ)_/¯
+    """
+
+    @patch('utils.dx_requests.make_path')
+    @patch('utils.dx_requests.dxpy.DXApp.describe')
+    @patch('utils.dx_requests.dxpy.DXApp')
+    def test_called(
+        self,
+        mock_app,
+        mock_describe,
+        mock_path
+    ):
+        """
+        Test when we run artemis that we get back the job ID which is stored
+        as '_dxid' attribute of the DXJob dx object
+        """
+        # patch in a DXJob object to the return of calling DXApp.run()
+        job_obj = dxpy.DXJob('job-QaTZ9qEwkEsovKLs14DSdNqb')
+        job_obj._dxid = 'job-QaTZ9qEwkEsovKLs14DSdNqb'
+        mock_app.return_value.run.return_value = job_obj
+
+        job = DXExecute().artemis(
+            single_output_dir='/output_path/',
+            app_id='app-xxx',
+            dependent_jobs=[],
+            start='230922_1012',
+            qc_xlsx='file-xxx',
+            capture_bed='file-xxx',
+            snv_output=None,
+            cnv_output=None
+        )
+
+        assert job == 'job-QaTZ9qEwkEsovKLs14DSdNqb', (
+            'Job ID returned from running Artemis incorrect'
+        )
+
+
+class TestDXExecuteTerminate(unittest.TestCase):
+    """
+    Unit tests for DXExecute.terminate
+
+    Function takes in a list of jobs / analysis IDs and calls relevant
+    dxpy call to terminate it, used when running testing to stop all
+    launched jobs
+    """
+    def setUp(self):
+        """Setup up mocks of terminate"""
+        self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
+        self.job_terminate_patch = mock.patch(
+            'utils.dx_requests.dxpy.bindings.DXJob.terminate')
+        self.analysis_patch = mock.patch(
+            'utils.dx_requests.dxpy.DXAnalysis'
+        )
+        self.analysis_terminate_patch = mock.patch(
+            'utils.dx_requests.dxpy.bindings.DXAnalysis.terminate')
+
+        self.mock_job = self.job_patch.start()
+        self.mock_job_terminate = self.job_terminate_patch.start()
+        self.mock_analysis = self.analysis_patch.start()
+        self.mock_analysis_terminate = self.analysis_terminate_patch.start()
+
+
+    def tearDown(self):
+        self.mock_job.stop()
+        self.mock_job_terminate.stop()
+        self.mock_analysis.stop()
+        self.mock_analysis_terminate.stop()
+
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_jobs_terminate(self):
+        """
+        Test when jobs provided they get terminate() called
+        """
+        # patch job object on which terminate() will get calleds
+        self.mock_job.return_value = dxpy.bindings.DXJob(dxid='localjob-')
+
+        DXExecute().terminate(['job-xxx', 'job-yyy'])
+
+        self.mock_job_terminate.assert_called()
+
+
+    def test_analysis_terminate(self):
+        """
+        Test when analysis IDs provided they get terminate() called
+        """
+        # patch job object on which terminate() will get called
+        self.mock_analysis.return_value = dxpy.bindings.DXAnalysis(
+            dxid='analysis-QaTZ9qEwkEsovKLs14DSdNqb')
+
+        DXExecute().terminate(['analysis-xxx', 'analysis-yyy'])
+
+        self.mock_analysis_terminate.assert_called()
+
+
+    def test_errors_caught(self):
+        """
+        Test if any errors are raised these are caught
+        """
+        # patch this wrong which will raise an error
+        self.mock_job.return_value = dxpy.bindings.DXJob(
+            dxid='job-QaTZ9qEwkEsovKLs14DSdNqb')
+
+        self.mock_job_terminate.side_effect = Exception('oh no :sadpepe:')
+
+        DXExecute().terminate(['job-xxx'])
+
+        stdout = self.capsys.readouterr().out
+
+        assert 'Error terminating job job-xxx: oh no :sadpepe:' in stdout, (
+            'Error in terminating job not correctly caught'
+        )
