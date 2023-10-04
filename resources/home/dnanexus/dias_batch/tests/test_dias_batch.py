@@ -156,3 +156,14 @@ class TestCheckInputs():
         assert check.errors == correct_error, (
             "Error not raised for CNV reports missing CNV call / job ID"
         )
+
+
+class TestMain():
+    """
+    Tests for dias_batch.main
+    
+    This is the main entry point into the app, tests are just to show that
+    functions are called when expected as there is little other logic in here
+    """
+
+
