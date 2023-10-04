@@ -996,8 +996,6 @@ class DXExecute():
         # initialise per sample summary dict from samples in manifest
         sample_summary = {mode: {k: [] for k in manifest.keys()}}
 
-        print(manifest)
-
         # launch reports workflow, once per sample -> set of test codes
         for sample, sample_config in manifest.items():
 
