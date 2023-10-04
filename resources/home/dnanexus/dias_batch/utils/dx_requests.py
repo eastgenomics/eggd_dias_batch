@@ -707,7 +707,7 @@ class DXExecute():
             parent=None,
             unarchive=None,
             exclude=None
-        ) -> Tuple[list, dict]:
+        ) -> Tuple[list, dict, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
         CNV,SNV or mosaic reports
@@ -881,6 +881,14 @@ class DXExecute():
                 pattern=vcf_name
             )
 
+            if not vcf_files:
+                error = (
+                    f"Found no vcf files! {mode} reports in {single_output_dir} "
+                    f"and subdir {vcf_dir} with pattern {vcf_name}" 
+                )
+
+                raise RuntimeError(error)
+
             print(
                 "VCFs found:\n\t", '\n\t'.join(
                     sorted([x['describe']['name'] for x in vcf_files])
@@ -894,25 +902,14 @@ class DXExecute():
                 pattern=mosdepth_name
             )
 
-            if not vcf_files:
-                errors = {
-                    "Found no vcf files!": (
-                        f"{mode} reports in {single_output_dir} and "
-                        f"subdir {vcf_dir} with pattern {vcf_name}"
-                    )
-                }
-
-                return [], errors, None
-
             if not mosdepth_files:
-                errors = {
-                    "Found no mosdepth files!": (
-                        f"{mode} reports in {single_output_dir} and subdir "
-                        f"{mosdepth_dir} with pattern {mosdepth_name}"
-                    )
-                }
+                error = (
+                    f"Found no mosdepth files! {mode} reports in "
+                    f"{single_output_dir} and subdir {mosdepth_dir} with "
+                    f"pattern {mosdepth_name}"
+                )
 
-                return [], errors, None
+                raise RuntimeError(error)
 
             manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
                 manifest=manifest,
@@ -985,9 +982,9 @@ class DXExecute():
 
         if not manifest:
             # empty manifest after filtering against files etc
-            # TODO : decide if we want to break on this
-            print(f"No samples left after filtering to run {mode} reports for")
-            return [], errors, {}
+            error = f"No samples left after filtering to run {mode} reports for"
+
+            raise RuntimeError(error)
 
         print(f"\n \nLaunching {mode} reports per sample...")
         start = timer()
@@ -998,6 +995,8 @@ class DXExecute():
 
         # initialise per sample summary dict from samples in manifest
         sample_summary = {mode: {k: [] for k in manifest.keys()}}
+
+        print(manifest)
 
         # launch reports workflow, once per sample -> set of test codes
         for sample, sample_config in manifest.items():
