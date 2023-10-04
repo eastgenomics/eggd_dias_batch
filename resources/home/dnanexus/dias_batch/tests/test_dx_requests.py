@@ -1247,6 +1247,10 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
 
 
     def setUp(self):
+        """
+        Set up all of the functions to mock and some of their patched in
+        return values that can be applied to multiple tests
+        """
         self.find_patch = mock.patch('utils.dx_requests.DXManage.find_files')
         self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
         self.filter_manifest_patch = mock.patch(
@@ -1275,9 +1279,10 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_describe = self.describe_patch.start()
         self.mock_timer = self.timer_patch.start()
 
-        # Generalised expected returns for each of the function calls,
-        # these will be patched over individually to adjust for expected
-        # environment of each test
+
+        # Below are some generalised expected returns for each of the
+        # function calls, these will be patched over individually to
+        # adjust for expected environment of each test
 
         # mock of filtering manifest where no invalid samples found
         self.mock_filter_manifest.return_value = [
