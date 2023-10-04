@@ -982,7 +982,7 @@ class DXExecute():
 
         if not manifest:
             # empty manifest after filtering against files etc
-            error = f"No samples left after filtering to run {mode} reports for"
+            error = f"No samples left after filtering to run {mode} reports on"
 
             raise RuntimeError(error)
 
