@@ -1190,6 +1190,11 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
     be a lot of mocking and patching returns etc. to test all the
     conditional behaviour.
     """
+    # example assay config
+    assay_config = {
+        
+    }
+
     def setUp(self):
         self.find_patch = mock.patch('utils.dx_requests.DXManage.find_files')
         self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
@@ -1314,7 +1319,21 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         Intervals bed should always be found from CNV calling, check
         we raise an error if this is missing
         """
-        pass
+        with pytest.raises(
+            RuntimeError,
+            match=f'Failed to find excluded intervals bed file from job-QaTZ9qEwkEsovKLs14DSdNqb'
+        ):
+            DXExecute().reports_workflow(
+                mode='CNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest={},
+                manifest_source='Gemini',
+                config={},
+                start='230925_0943',
+                name_patterns={'Gemini': 'X[\d]+'},
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
 
 
     def test_cnv_mode_correct_vcf_name_pattern_used(self):
@@ -1346,6 +1365,17 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         There's a print with total files found, check these are correct
         """
         pass
+
+
+    def test_snv_mode_correct_vcf_name_pattern_used(self):
+        """
+        When searching for VCF files a pattern is used from the assay
+        config, check that the correct one is selected and used
+        """
+        pass
+
+    
+
 
 
 class TestDXExecuteArtemis():
