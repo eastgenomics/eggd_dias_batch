@@ -10,6 +10,7 @@ Functions not covered by unit tests:
 """
 from copy import deepcopy
 import os
+import re
 import sys
 import unittest
 from unittest import mock
@@ -24,12 +25,9 @@ sys.path.append(os.path.abspath(
     os.path.join(os.path.realpath(__file__), '../../')
 ))
 
+from utils import utils
 from utils.dx_requests import DXExecute, DXManage
 
-
-TEST_DATA_DIR = (
-    os.path.join(os.path.dirname(__file__), 'test_data')
-)
 
 class TestDXManageReadAssayConfigFile():
     """
@@ -855,7 +853,7 @@ class TestDXManageUnarchiveFiles():
             RuntimeError,
             match=r'\[Attempt 5/5\] Error in unarchiving file: file-xxx'
         ):
-           DXManage().unarchive_files(self.files)
+            DXManage().unarchive_files(self.files)
 
 
 class TestDXManageFormatOutputFolders(unittest.TestCase):
@@ -1175,6 +1173,722 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 wait=True,
                 unarchive=False
             )
+
+
+class TestDXExecuteReportsWorkflow(unittest.TestCase):
+    """
+    Unit tests for DXExecute.reports_workflow
+
+    This is the chonky function that handles setting up and launching all
+    reports workflows, it can be run in 3 different modes (CNV, SNV or
+    mosaic), and for each different functions and parameters are set.
+
+    There are a lot of calls to own functions inside here (such as
+    finding files and checking archival state), so there is going to
+    be a lot of mocking and patching returns etc. to test all the
+    conditional behaviour.
+    """
+    # example minimal assay config with required keys for testing
+    assay_config = {
+        "assay": "CEN",
+        "version": "2.2.0",
+        "cnv_call_app_id": "app-GJZVB2840KK0kxX998QjgXF0",
+        "snv_report_workflow_id": "workflow-GXzkfYj4QPQp9z4Jz4BF09y6",
+        "cnv_report_workflow_id": "workflow-GXzvJq84XZB1fJk9fBfG88XJ",
+        "name_patterns": {
+            "Epic": "^[\\d\\w]+-[\\d\\w]+",
+            "Gemini": "^X[\\d]+"
+        },
+        "modes": {
+            "cnv_reports": {
+                "inputs": {
+                    "stage-cnv_vep.vcf": {
+                        "folder": "CNV_vcfs",
+                        "name": "_segments.vcf$"
+                    }
+                }
+            },
+            "snv_reports": {
+                "inputs": {
+                    "stage-rpt_vep.vcf": {
+                        "folder": "sentieon-dnaseq",
+                        "name": ".vcf"
+                    },
+                    "stage-rpt_athena.mosdepth_files": {
+                        "folder": "eggd_mosdepth",
+                        "name": "per-base.bed.gz$|reference.txt$"
+                    }
+                }
+            }
+        }
+    }
+
+    # minimal manifest with parsed in indications and panels
+    manifest = {
+        "X1234": {
+            "tests": [["R207.1"]],
+            "panels": [
+                ["Inherited ovarian cancer (without breast cancer)_4.0"]
+            ],
+            "indications": [[
+                "R207.1_Inherited ovarian cancer (without breast cancer)_P"
+            ]]
+        },
+        "X5678": {
+            "tests": [["R134.1"]],
+            "panels": [
+                ["Familial hypercholesterolaemia (GMS)_2.0"]
+            ],
+            "indications": [
+                ["R134.1_Familial hypercholesterolaemia_P"]
+            ]
+        },
+    }
+
+
+    def setUp(self):
+        """
+        Set up all of the functions to mock and some of their patched in
+        return values that can be applied to multiple tests
+        """
+        self.find_patch = mock.patch('utils.dx_requests.DXManage.find_files')
+        self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
+        self.filter_manifest_patch = mock.patch(
+            'utils.dx_requests.filter_manifest_samples_by_files'
+        )
+        self.archival_patch = mock.patch(
+            'utils.dx_requests.DXManage.check_archival_state'
+        )
+        self.output_folders = mock.patch(
+            'utils.dx_requests.DXManage.format_output_folders'
+        )
+        self.path_patch = mock.patch('utils.dx_requests.make_path')
+        self.index_patch = mock.patch('utils.dx_requests.check_report_index')
+        self.workflow_patch = mock.patch('utils.dx_requests.dxpy.DXWorkflow')
+        self.describe_patch = mock.patch('utils.dx_requests.dxpy.describe')
+        self.timer_patch = mock.patch('utils.dx_requests.timer')
+
+        self.mock_find = self.find_patch.start()
+        self.mock_job = self.job_patch.start()
+        self.mock_filter_manifest = self.filter_manifest_patch.start()
+        self.mock_archival = self.archival_patch.start()
+        self.mock_output_folders = self.output_folders.start()
+        self.mock_path = self.path_patch.start()
+        self.mock_index = self.index_patch.start()
+        self.mock_workflow = self.workflow_patch.start()
+        self.mock_describe = self.describe_patch.start()
+        self.mock_timer = self.timer_patch.start()
+
+
+        # Below are some generalised expected returns for each of the
+        # function calls, these will be patched over individually to
+        # adjust for expected environment of each test
+
+        # mock of filtering manifest where no invalid samples found
+        self.mock_filter_manifest.return_value = [
+            self.manifest,
+            [],
+            []
+        ]
+
+        # patch of dxpy.describe when called on workflow to return name
+        # for setting output paths and job names
+        self.mock_describe.return_value = {
+            'name': 'reports_workflow'
+        }
+
+        # patch of adding vcfs to the manifest (i.e. manifest with describe
+        # output of the vcf file added to the manifest under 'vcf' key)
+        self.mock_filter_manifest.return_value = [
+            {
+                "X1234": {
+                    "tests": [["R207.1"]],
+                    "panels": [
+                        ["Inherited ovarian cancer (without breast cancer)_4.0"]
+                    ],
+                    "indications": [[
+                        "R207.1_Inherited ovarian cancer (without breast cancer)_P"
+                    ]],
+                    "vcf": [
+                        {
+                            'project': 'project-xxx',
+                            'id': 'file-xxx',
+                            'describe': {
+                                'name': 'X1234_markdup.vcf'
+                            }
+                        }
+                    ],
+                    "mosdepth": [
+                        {
+                            'project': 'project-xxx',
+                            'id': 'file-xxx',
+                            'describe': {
+                                'name': 'X1234.per-base.bed.gz'
+                            }
+                        }
+                    ]
+                },
+                "X5678": {
+                    "tests": [["R134.1"]],
+                    "panels": [
+                        ["Familial hypercholesterolaemia (GMS)_2.0"]
+                    ],
+                    "indications": [
+                        ["R134.1_Familial hypercholesterolaemia_P"]
+                    ],
+                    "vcf": [
+                        {
+                            'project': 'project-xxx',
+                            'id': 'file-xxx',
+                            'describe': {
+                                'name': 'X5678_markdup.vcf'
+                            }
+                        }
+                    ],
+                    "mosdepth": [
+                        {
+                            'project': 'project-xxx',
+                            'id': 'file-xxx',
+                            'describe': {
+                                'name': 'X5678.per-base.bed.gz'
+                            }
+                        },
+                    ]
+                },
+            },
+            [],
+            []
+        ]
+
+
+    def tearDown(self):
+        self.mock_find.stop()
+        self.mock_job.stop()
+        self.mock_filter_manifest.stop()
+        self.mock_archival.stop()
+        self.mock_output_folders.stop()
+        self.mock_path.stop()
+        self.mock_index.stop()
+        self.mock_workflow.stop()
+        self.mock_describe.stop()
+        self.mock_timer.stop()
+
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_error_raised_if_name_pattern_missing_from_config(self):
+        """
+        Test when 'name_patterns' parsed from assay config file doesn't
+        contain a match to the manifest source, an error is raised.
+
+        Manifest source is used to select from the name_patterns dict, and
+        expects to have Epic or Gemini as keys to use
+        """
+        with pytest.raises(
+            AssertionError,
+            match=f'No name pattern found for Gemini parsed from assay config file'
+        ):
+            DXExecute().reports_workflow(
+                mode='CNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest={},
+                manifest_source='Gemini',
+                config={},
+                start='230925_0943',
+                name_patterns={},
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
+
+
+    def test_xlsx_reports_found(self):
+        """
+        Test if xlsx reports returned from DXManage.find_files that these
+        are formatted correctly for use.
+
+        n.b. here we're setting the mode to something invalid to stop the
+        function going further and letting it raise a RuntimeError after
+        the xlsx reports have been parsed, so we don't have to patch lots 
+        more for this test (mainly for laziness)
+        """
+        # minimal set of xlsx reports found
+        self.mock_find.return_value = [
+            {
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1.xlsx'
+                }
+            },
+            {
+                'id': 'file-yyy',
+                'describe': {
+                    'name': 'sample2.xlsx'
+                }
+            }
+        ]
+
+        with pytest.raises(
+            RuntimeError,
+            match='Invalid mode set for running reports: test'
+        ):
+            DXExecute().reports_workflow(
+                mode='test',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest={},
+                manifest_source='Epic',
+                config=self.assay_config,
+                start='230925_0943',
+                name_patterns={'Epic': '[\d\w]+-[\d\w]+'},
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
+
+        stdout = self.capsys.readouterr().out
+        reports = 'xlsx reports found:\n\tsample1.xlsx\n\tsample2.xlsx'
+
+        assert reports in stdout, ('Expected xlsx reports not found')
+
+
+    def test_cnv_mode_error_raised_when_missing_intervals_bed(self):
+        """
+        Intervals bed should always be found from CNV calling, check
+        we raise an error if this is missing
+        """
+        # set output of DXManage.find_files() to be empty
+        self.mock_find.side_effect = [[], [], []]
+        with pytest.raises(
+            RuntimeError,
+            match=f'Failed to find excluded intervals bed file from job-QaTZ9qEwkEsovKLs14DSdNqb'
+        ):
+            DXExecute().reports_workflow(
+                mode='CNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest=self.manifest,
+                manifest_source='Gemini',
+                config=self.assay_config['modes']['cnv_reports'],
+                start='230925_0943',
+                name_patterns=self.assay_config['name_patterns'],
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
+
+
+    def test_cnv_mode_error_raised_when_missing_vcf_files(self):
+        """
+        Test an error is raised if no VCFs are found
+        """
+        # patch return of DXManage.find_files to have a bed file but no vcfs
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'project': 'project-xxx',
+                'id': 'file-xxx'
+            }],
+            []
+        ]
+
+        with pytest.raises(
+            RuntimeError,
+            match='Failed to find vcfs from job-QaTZ9qEwkEsovKLs14DSdNqb'
+        ):
+            DXExecute().reports_workflow(
+                mode='CNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest=self.manifest,
+                manifest_source='Gemini',
+                config=self.assay_config['modes']['cnv_reports'],
+                start='230925_0943',
+                name_patterns={'Gemini': 'X[\d]+'},
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
+
+
+    def test_cnv_mode_exclude_samples_correct(self):
+        """
+        Test that if exclude_samples is specified, that those samples
+        are correctly excluded from the manifest (these will have been
+        samples excluded from CNV calling)
+        """
+        # patch in returned bed and vcfs
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'project': 'project-xxx',
+                'id': 'file-xxx'
+            }],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X1234_markdup.vcf'
+                    }
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X5678_markdup.vcf'
+                    }
+                }
+            ]
+        ]
+
+        DXExecute().reports_workflow(
+            mode='CNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=self.manifest,
+            manifest_source='Gemini',
+            config=self.assay_config['modes']['cnv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns'],
+            call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb',
+            exclude=['X1234']
+        )
+
+        # check that excluded sample is dumped to stdout, about the best
+        # test we can do here since we patch over the manifest later when
+        # filtering by files so would be pretty circular to test this
+        stdout = self.capsys.readouterr().out
+
+        assert "Excluded 1 samples from manifest: ['X1234']" in stdout, (
+            'Exclude sample not correctly excluded'
+        )
+
+
+    def test_snv_mode_error_raised_when_missing_vcfs(self):
+        """
+        Check correct error is raised if no VCFs are found in given dir
+        """
+        self.mock_find.return_value = []
+
+        expected_error = (
+            "Found no vcf files! SNV reports in /path_to_single/ and subdir "
+            "sentieon-dnaseq with pattern .vcf"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            DXExecute().reports_workflow(
+                mode='SNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest=self.manifest,
+                manifest_source='Gemini',
+                config=self.assay_config['modes']['snv_reports'],
+                start='230925_0943',
+                name_patterns=self.assay_config['name_patterns']
+            )
+
+
+    def test_snv_mode_error_raised_when_missing_mosdepth_files(self):
+        """
+        Check correct error is raised if no mosdepth files are found in given dir
+        """
+        # minimal return of find with vcf structure to pass to simulating
+        # no mosdepth files
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'describe': {
+                    'name': 'sample.vcf'
+                }
+            }],
+            []
+        ]
+
+        expected_error = (
+            "Found no mosdepth files\! SNV reports in \/path_to_single\/ "
+            "and subdir eggd_mosdepth with pattern per\-base\.bed\.gz\$\|"
+            "reference\.txt\$"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            DXExecute().reports_workflow(
+                mode='SNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest=self.manifest,
+                manifest_source='Gemini',
+                config=self.assay_config['modes']['snv_reports'],
+                start='230925_0943',
+                name_patterns=self.assay_config['name_patterns']
+            )
+
+    def test_snv_mode_filter_manifest_by_files_is_called(self):
+        """
+        In SNV mode the manifest should be filtered by samples having
+        mosdepth files (which also adds the DXObjects to the sample),
+        check that this function gets called
+        """
+        # minimal mock of returned vcf and mosdepth files
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'describe': {
+                    'name': 'sample.vcf'
+                }
+            }],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X1234.per-base.bed.gz'
+                    }
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X5678.per-base.bed.gz'
+                    }
+                }
+            ]
+        ]
+
+        DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=self.manifest,
+            manifest_source='Gemini',
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns']
+        )
+
+        # check we called filter_manifest_samples_by_files() for mosdepth
+        self.mock_filter_manifest.assert_any_call(
+            name='mosdepth',
+            files=mock.ANY,
+            manifest=mock.ANY,
+            pattern=mock.ANY
+        )
+
+
+    def test_samples_no_vcfs_or_mosdepth_files_added_to_errors(self):
+        """
+        Test if any samples in manifest have no vcfs or mosdepth files
+        these get added to the list of returned errors
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'describe': {
+                    'name': 'sample.vcf'
+                }
+            }],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X1234.per-base.bed.gz'
+                    }
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X5678.per-base.bed.gz'
+                    }
+                }
+            ]
+        ]
+
+        # patch in an error for adding files to the output of
+        # filter_manifest_samples_by_file to check it gets returned
+        return_copy = deepcopy(self.mock_filter_manifest.return_value)
+        return_copy[-2] = ['X1928']
+        return_copy[-1] = ['X1928']
+        self.mock_filter_manifest.return_value = return_copy
+
+        _, errors, _ = DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=self.manifest,
+            manifest_source='Gemini',
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns']
+        )
+
+        expected_errors = {
+            (
+                'Samples in manifest not matching expected Gemini pattern '
+                '(1) ^X[\\d]+'
+            ): ['X1928'],
+            'Samples in manifest with no mosdepth files found (1)': ['X1928'],
+            'Samples in manifest with no VCF found (1)': ['X1928']
+        }
+
+        assert errors == expected_errors, (
+            'Expected errors not returned from samples missing files'
+        )
+
+
+    def test_error_raised_if_manifest_empty_after_filtering(self):
+        """
+        Test that if the manifest is empty after filtering against all
+        the different files and patterns that we raise an error since
+        there's nothing to launch
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'describe': {
+                    'name': 'sample.vcf'
+                }
+            }],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X1234.per-base.bed.gz'
+                    }
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X5678.per-base.bed.gz'
+                    }
+                }
+            ]
+        ]
+
+        self.mock_filter_manifest.return_value = [{}, [], []]
+
+        expected_error = "No samples left after filtering to run SNV reports for"
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=self.manifest,
+            manifest_source='Gemini',
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns']
+        )
+    
+
+    def test_name_suffix_integer_incremented(self):
+        """
+        When setting the output integer suffix for reports, if more than one
+        job is being launched for the same sample this suffix should get
+        incremented, check this happens
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'describe': {
+                    'name': 'sample.vcf'
+                }
+            }],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X1234.per-base.bed.gz'
+                    }
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X5678.per-base.bed.gz'
+                    }
+                }
+            ]
+        ]
+
+        self.mock_index.return_value = 1
+
+        # add additional test to manifest for X1234 (just duplicating the
+        # one already added)
+        filled_manifest = deepcopy(self.mock_filter_manifest.return_value)
+        filled_manifest[0]["X1234"]["tests"] = \
+            filled_manifest[0]["X1234"]["tests"] * 2
+        filled_manifest[0]["X1234"]["indications"] = \
+            filled_manifest[0]["X1234"]["indications"] * 2
+        filled_manifest[0]["X1234"]["panels"] = \
+            filled_manifest[0]["X1234"]["panels"] * 2
+
+        self.mock_filter_manifest.return_value = filled_manifest
+
+        _, _, summary = DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=filled_manifest,
+            manifest_source='Gemini',
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns']
+        )
+
+        assert summary['SNV']['X1234'] == 'X1234_R207.1_SNV_1\nX1234_R207.1_SNV_2', (
+            'Suffix for repeat sample incorrect'
+        )
+
+
+    def test_sample_limit_works(self):
+        """
+        Test when sample limit is set that it works as expected
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'describe': {
+                    'name': 'sample.vcf'
+                }
+            }],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X1234.per-base.bed.gz'
+                    }
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X5678.per-base.bed.gz'
+                    }
+                }
+            ]
+        ]
+
+        DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=self.manifest,
+            manifest_source='Gemini',
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns'],
+            sample_limit=1
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        assert "Sample limit hit, stopping launching further jobs" in stdout, (
+            "Sample limit param didn't break as expected"
+        )
 
 
 class TestDXExecuteArtemis():

@@ -175,8 +175,8 @@ The top level section should be structured as follows:
         "exonsfile": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gf99pBPbJkV7bq"
     },
     "name_patterns": {
-        "Epic": "^[\\d\\w]+-[\\d\\w]+[-_]",
-        "Gemini": "^X[\\d]+[-_]"
+        "Epic": "^[\\d\\w]+-[\\d\\w]+",
+        "Gemini": "^X[\\d]+"
     },
     ...
 ```

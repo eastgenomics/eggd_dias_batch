@@ -707,7 +707,7 @@ class DXExecute():
             parent=None,
             unarchive=None,
             exclude=None
-        ) -> Tuple[list, dict]:
+        ) -> Tuple[list, dict, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
         CNV,SNV or mosaic reports
@@ -773,7 +773,7 @@ class DXExecute():
             x['describe']['name'] for x in xlsx_reports
         ]
         if xlsx_reports:
-            reports = '\nt\t'.join(sorted(xlsx_reports))
+            reports = '\n\t'.join(sorted(xlsx_reports))
             print(f"xlsx reports found:\n\t{reports}")
 
         if manifest_source == 'Epic':
@@ -801,17 +801,6 @@ class DXExecute():
             vcf_dir = f"{job_details.get('project')}:{job_details.get('folder')}"
             vcf_name = config.get('inputs').get(vcf_input_field).get('name')
 
-            print("\n \nSearching for VCF files")
-            vcf_files = list(DXManage().find_files(
-                path=vcf_dir,
-                pattern=vcf_name
-            ))
-            print(
-                "VCFs found:\n\t", '\n\t'.join(
-                    sorted([x['describe']['name'] for x in vcf_files])
-                )
-            )
-
             print('\n \nSearching for excluded intervals bed file')
             excluded_intervals_bed = list(DXManage().find_files(
                 path=f"{job_details.get('project')}:{job_details.get('folder')}",
@@ -823,10 +812,6 @@ class DXExecute():
                 raise RuntimeError(
                     f"Failed to find excluded intervals bed file from {call_job_id}"
             )
-            if not vcf_files:
-                raise RuntimeError(
-                    f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
-            )
 
             excluded_intervals_bed = {
                 "$dnanexus_link": {
@@ -834,6 +819,23 @@ class DXExecute():
                     "id": excluded_intervals_bed[0]['id']
                 }
             }
+
+            print("\n \nSearching for VCF files")
+            vcf_files = list(DXManage().find_files(
+                path=vcf_dir,
+                pattern=vcf_name
+            ))
+
+            if not vcf_files:
+                raise RuntimeError(
+                    f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
+            )
+
+            print(
+                "VCFs found:\n\t", '\n\t'.join(
+                    sorted([x['describe']['name'] for x in vcf_files])
+                )
+            )
 
             if exclude:
                 # exclude samples specified and won't have been through CNV
@@ -879,6 +881,14 @@ class DXExecute():
                 pattern=vcf_name
             )
 
+            if not vcf_files:
+                error = (
+                    f"Found no vcf files! {mode} reports in {single_output_dir} "
+                    f"and subdir {vcf_dir} with pattern {vcf_name}" 
+                )
+
+                raise RuntimeError(error)
+
             print(
                 "VCFs found:\n\t", '\n\t'.join(
                     sorted([x['describe']['name'] for x in vcf_files])
@@ -892,25 +902,14 @@ class DXExecute():
                 pattern=mosdepth_name
             )
 
-            if not vcf_files:
-                errors = {
-                    "Found no vcf files!": (
-                        f"{mode} reports in {single_output_dir} and "
-                        f"subdir {vcf_dir} with pattern {vcf_name}"
-                    )
-                }
-
-                return [], errors, None
-
             if not mosdepth_files:
-                errors = {
-                    "Found no mosdepth files!": (
-                        f"{mode} reports in {single_output_dir} and subdir "
-                        f"{mosdepth_dir} with pattern {mosdepth_name}"
-                    )
-                }
+                error = (
+                    f"Found no mosdepth files! {mode} reports in "
+                    f"{single_output_dir} and subdir {mosdepth_dir} with "
+                    f"pattern {mosdepth_name}"
+                )
 
-                return [], errors, None
+                raise RuntimeError(error)
 
             manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
                 manifest=manifest,
@@ -983,9 +982,9 @@ class DXExecute():
 
         if not manifest:
             # empty manifest after filtering against files etc
-            # TODO : decide if we want to break on this
-            print(f"No samples left after filtering to run {mode} reports for")
-            return [], errors, {}
+            error = f"No samples left after filtering to run {mode} reports on"
+
+            raise RuntimeError(error)
 
         print(f"\n \nLaunching {mode} reports per sample...")
         start = timer()
