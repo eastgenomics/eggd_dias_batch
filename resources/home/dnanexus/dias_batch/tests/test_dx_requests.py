@@ -1190,9 +1190,61 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
     be a lot of mocking and patching returns etc. to test all the
     conditional behaviour.
     """
-    # example assay config
+    # example minimal assay config with required keys for testing
     assay_config = {
-        
+        "assay": "CEN",
+        "version": "2.2.0",
+        "cnv_call_app_id": "app-GJZVB2840KK0kxX998QjgXF0",
+        "snv_report_workflow_id": "workflow-GXzkfYj4QPQp9z4Jz4BF09y6",
+        "cnv_report_workflow_id": "workflow-GXzvJq84XZB1fJk9fBfG88XJ",
+        "name_patterns": {
+            "Epic": "^[\\d\\w]+-[\\d\\w]+",
+            "Gemini": "^X[\\d]+"
+        },
+        "modes": {
+            "cnv_reports": {
+                "inputs": {
+                    "stage-cnv_vep.vcf": {
+                        "folder": "CNV_vcfs",
+                        "name": "_segments.vcf$"
+                    }
+                }
+            },
+            "snv_reports": {
+                "inputs": {
+                    "stage-rpt_vep.vcf": {
+                        "folder": "sentieon-dnaseq",
+                        "name": "^[^\\.]*(?!\\.g)\\.vcf(\\.gz)?$"
+                    },
+                    "stage-rpt_athena.mosdepth_files": {
+                        "folder": "eggd_mosdepth",
+                        "name": "per-base.bed.gz$|reference.txt$"
+                    }
+                }
+            }
+        }
+    }
+
+    # minimal manifest with parsed in indications and panels
+    manifest = {
+        "X1234": {
+            "tests": [["R207.1"]],
+            "panels": [
+                ["Inherited ovarian cancer (without breast cancer)_4.0"]
+            ],
+            "indications": [[
+                "R207.1_Inherited ovarian cancer (without breast cancer)_P"
+            ]]
+        },
+        "X5678": {
+            "tests": [["R134.1"]],
+            "panels": [
+                ["Familial hypercholesterolaemia (GMS)_2.0"]
+            ],
+            "indications": [
+                ["R134.1_Familial hypercholesterolaemia_P"]
+            ]
+        },
     }
 
     def setUp(self):
@@ -1212,7 +1264,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.workflow_patch = mock.patch('utils.dx_requests.dxpy.DXWorkflow')
         self.timer_patch = mock.patch('utils.dx_requests.timer')
 
-
         self.mock_find = self.find_patch.start()
         self.mock_job = self.job_patch.start()
         self.mock_filter_manifest = self.filter_manifest_patch.start()
@@ -1222,6 +1273,14 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_index = self.index_patch.start()
         self.mock_workflow = self.workflow_patch.start()
         self.mock_timer = self.timer_patch.start()
+
+        # Generalised expected returns for each of the function calls,
+        # these will be patched over individually to adjust for expected
+        # environment of each test
+
+        # 
+
+
 
 
     def tearDown(self):
@@ -1273,8 +1332,9 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         are formatted correctly for use.
 
         n.b. here we're setting the mode to something invalid to stop the
-        function going further and letting it raise a RuntimeError so we
-        don't have to patch lots more for this test (mainly for laziness)
+        function going further and letting it raise a RuntimeError after
+        the xlsx reports have been parsed, so we don't have to patch lots 
+        more for this test (mainly for laziness)
         """
         # minimal set of xlsx reports found
         self.mock_find.return_value = [
@@ -1302,7 +1362,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 single_output_dir='/path_to_single/',
                 manifest={},
                 manifest_source='Epic',
-                config={},
+                config=self.assay_config,
                 start='230925_0943',
                 name_patterns={'Epic': '[\d\w]+-[\d\w]+'},
                 call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
@@ -1319,6 +1379,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         Intervals bed should always be found from CNV calling, check
         we raise an error if this is missing
         """
+        # set output of DXManage.find_files() to be empty
+        self.mock_find.side_effect = [[], [], []]
         with pytest.raises(
             RuntimeError,
             match=f'Failed to find excluded intervals bed file from job-QaTZ9qEwkEsovKLs14DSdNqb'
@@ -1327,28 +1389,44 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 mode='CNV',
                 workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
                 single_output_dir='/path_to_single/',
-                manifest={},
+                manifest=self.manifest,
                 manifest_source='Gemini',
-                config={},
+                config=self.assay_config['modes']['cnv_reports'],
                 start='230925_0943',
-                name_patterns={'Gemini': 'X[\d]+'},
+                name_patterns=self.assay_config['name_patterns'],
                 call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
             )
-
-
-    def test_cnv_mode_correct_vcf_name_pattern_used(self):
-        """
-        When searching for VCF files a pattern is used from the assay
-        config, check that the correct one is selected and used
-        """
-        pass
 
 
     def test_cnv_mode_error_raised_when_missing_vcf_files(self):
         """
         Test an error is raised if no VCFs are found
         """
-        pass
+        # patch return of DXManage.find_files to have a bed file but no vcfs
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'project': 'project-xxx',
+                'id': 'file-xxx'
+            }],
+            []
+        ]
+
+        with pytest.raises(
+            RuntimeError,
+            match='Failed to find vcfs from job-QaTZ9qEwkEsovKLs14DSdNqb'
+        ):
+            DXExecute().reports_workflow(
+                mode='CNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest=self.manifest,
+                manifest_source='Gemini',
+                config=self.assay_config['modes']['cnv_reports'],
+                start='230925_0943',
+                name_patterns={'Gemini': 'X[\d]+'},
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
 
 
     def test_cnv_mode_exclude_samples_correct(self):
