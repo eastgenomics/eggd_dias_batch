@@ -165,5 +165,4 @@ class TestMain():
     This is the main entry point into the app, tests are just to show that
     functions are called when expected as there is little other logic in here
     """
-
-
+    pass
