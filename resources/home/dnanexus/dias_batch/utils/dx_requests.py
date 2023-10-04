@@ -806,6 +806,12 @@ class DXExecute():
                 path=vcf_dir,
                 pattern=vcf_name
             ))
+
+            if not vcf_files:
+                raise RuntimeError(
+                    f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
+            )
+
             print(
                 "VCFs found:\n\t", '\n\t'.join(
                     sorted([x['describe']['name'] for x in vcf_files])
@@ -822,10 +828,6 @@ class DXExecute():
             if not excluded_intervals_bed:
                 raise RuntimeError(
                     f"Failed to find excluded intervals bed file from {call_job_id}"
-            )
-            if not vcf_files:
-                raise RuntimeError(
-                    f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
             )
 
             excluded_intervals_bed = {
