@@ -58,6 +58,13 @@
             "help": "file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)"
           },
           {
+            "name": "manifest_subset",
+            "label": "manifest subset",
+            "class": "string",
+            "optional": true,
+            "help": "comma separated string of samples in manifest on which to ONLY run jobs"
+          },
+          {
             "name": "single_output_dir",
             "label": "single output directory",
             "class": "string",
