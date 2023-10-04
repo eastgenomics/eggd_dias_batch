@@ -575,7 +575,8 @@ class DXExecute():
         single_output_dir : str
             path to single output directory
         exclude : list
-            list of sample IDs to exclude bam files from calling
+            list of sample IDs to exclude bam files from calling, will be
+            formatted as InstrumentID-SpecimenID (i.e. [123245111-33202R00111, ...])
         start : str
             start time of running app for naming output folders
         wait : bool
@@ -702,7 +703,6 @@ class DXExecute():
             start,
             name_patterns,
             sample_limit=None,
-            exclude_samples=None,
             call_job_id=None,
             parent=None,
             unarchive=None,
@@ -735,8 +735,6 @@ class DXExecute():
             etc. for each type of manifest (i.e. Epic -> ^[\d\w]+-[\d]\w]+[-_])
         sample_limit : int
             no. of samples to launch jobs for
-        exclude_samples : list
-            list of sample names to exclude from generating reports
         call_job_id : str
             job ID of CNV calling to use output from (for CNV reports)
         parent : list | None
@@ -745,7 +743,9 @@ class DXExecute():
         unarchive : bool
             controls if to automatically unarchive any archived files
         exclude : list
-            list of sample IDs to exclude bam files from calling
+            list of sample names to exclude from generating reports (n.b.
+            this is ONLY for CNV reports), will be formatted as
+            InstrumentID-SpecimenID (i.e. [123245111-33202R00111, ...])
 
         Returns
         -------

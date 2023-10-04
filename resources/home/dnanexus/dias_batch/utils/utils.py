@@ -386,7 +386,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     return genepanels
 
 
-def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
+def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFrame, str]:
     """
     Parse manifest data from file read in DNAnexus
 
@@ -399,6 +399,8 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
     split_tests : bool
         controls if to split multiple tests to be generated
         into separate reports
+    subset : str
+        comma separated string of sample names on which to ONLY run jobs
 
     Returns
     -------
@@ -416,6 +418,8 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
         Raised when a sample seems malformed (missing / wrongly formatted IDs)
     RuntimeError
         Raised when file doesn't appear to have either ';' or '\t' as delimeter
+    RuntimeError
+        Raised when sample names provided to subset are not in manifest
     """
     print(
         "\n \nParsing manifest file, file contents read from DNAnexus:\n\t",
@@ -531,6 +535,28 @@ def parse_manifest(contents, split_tests=False) -> Tuple[pd.DataFrame, str]:
     else:
         # throw an error here as something is up with the file
         raise RuntimeError("Manifest file provided does not seem valid")
+
+    if subset:
+        # subset specified, keep just these samples from manifest
+        subset = subset.split(',')
+        print(
+            "Subsetting manifest and retaining only the "
+            f"following samples: {subset}"
+        )
+
+        # check that provided sample names are in our manifest
+        invalid = [x for x in subset if x not in data.keys()]
+
+        if invalid:
+            raise RuntimeError(
+                f'Sample names provided to -isubset not in manifest: {invalid}'
+            )
+
+        data = {
+            sample: tests for sample, tests in data.items()
+            if sample in subset
+        }
+
 
     if split_tests:
         data = split_manifest_tests(data)
