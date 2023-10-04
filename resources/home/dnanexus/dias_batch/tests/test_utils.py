@@ -815,6 +815,37 @@ class TestParseManifest:
         )
 
 
+    def test_subset_works(self):
+        """
+        Test when subset is specified that it subsets the manifest
+        """
+        manifest, _ = utils.parse_manifest(
+            contents=self.epic_data,
+            split_tests=True,
+            subset='123245111-23146R00111,424487111-53214R00111'
+        )
+
+        assert sorted(manifest.keys()) == [
+            '123245111-23146R00111', '424487111-53214R00111'
+        ], ('Manifest not subsetted correctly')
+
+
+    def test_error_raised_on_invalid_sample_provided_to_subset(self):
+        """
+        Test when a sample provided to subset is not in the manifest
+        that an error is raised
+        """
+        with pytest.raises(
+            RuntimeError,
+            match=r"Sample names provided to -isubset not in manifest: \['sample1'\]"
+        ):
+            utils.parse_manifest(
+            contents=self.epic_data,
+            split_tests=True,
+            subset='123245111-23146R00111,sample1'
+        )
+
+
 class TestFilterManifestSamplesByFiles():
     """
     Tests for utils.filter_manifest_samples_by_files()

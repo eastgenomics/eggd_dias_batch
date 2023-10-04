@@ -213,6 +213,7 @@ def main(
     split_tests=False,
     exclude_samples=None,
     exclude_samples_file=None,
+    manifest_subset=None,
     single_output_dir=None,
     cnv_call_job_id=None,
     cnv_call=False,
@@ -265,7 +266,8 @@ def main(
         manifest_data = DXManage().read_dxfile(manifest_file)
         manifest, manifest_source = parse_manifest(
             contents=manifest_data,
-            split_tests=split_tests
+            split_tests=split_tests,
+            subset=manifest_subset
         )
 
         # filter manifest tests against genepanels to ensure what has been

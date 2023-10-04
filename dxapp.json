@@ -48,7 +48,7 @@
             "label": "exclude samples",
             "class": "string",
             "optional": true,
-            "help": "comma separated string of samples to exclude from CNV calling / CNV reports"
+            "help": "comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))"
           },
           {
             "name": "exclude_samples_file",
@@ -56,6 +56,13 @@
             "class": "file",
             "optional": true,
             "help": "file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)"
+          },
+          {
+            "name": "manifest_subset",
+            "label": "manifest subset",
+            "class": "string",
+            "optional": true,
+            "help": "comma separated string of samples in manifest on which to ONLY run jobs (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))"
           },
           {
             "name": "single_output_dir",
