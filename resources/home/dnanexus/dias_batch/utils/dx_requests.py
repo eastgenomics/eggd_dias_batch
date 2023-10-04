@@ -801,23 +801,6 @@ class DXExecute():
             vcf_dir = f"{job_details.get('project')}:{job_details.get('folder')}"
             vcf_name = config.get('inputs').get(vcf_input_field).get('name')
 
-            print("\n \nSearching for VCF files")
-            vcf_files = list(DXManage().find_files(
-                path=vcf_dir,
-                pattern=vcf_name
-            ))
-
-            if not vcf_files:
-                raise RuntimeError(
-                    f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
-            )
-
-            print(
-                "VCFs found:\n\t", '\n\t'.join(
-                    sorted([x['describe']['name'] for x in vcf_files])
-                )
-            )
-
             print('\n \nSearching for excluded intervals bed file')
             excluded_intervals_bed = list(DXManage().find_files(
                 path=f"{job_details.get('project')}:{job_details.get('folder')}",
@@ -836,6 +819,23 @@ class DXExecute():
                     "id": excluded_intervals_bed[0]['id']
                 }
             }
+
+            print("\n \nSearching for VCF files")
+            vcf_files = list(DXManage().find_files(
+                path=vcf_dir,
+                pattern=vcf_name
+            ))
+
+            if not vcf_files:
+                raise RuntimeError(
+                    f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
+            )
+
+            print(
+                "VCFs found:\n\t", '\n\t'.join(
+                    sorted([x['describe']['name'] for x in vcf_files])
+                )
+            )
 
             if exclude:
                 # exclude samples specified and won't have been through CNV
