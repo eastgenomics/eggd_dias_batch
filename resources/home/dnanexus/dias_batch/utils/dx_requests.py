@@ -40,7 +40,7 @@ class DXManage():
         ----------
         file : str
             DNAnexus file ID of config to read
-        
+
         Returns
         -------
         dict
@@ -167,7 +167,7 @@ class DXManage():
         -------
         DXObject
             DXObject file handler object
-        
+
         Raises
         ------
         AssertionError
@@ -448,7 +448,7 @@ class DXManage():
         ----------
         files : list
             DXFile objects of files to unarchive
-        
+
         Raises
         ------
         RuntimeError
@@ -786,13 +786,13 @@ class DXExecute():
         RuntimeError
             Raised when no samples left in manifest after filtering
             against returned files
-        
+
         [mode : CNV]
         RuntimeError
             Raised when exclude intervals bed not found from CNV calling job
         RuntimeError
             Raised when VCFs could not be found from CNV calling job
-        
+
         [mode : SNV|mosaic]
         RuntimeError
             Raised when VCFs could not be found in given directory
