@@ -809,7 +809,8 @@ class DXExecute():
             "assay config file"
         )
 
-        vcf_files = mosdepth_files = []
+        vcf_files = []
+        mosdepth_files = []
 
         # gather errors to display in summary report
         errors = {}
