@@ -1178,7 +1178,7 @@ class DXExecute():
             path to single output directory
         app_id : str
             app ID of eggd_artemis
-        dependent_jobs : list
+        dependent_jobs : list[str]
             list of jobs to wait to complete before starting
         start : str
             start time of running app for naming output folders
@@ -1186,9 +1186,9 @@ class DXExecute():
             $dnanexus_link mapping of file input of QC status
         capture_bed : dict
             $dnanexus_link mapping dict of capture bed
-        snv_output : str, optional
+        snv_output : str (optional)
             output path of SNV reports (if run), by default None
-        cnv_output : str, optional
+        cnv_output : str (optional)
             output path of CNV reports (if run), by default None
 
         Returns
