@@ -1,9 +1,5 @@
 """
 Tests for general functions in utils.py
-
-The following functions are not covered (yet):
-    - prettier_print()
-    - write_summary_report()
 """
 from copy import deepcopy
 from datetime import datetime
@@ -14,10 +10,8 @@ import subprocess
 import sys
 from unittest.mock import patch
 
-import dxpy
 import pandas as pd
 import pytest
-
 
 
 sys.path.append(os.path.abspath(
