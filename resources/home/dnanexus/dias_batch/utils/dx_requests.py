@@ -10,7 +10,7 @@ import re
 import sys
 from time import sleep
 from timeit import default_timer as timer
-from typing import Tuple
+from typing import List, Tuple
 
 import dxpy
 from packaging.version import Version
@@ -32,7 +32,7 @@ class DXManage():
     """
     Methods for generic handling of dx related things
     """
-    def read_assay_config_file(self, file):
+    def read_assay_config_file(self, file) -> dict:
         """
         Read assay config file specified with -iassay_config_file
 
@@ -40,6 +40,11 @@ class DXManage():
         ----------
         file : str
             DNAnexus file ID of config to read
+        
+        Returns
+        -------
+        dict
+            JSON files read into a dict
         """
         print("\n \nReading in specified assay config file...")
         contents = self.read_dxfile(file)
@@ -79,7 +84,7 @@ class DXManage():
         Raises
         ------
         AssertionError
-            Raised if 'path' parameter not a valid project-xxx:/ path
+            Raised if 'path' parameter not a valid project-xxx:/path
         AssertionError
             Raised if no config files found at the given path
         AssertionError
@@ -147,7 +152,7 @@ class DXManage():
         return highest_config
 
 
-    def get_file_project_context(self, file) -> str:
+    def get_file_project_context(self, file) -> dxpy.DXObject:
         """
         Get project ID for a given file ID, used where only file ID is
         provided as DXFile().read() requires both, will ensure that
@@ -162,6 +167,11 @@ class DXManage():
         -------
         DXObject
             DXObject file handler object
+        
+        Raises
+        ------
+        AssertionError
+            Raised if no live copies of the given file could be found
         """
         print(f"Searching all projects for: {file}")
 
@@ -188,7 +198,7 @@ class DXManage():
         return files[0]
 
 
-    def find_files(self, path, subdir='', limit=None, pattern=None) -> list:
+    def find_files(self, path, subdir='', limit=None, pattern=None) -> List[dxpy.DXObject]:
         """
         Search given path in DNAnexus, optionally filter down by a sub
         directory and / or with a file name regex pattern. Default
@@ -200,7 +210,7 @@ class DXManage():
             path to where to search
         subdir : str (optional)
             sub directory to search, will partially match as /path/dir.*
-        limit : integer
+        limit : integer (optional)
             no. of files to limit searching to
         pattern : str (optional)
             regex file pattern to search for
@@ -258,7 +268,7 @@ class DXManage():
         return files
 
 
-    def read_dxfile(self, file) -> list:
+    def read_dxfile(self, file) -> List[str]:
         """
         Read contents of a DXFile object
 
@@ -273,12 +283,14 @@ class DXManage():
         Returns
         -------
         list
-            contents of file
+            contents of file as a list split on '\n'
         
         Raises
         ------
         RuntimeError
             Raised if 'file' argument not in an expected format
+        AssertionError
+            Raised if project and file ID not correctly parsed
         """
         print(f"Reading from {file}")
         if not file:
@@ -341,6 +353,9 @@ class DXManage():
         
         Raises
         ------
+        RuntimeError
+            Raised when one or more files found that are in state 'unarchiving'
+            and unarchive=True specified
         RuntimeError
             Raised when required files are archived and -iunarchive=False
         """
@@ -433,6 +448,11 @@ class DXManage():
         ----------
         files : list
             DXFile objects of files to unarchive
+        
+        Raises
+        ------
+        RuntimeError
+            Raised if unarchiving fails after 5 attempts on a given file
         """
         for idx, dx_file in enumerate(files):
             print(
@@ -503,7 +523,7 @@ class DXManage():
     def format_output_folders(self, workflow, single_output, time_stamp) -> dict:
         """
         Generate dict of output folders for each stage of given workflow
-        for passing to dxpy.bindings.dxworkflow.DXWorkflow().run()
+        for passing to dxpy.DXWorkflow().run()
 
         Will be formatted as: {
             # for apps
@@ -554,7 +574,7 @@ class DXManage():
 
 class DXExecute():
     """
-    Methods for handling exeuction of apps / worklfows
+    Methods for handling execution of apps / workflows
     """
     def cnv_calling(
             self,
@@ -571,7 +591,7 @@ class DXExecute():
         Parameters
         ----------
         config : dict
-            dict of assay config file
+            dict of the assay config with inputs for cnv calling
         single_output_dir : str
             path to single output directory
         exclude : list
@@ -727,22 +747,23 @@ class DXExecute():
             source of manifest (Epic or Gemini), required for filtering
             pattern against sample name
         config : dict
-            config for assay, defining fixed inputs for workflow
+            subset of assay config file containing the inputs for the given
+            mode being run (i.e. {'modes': {'cnv_reports': {...}})
         start : str
             start time of running app for naming output folders
-        name_patterns : dict
+        name_patterns : dict (optional)
             set of regex patterns for matching sample names against files
             etc. for each type of manifest (i.e. Epic -> ^[\d\w]+-[\d]\w]+[-_])
-        sample_limit : int
+        sample_limit : int (optional)
             no. of samples to launch jobs for
-        call_job_id : str
+        call_job_id : str (optional)
             job ID of CNV calling to use output from (for CNV reports)
         parent : list | None
             single item list of parent dias batch job ID to use when
             testing to stop jobs running, or None when not running in test
-        unarchive : bool
+        unarchive : bool (optional)
             controls if to automatically unarchive any archived files
-        exclude : list
+        exclude : list (optional)
             list of sample names to exclude from generating reports (n.b.
             this is ONLY for CNV reports), will be formatted as
             InstrumentID-SpecimenID (i.e. [123245111-33202R00111, ...])
@@ -758,13 +779,15 @@ class DXExecute():
         
         Raises
         ------
+        AssertionError
+            Raised when name patterns not present in config file
         RuntimeError
             Raised when invalid mode set
         """
         print(f"\n \nConfiguring inputs for {mode} reports")
 
         # find all previous xlsx reports to use for indexing report names
-        print(f"\n \nSearching for previous xlsx reports")
+        print("\n \nSearching for previous xlsx reports")
         xlsx_reports = DXManage().find_files(
             path=single_output_dir,
             pattern=r".xlsx$"
