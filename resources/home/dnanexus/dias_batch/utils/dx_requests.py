@@ -198,7 +198,8 @@ class DXManage():
         return files[0]
 
 
-    def find_files(self, path, subdir='', limit=None, pattern=None) -> List[dxpy.DXObject]:
+    def find_files(
+        self, path, subdir='', limit=None, pattern=None) -> List[dxpy.DXObject]:
         """
         Search given path in DNAnexus, optionally filter down by a sub
         directory and / or with a file name regex pattern. Default

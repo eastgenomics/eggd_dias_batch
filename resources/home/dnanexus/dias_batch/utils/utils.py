@@ -295,7 +295,7 @@ def parse_genepanels(contents) -> pd.DataFrame:
     Parse genepanels file into nicely formatted DataFrame
 
     This will drop the HGNC ID column and keep the unique rows left (i.e.
-    one row per clinical indication / panel), and adds the test code as 
+    one row per clinical indication / panel), and adds the test code as
     a separate column.
     
     Example resultant dataframe:
@@ -417,7 +417,8 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     AssertionError
         Raised when Epic manifest is missing one or more required columns
     RuntimeError
-        Raised when a Epic sample name seems malformed (missing / wrongly formatted IDs)
+        Raised when a Epic sample name seems malformed (missing / wrongly
+        formatted IDs)
     RuntimeError
         Raised when file doesn't appear to have either ';' or '\t' as delimiter
     RuntimeError
