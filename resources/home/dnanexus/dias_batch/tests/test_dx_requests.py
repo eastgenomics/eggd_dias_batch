@@ -10,7 +10,6 @@ Functions not covered by unit tests:
 """
 from copy import deepcopy
 import os
-import re
 import sys
 import unittest
 from unittest import mock
