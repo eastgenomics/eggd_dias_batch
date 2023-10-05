@@ -783,6 +783,21 @@ class DXExecute():
             Raised when name patterns not present in config file
         RuntimeError
             Raised when invalid mode set
+        RuntimeError
+            Raised when no samples left in manifest after filtering
+            against returned files
+        
+        [mode : CNV]
+        RuntimeError
+            Raised when exclude intervals bed not found from CNV calling job
+        RuntimeError
+            Raised when VCFs could not be found from CNV calling job
+        
+        [mode : SNV|mosaic]
+        RuntimeError
+            Raised when VCFs could not be found in given directory
+        RuntimeError
+            Raised when mosdepth files could not be found in given directory
         """
         print(f"\n \nConfiguring inputs for {mode} reports")
 
@@ -1015,7 +1030,6 @@ class DXExecute():
 
         launched_jobs = []
         samples_run = 0
-
 
         # initialise per sample summary dict from samples in manifest
         sample_summary = {mode: {k: [] for k in manifest.keys()}}
