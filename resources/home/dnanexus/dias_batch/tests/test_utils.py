@@ -1317,7 +1317,7 @@ class TestAddPanelsAndIndicationsToManifest():
         with pytest.raises(
             RuntimeError,
             match=(
-                'Error occured selecting test from genepanels '
+                'Error occurred selecting test from genepanels '
                 'for test invalidTestCode'
             )
         ):
