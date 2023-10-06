@@ -10,7 +10,6 @@ Functions not covered by unit tests:
 """
 from copy import deepcopy
 import os
-import re
 import sys
 import unittest
 from unittest import mock
@@ -31,7 +30,7 @@ from utils.dx_requests import DXExecute, DXManage
 
 class TestDXManageReadAssayConfigFile():
     """
-    Tests for DXManage.read_assaay_config_file()
+    Tests for DXManage.read_assay_config_file()
 
     Function is used where a specific assay config file is provided, and
     reads this into a dict object
@@ -333,6 +332,10 @@ class TestDXManageGetFileProjectContext():
         mock_describe,
         capsys
     ):
+        """
+        Test when some live files are found, we correctly return the
+        first one to use as the project context
+        """
         # patch the DXFile object to nothing as we won't use it,
         # and the output of dx find to be a minimal set of describe calls
         mock_describe.return_value = {}
@@ -524,7 +527,7 @@ class TestDXManageReadDXfile():
     @patch('utils.dx_requests.dxpy.DXFile')
     def test_file_as_just_file_id(self, mock_file, mock_read, mock_context):
         """
-        Test when we provide file ID as just 'file-xxx' that it we call
+        Test when we provide file ID as just 'file-xxx' that we call
         DXManage.get_file_project_context to return the project string,
         and then this passes through the function with no errors raised
         """
@@ -545,7 +548,7 @@ class TestDXManageReadDXfile():
     @patch('utils.dx_requests.dxpy.DXFile')
     def test_assertion_error_raised(self, mock_file, mock_read, mock_context):
         """
-        Test when we provide file ID as just 'file-xxx' that it we call
+        Test when we provide file ID as just 'file-xxx' that we call
         DXManage.get_file_project_context to return the project string,
         and that if there is something wrong in the format of the response
         (i.e. its empty but somehow didn't raise an error), we catch this
@@ -590,9 +593,9 @@ class TestDXManageCheckArchivalState():
     """
     Tests for DXManage.check_archival_state()
 
-    Function takes in a list of files (and optionally a list of sample names
-    to filter by), and checks the archival state of the files to ensure all
-    are live before launching jobs
+    Function takes in a list of DXFileObjeects (and optionally a list
+    of sample names to filter by), and checks the archival state of
+    the files to ensure all are live before launching jobs
     """
     # minimal dxpy.find_data_objects() return that we expect to pass in
     files = [
@@ -867,8 +870,8 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
     @patch('utils.dx_requests.dxpy.describe')
     def test_correct_folder_applet(self, mock_describe):
         """
-        Test when an applet is inlcuded as a stage that the path is
-        correctly set, applets are treat differently to apps as the
+        Test when an applet is included as a stage that the path is
+        correctly set, applets are treated differently to apps as the
         'executable' key in the workflow details is just the applet ID
         instead of the human name and version for apps
         """
@@ -1780,7 +1783,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns']
         )
-    
+
 
     def test_name_suffix_integer_incremented(self):
         """
@@ -1977,7 +1980,7 @@ class TestDXExecuteTerminate(unittest.TestCase):
         """
         Test when jobs provided they get terminate() called
         """
-        # patch job object on which terminate() will get calleds
+        # patch job object on which terminate() will get called
         self.mock_job.return_value = dxpy.bindings.DXJob(dxid='localjob-')
 
         DXExecute().terminate(['job-xxx', 'job-yyy'])
@@ -2002,10 +2005,9 @@ class TestDXExecuteTerminate(unittest.TestCase):
         """
         Test if any errors are raised these are caught
         """
-        # patch this wrong which will raise an error
+        # patch the call to DXJob.terminate() to raise an Exception
         self.mock_job.return_value = dxpy.bindings.DXJob(
             dxid='job-QaTZ9qEwkEsovKLs14DSdNqb')
-
         self.mock_job_terminate.side_effect = Exception('oh no :sadpepe:')
 
         DXExecute().terminate(['job-xxx'])

@@ -295,7 +295,7 @@ def parse_genepanels(contents) -> pd.DataFrame:
     Parse genepanels file into nicely formatted DataFrame
 
     This will drop the HGNC ID column and keep the unique rows left (i.e.
-    one row per clinical inidication / panel), and adds the test code as 
+    one row per clinical indication / panel), and adds the test code as
     a separate column.
     
     Example resultant dataframe:
@@ -412,12 +412,15 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     
     Raises
     ------
+    AssertionError
+        Raised when Gemini manifest seems to have more than 2 columns
+    AssertionError
+        Raised when Epic manifest is missing one or more required columns
     RuntimeError
-        Raised when a test code doesn't seem valid against regex pattern
+        Raised when a Epic sample name seems malformed (missing / wrongly
+        formatted IDs)
     RuntimeError
-        Raised when a sample seems malformed (missing / wrongly formatted IDs)
-    RuntimeError
-        Raised when file doesn't appear to have either ';' or '\t' as delimeter
+        Raised when file doesn't appear to have either ';' or '\t' as delimiter
     RuntimeError
         Raised when sample names provided to subset are not in manifest
     """
@@ -521,7 +524,7 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
                 x for x in row['Test Codes'].replace(' ', '').split(',') if x
             ]
 
-            # prefentially use ReanalysisID if present
+            # preferentially use ReanalysisID if present
             if re.match(r"[\d\w]+-[\d\w]+", row.ReanalysisID):
                 data[row.ReanalysisID]['tests'].append(test_codes)
             elif re.match(r"[\d\w]+-[\d\w]+", row.SampleID):
@@ -576,7 +579,7 @@ def filter_manifest_samples_by_files(
     files have been found with DXManage.find_files().
 
     Used where there may be required per sample files missing for a given
-    sample (i.e. .sample has failed or explicitly been excluded from running)
+    sample (i.e. sample has failed or explicitly been excluded from running)
 
     Parameters
     ----------
@@ -673,7 +676,7 @@ def filter_manifest_samples_by_files(
 def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     """
     Parse through manifest dict of sampleID -> test codes to check
-    all codes are valid and exlcude those that are invalid against
+    all codes are valid and exclude those that are invalid against
     genepanels file
 
     Parameters
@@ -740,7 +743,6 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     else:
         print("All sample test codes valid!")
 
-
     return valid
 
 
@@ -772,12 +774,12 @@ def split_manifest_tests(data) -> dict:
     Parameters
     ----------
     data : dict
-        mapping of SampleID : [testCodes]
+        mapping of SampleID : [[testCode1, testCode2]]
 
     Returns
     -------
     dict
-        mapping of SampleID: 'tests': [testCodes] with all codes are sub lists
+        mapping of SampleID: 'tests': [[testCode1], [testCode2], ...]
     """
     split_data = defaultdict(lambda: defaultdict(list))
 
@@ -913,7 +915,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     # we already validated earlier all the test codes so
                     # shouldn't get here
                     raise RuntimeError(
-                        "Error occured selecting test from genepanels for "
+                        "Error occurred selecting test from genepanels for "
                         f"test {test}"
                     )
             sample_tests['panels'].append(panels)
