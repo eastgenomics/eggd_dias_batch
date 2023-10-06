@@ -871,7 +871,7 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
     def test_correct_folder_applet(self, mock_describe):
         """
         Test when an applet is included as a stage that the path is
-        correctly set, applets are treat differently to apps as the
+        correctly set, applets are treated differently to apps as the
         'executable' key in the workflow details is just the applet ID
         instead of the human name and version for apps
         """
