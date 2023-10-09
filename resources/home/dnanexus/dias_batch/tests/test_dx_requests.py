@@ -93,7 +93,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
 
 
     def tearDown(self):
-        self.loads_patch.stop()
+        self.mock_loads.stop()
         self.mock_find.stop()
         self.mock_file.stop()
 
@@ -1262,7 +1262,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.archival_patch = mock.patch(
             'utils.dx_requests.DXManage.check_archival_state'
         )
-        self.output_folders = mock.patch(
+        self.output_folders_patch = mock.patch(
             'utils.dx_requests.DXManage.format_output_folders'
         )
         self.path_patch = mock.patch('utils.dx_requests.make_path')
@@ -1275,7 +1275,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_job = self.job_patch.start()
         self.mock_filter_manifest = self.filter_manifest_patch.start()
         self.mock_archival = self.archival_patch.start()
-        self.mock_output_folders = self.output_folders.start()
+        self.mock_output_folders = self.output_folders_patch.start()
         self.mock_path = self.path_patch.start()
         self.mock_index = self.index_patch.start()
         self.mock_workflow = self.workflow_patch.start()
