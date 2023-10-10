@@ -126,8 +126,10 @@ class DXManage():
                 continue
 
             config_data = json.loads(
-                dxpy.bindings.dxfile.DXFile(
-                    project=file['project'], dxid=file['id']).read())
+                dxpy.DXFile(
+                    project=file['project'],
+                    dxid=file['id']
+                ).read())
 
             if not config_data.get('assay') == assay:
                 continue
