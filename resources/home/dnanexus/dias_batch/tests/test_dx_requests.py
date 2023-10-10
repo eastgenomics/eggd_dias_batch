@@ -84,18 +84,21 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         # set up patches for each sub function call in DXExecute.cnv_calling
         self.loads_patch = mock.patch('utils.dx_requests.json.loads')
         self.find_patch = mock.patch('utils.dx_requests.dxpy.find_data_objects')
-        self.file_patch = mock.patch('utils.dx_requests.dxpy.bindings.dxfile.DXFile')
+        self.file_patch = mock.patch('utils.dx_requests.dxpy.DXFile')
+        self.read_patch = mock.patch('utils.dx_requests.dxpy.DXFile.read')
 
         # create our mocks to reference
         self.mock_loads = self.loads_patch.start()
         self.mock_find = self.find_patch.start()
         self.mock_file = self.file_patch.start()
+        self.mock_read = self.read_patch.start()
 
 
     def tearDown(self):
         self.mock_loads.stop()
         self.mock_find.stop()
         self.mock_file.stop()
+        self.mock_read.stop()
 
 
     @pytest.fixture(autouse=True)
@@ -120,7 +123,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         the return of the dxpy.find_data_objects() call to be empty and
         check we raise an error correctly
         """
-        self.find_patch.return_value = []
+        self.mock_find.return_value = []
 
         expected_error = (
             'No config files found in given path: project-xxx:/test_path'
@@ -149,7 +152,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         ]
 
         # patch the DXFile object that read() gets called on
-        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
+        self.mock_file.return_value = dxpy.DXFile
 
         # patch the output from DXFile.read() to just be all the same dict
         self.mock_loads.return_value = {'assay': 'CEN', 'version': '1.0.0'}
@@ -187,7 +190,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         ] * 5
 
         # patch the DXFile object that read() gets called on
-        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
+        self.mock_file.return_value = dxpy.DXFile
 
         # patch the output from DXFile.read() to simulate looping over
         # the return of reading multiple configs
@@ -198,6 +201,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {'assay': 'test', 'version': '1.1.11'},
             {'assay': 'test', 'version': '1.2.1'}
         ]
+
 
         config = DXManage().get_assay_config(
             path='project-xxx:/test_path',
@@ -251,12 +255,12 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         ]
 
         # patch the DXFile object that read() gets called on
-        self.mock_file.return_value = dxpy.bindings.dxfile.DXFile
+        self.mock_file.return_value = dxpy.DXFile
 
         # patch the output from DXFile.read() for our live config
-        self.mock_loads.side_effect = [
-            {'assay': 'test', 'version': '1.0.0'}
-        ]
+        self.mock_loads.return_value = {
+            'assay': 'test', 'version': '1.0.0'
+        }
 
         DXManage().get_assay_config(
             path='project-xxx:/test_path',
@@ -1623,6 +1627,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 name_patterns=self.assay_config['name_patterns']
             )
 
+
     def test_snv_mode_filter_manifest_by_files_is_called(self):
         """
         In SNV mode the manifest should be filtered by samples having
@@ -1770,7 +1775,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
 
         self.mock_filter_manifest.return_value = [{}, [], []]
 
-        expected_error = "No samples left after filtering to run SNV reports for"
+        expected_error = "No samples left after filtering to run SNV reports on"
 
         with pytest.raises(RuntimeError, match=expected_error):
             DXExecute().reports_workflow(
