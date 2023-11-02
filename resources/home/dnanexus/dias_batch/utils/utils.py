@@ -386,7 +386,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     return genepanels
 
 
-def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFrame, str]:
+def parse_manifest(contents, split_tests=False, subset=None) -> pd.DataFrame:
     """
     Parse manifest data from file read in DNAnexus
 
@@ -407,9 +407,7 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     dict
         mapping of sampleID (str): 'tests': testCodes (list)
         e.g. {'sample1': {'tests': [['panel1']]}}
-    str
-        source of manifest file (either Epic or Gemini)
-    
+
     Raises
     ------
     AssertionError
@@ -450,8 +448,10 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
         sample_names = {x[0] for x in contents}
         data = {name: {'tests': [[]]} for name in sample_names}
 
-        for sample in contents:
-            test_codes = sample[1].replace(' ', '').split(',')
+        manifest_source = 'Gemini'
+
+        for sample, tests in contents:
+            test_codes = tests.replace(' ', '').split(',')
 
             for test_code in test_codes:
                 # add test codes to samples list, keeping just the code part
@@ -466,9 +466,9 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
                     # in utils.check_manifest_valid_test_codes()
                     code = test_code
 
-                data[sample[0]]['tests'][0].append(code)
+                data[sample]['tests'][0].append(code)
 
-        manifest_source = 'Gemini'
+                data[sample]['manifest_source'] = 'Gemini'
 
     elif all(';' in x for x in contents[1:] if x):
         # csv file => Epic style manifest
@@ -535,6 +535,8 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
                     f"Error in sample formatting of row {idx + 1} in manifest:"
                     f"\n\t{row}"
                 )
+
+            data[row.SampleID]['manifest_source'] = 'Epic'
     else:
         # throw an error here as something is up with the file
         raise RuntimeError("Manifest file provided does not seem valid")
@@ -569,7 +571,7 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     ])
     print(f"\n \n{manifest_source} manifest parsed:\n\t{samples}")
 
-    return data, manifest_source
+    return data
 
 
 def filter_manifest_samples_by_files(

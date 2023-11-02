@@ -19,6 +19,7 @@ if os.path.exists('/home/dnanexus'):
         make_path,
         parse_manifest,
         parse_genepanels,
+        prettier_print,
         time_stamp,
         write_summary_report
     )
@@ -31,6 +32,7 @@ else:
         make_path,
         parse_manifest,
         parse_genepanels,
+        prettier_print,
         time_stamp,
         write_summary_report
     )
@@ -209,7 +211,7 @@ def main(
     assay=None,
     assay_config_file=None,
     assay_config_dir=None,
-    manifest_file=None,
+    manifest_files=None,
     split_tests=False,
     exclude_samples=None,
     exclude_samples_file=None,
@@ -261,14 +263,25 @@ def main(
     )
     genepanels = parse_genepanels(genepanels_data)
 
-    if manifest_file:
-        # parse manifest and format into a mapping of sampleID -> test codes
-        manifest_data = DXManage().read_dxfile(manifest_file)
-        manifest, manifest_source = parse_manifest(
-            contents=manifest_data,
-            split_tests=split_tests,
-            subset=manifest_subset
-        )
+    if manifest_files:
+        # one or more manifest files specified => parse manifest(s)
+        # and format into a mapping of sampleID -> test codes
+        print(f"{len(manifest_files)} manifest file(s) passed")
+        manifest = {}
+
+        for file in manifest_files:
+            manifest_data = DXManage().read_dxfile(file)
+            manifest_data = parse_manifest(
+                contents=manifest_data,
+                split_tests=split_tests,
+                subset=manifest_subset
+            )
+
+            # combine manifest data to previous
+            manifest = {**manifest, **manifest_data}
+
+        print("Final parsed manifest")
+        prettier_print(manifest)
 
         # filter manifest tests against genepanels to ensure what has been
         # requested are test codes or HGNC IDs we recognise
@@ -325,7 +338,6 @@ def main(
                 workflow_id=assay_config.get('cnv_report_workflow_id'),
                 single_output_dir=single_output_dir,
                 manifest=manifest,
-                manifest_source=manifest_source,
                 config=assay_config['modes']['cnv_reports'],
                 start=start_time,
                 name_patterns=assay_config.get('name_patterns', {}),
@@ -345,7 +357,6 @@ def main(
                 workflow_id=assay_config.get('snv_report_workflow_id'),
                 single_output_dir=single_output_dir,
                 manifest=manifest,
-                manifest_source=manifest_source,
                 config=assay_config['modes']['snv_reports'],
                 start=start_time,
                 name_patterns=assay_config.get('name_patterns', {}),
@@ -362,7 +373,6 @@ def main(
                 workflow_id=assay_config.get('snv_report_workflow_id'),
                 single_output_dir=single_output_dir,
                 manifest=manifest,
-                manifest_source=manifest_source,
                 config=assay_config['modes']['mosaic_reports'],
                 start=start_time,
                 name_patterns=assay_config.get('name_patterns', {}),

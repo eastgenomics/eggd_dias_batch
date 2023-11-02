@@ -721,7 +721,6 @@ class DXExecute():
             workflow_id,
             single_output_dir,
             manifest,
-            manifest_source,
             config,
             start,
             name_patterns,
@@ -746,9 +745,6 @@ class DXExecute():
             dnanexus path to Dias single output
         manifest : dict
             mapping of sampleID -> testCodes parsed from manifest
-        manifest_source : str
-            source of manifest (Epic or Gemini), required for filtering
-            pattern against sample name
         config : dict
             subset of assay config file containing the inputs for the given
             mode being run (i.e. {'modes': {'cnv_reports': {...}})
@@ -779,7 +775,7 @@ class DXExecute():
             dict of any errors found (i.e samples with no files)
         dict
             dict of per sample summary of names used for jobs
-        
+
         Raises
         ------
         AssertionError
@@ -817,15 +813,23 @@ class DXExecute():
             reports = '\n\t'.join(sorted(xlsx_reports))
             print(f"xlsx reports found:\n\t{reports}")
 
+        # this will either be Epic, Gemini or both
+        manifest_source = set([x['manifest_source'] for x in manifest.values()])
+
         if manifest_source == 'Epic':
             pattern = name_patterns.get('Epic')
-        else:
+        elif manifest_source == 'Gemini':
             pattern = name_patterns.get('Gemini')
-
-        assert pattern, (
-            f"No name pattern found for {manifest_source} parsed from "
-            "assay config file"
-        )
+        elif manifest_source == {'Epic', 'Gemini'}:
+            # got 2 (or more) manifests with a mix => use both
+            pattern = (
+                fr"{name_patterns.get('Epic')}|{name_patterns.get('Gemini')}"
+            )
+        else:
+            # who knows what happens if we got here
+            raise RuntimeError(
+                f'Unable to correctly parse manifest source. Parsed: {manifest_source}'
+            )
 
         vcf_files = []
         mosdepth_files = []

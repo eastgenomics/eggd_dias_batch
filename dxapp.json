@@ -22,11 +22,11 @@
             "group": ""
           },
           {
-            "name": "manifest_file",
-            "label": "manifest file",
-            "class": "file",
+            "name": "manifest_files",
+            "label": "manifest files",
+            "class": "array:file",
             "optional": true,
-            "help": "manifest file of sample -> panel",
+            "help": "manifest file(s) of sample -> panel",
             "group": ""
           },
           {
