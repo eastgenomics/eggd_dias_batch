@@ -282,7 +282,7 @@ def main(
             manifest = {**manifest, **manifest_data}
             manifest_source = {**manifest_source, **source}
 
-        print("Final parsed manifest")
+        print("Parsed manifest(s)")
         prettier_print(manifest)
 
         # filter manifest tests against genepanels to ensure what has been
@@ -299,8 +299,6 @@ def main(
         )
 
         # combine manifest source for each sample into its manifest values
-        print('MANIFEST SOURCE')
-        print(manifest_source)
         manifest = {
             sample: {**manifest[sample], **manifest_source[sample]}
             for sample in manifest

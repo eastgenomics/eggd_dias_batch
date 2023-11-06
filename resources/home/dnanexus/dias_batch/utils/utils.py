@@ -638,6 +638,7 @@ def filter_manifest_samples_by_files(
         "Total files after filtering against pattern: "
         f"{len(file_prefixes.keys())}"
     )
+    print(file_prefixes)
 
     manifest_no_match = []
     manifest_no_files = []

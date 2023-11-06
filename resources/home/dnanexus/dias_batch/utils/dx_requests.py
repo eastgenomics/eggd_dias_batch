@@ -827,7 +827,7 @@ class DXExecute():
         elif manifest_source == {'Epic', 'Gemini'}:
             # got 2 (or more) manifests with a mix => use both
             pattern = (
-                fr"{name_patterns.get('Epic')}|{name_patterns.get('Gemini')}"
+                fr"{name_patterns.get('Gemini')}|{name_patterns.get('Epic')}"
             )
             manifest_source = 'Epic&Gemini'
         else:
