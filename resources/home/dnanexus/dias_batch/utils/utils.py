@@ -217,7 +217,7 @@ def fill_config_reference_inputs(config) -> dict:
     -------
     dict
         config with input files parsed in
-    
+
     Raises
     ------
     RuntimeError
@@ -300,7 +300,7 @@ def parse_genepanels(contents) -> pd.DataFrame:
     This will drop the HGNC ID column and keep the unique rows left (i.e.
     one row per clinical indication / panel), and adds the test code as
     a separate column.
-    
+
     Example resultant dataframe:
 
     +-----------+-----------------------+---------------------------+

@@ -1233,6 +1233,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
     # minimal manifest with parsed in indications and panels
     manifest = {
         "X1234": {
+            "manifest_source": "Epic",
             "tests": [["R207.1"]],
             "panels": [
                 ["Inherited ovarian cancer (without breast cancer)_4.0"]
@@ -1242,6 +1243,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             ]]
         },
         "X5678": {
+            "manifest_source": "Epic",
             "tests": [["R134.1"]],
             "panels": [
                 ["Familial hypercholesterolaemia (GMS)_2.0"]
@@ -1309,6 +1311,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_filter_manifest.return_value = [
             {
                 "X1234": {
+                    "manifest_source": "Epic",
                     "tests": [["R207.1"]],
                     "panels": [
                         ["Inherited ovarian cancer (without breast cancer)_4.0"]
@@ -1336,6 +1339,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                     ]
                 },
                 "X5678": {
+                    "manifest_source": "Epic",
                     "tests": [["R134.1"]],
                     "panels": [
                         ["Familial hypercholesterolaemia (GMS)_2.0"]
@@ -1396,15 +1400,14 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         expects to have Epic or Gemini as keys to use
         """
         with pytest.raises(
-            AssertionError,
-            match=f'No name pattern found for Gemini parsed from assay config file'
+            RuntimeError,
+            match='Unable to correctly parse manifest source. Parsed: set()'
         ):
             DXExecute().reports_workflow(
                 mode='CNV',
                 workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
                 single_output_dir='/path_to_single/',
                 manifest={},
-                manifest_source='Gemini',
                 config={},
                 start='230925_0943',
                 name_patterns={},
@@ -1419,7 +1422,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
 
         n.b. here we're setting the mode to something invalid to stop the
         function going further and letting it raise a RuntimeError after
-        the xlsx reports have been parsed, so we don't have to patch lots 
+        the xlsx reports have been parsed, so we don't have to patch lots
         more for this test (mainly for laziness)
         """
         # minimal set of xlsx reports found
@@ -1446,8 +1449,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 mode='test',
                 workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
                 single_output_dir='/path_to_single/',
-                manifest={},
-                manifest_source='Epic',
+                manifest={'sample1': {'manifest_source': 'Epic'}},
                 config=self.assay_config,
                 start='230925_0943',
                 name_patterns={'Epic': '[\d\w]+-[\d\w]+'},
@@ -1476,7 +1478,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
                 single_output_dir='/path_to_single/',
                 manifest=self.manifest,
-                manifest_source='Gemini',
                 config=self.assay_config['modes']['cnv_reports'],
                 start='230925_0943',
                 name_patterns=self.assay_config['name_patterns'],
@@ -1507,7 +1508,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
                 single_output_dir='/path_to_single/',
                 manifest=self.manifest,
-                manifest_source='Gemini',
                 config=self.assay_config['modes']['cnv_reports'],
                 start='230925_0943',
                 name_patterns={'Gemini': 'X[\d]+'},
@@ -1551,7 +1551,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
             single_output_dir='/path_to_single/',
             manifest=self.manifest,
-            manifest_source='Gemini',
             config=self.assay_config['modes']['cnv_reports'],
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns'],
@@ -1586,7 +1585,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
                 single_output_dir='/path_to_single/',
                 manifest=self.manifest,
-                manifest_source='Gemini',
                 config=self.assay_config['modes']['snv_reports'],
                 start='230925_0943',
                 name_patterns=self.assay_config['name_patterns']
@@ -1621,7 +1619,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
                 single_output_dir='/path_to_single/',
                 manifest=self.manifest,
-                manifest_source='Gemini',
                 config=self.assay_config['modes']['snv_reports'],
                 start='230925_0943',
                 name_patterns=self.assay_config['name_patterns']
@@ -1665,7 +1662,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
             single_output_dir='/path_to_single/',
             manifest=self.manifest,
-            manifest_source='Gemini',
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns']
@@ -1722,7 +1718,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
             single_output_dir='/path_to_single/',
             manifest=self.manifest,
-            manifest_source='Gemini',
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns']
@@ -1730,8 +1725,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
 
         expected_errors = {
             (
-                'Samples in manifest not matching expected Gemini pattern '
-                '(1) ^X[\\d]+'
+                'Samples in manifest not matching expected Epic pattern '
+                '(1) ^[\\d\\w]+-[\\d\\w]+'
             ): ['X1928'],
             'Samples in manifest with no mosdepth files found (1)': ['X1928'],
             'Samples in manifest with no VCF found (1)': ['X1928']
@@ -1783,7 +1778,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
             single_output_dir='/path_to_single/',
             manifest=self.manifest,
-            manifest_source='Gemini',
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns']
@@ -1839,8 +1833,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             mode='SNV',
             workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
             single_output_dir='/path_to_single/',
-            manifest=filled_manifest,
-            manifest_source='Gemini',
+            manifest=filled_manifest[0],
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns']
@@ -1885,7 +1878,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
             single_output_dir='/path_to_single/',
             manifest=self.manifest,
-            manifest_source='Gemini',
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns'],
