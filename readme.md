@@ -11,7 +11,7 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 - `-iassay` (`str`): string of assay to run analysis for (CEN or TWE), used for searching of config files automatically (if `-iassay_config_file` not specified)
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search assay_config_dir for files (using `-iassay`)
 - `-isingle_output_dir` (`str`): path to output directory of Dias single to use as input files
-- `-imanifest_file` (`file`): manifest file from Epic or Gemini, maps sample ID -> required test codes / HGNC IDs (required for running any reports mode)
+- `-imanifest_files` (`array:file`): one or more manifest files from Epic or Gemini, maps sample ID -> required test codes / HGNC IDs (required for running any reports mode)
 - `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_only required when `-iartemis=true` specified_)
 
 **Useful ones**
@@ -65,7 +65,7 @@ The general behaviour of each mode is as follows:
 **Minimum inputs**:
 - `-iassay` or `-iassay_config_file`
 - `-isingle_output_dir`
-- `-imanifest_file`
+- `-imanifest_files`
 - `-icnv_reports` -> `-icnv_call=true` OR `-icnv_call_job_id`
 
 **Behaviour**:
@@ -73,7 +73,7 @@ The general behaviour of each mode is as follows:
 - Search for and download latest config for assay (if not provided directly)
 - Parse through config file to add reference files to input fields
 - Download and format genepanels file
-- Download manifest
+- Download manifest(s)
     - Check provided test codes are valid and present in genepanels file
     - Get full panel and clinical indication strings for each test code from genepanels file
 - For **CNV** reports:
@@ -115,7 +115,7 @@ Running CNV calling and CNV reports for CEN assay:
 ```
 dx run app-eggd_dias_batch \
     -iassay=CEN \
-    -imanifest_file=file-xxx \
+    -imanifest_files=file-xxx \
     -isingle_output_dir=project-xxx:/path_to_output/ \
     -icnv_call=true \
     -icnv_reports=true
@@ -125,11 +125,11 @@ Running reports for CNV and SNV (using previous CNV calling output) and launchin
 ```
 dx run app-eggd_dias_batch \
     -iassay=CEN \
-    -imanifest_file=file-xxx \
+    -imanifest_files=file-xxx \
     -isingle_output_dir=project-xxx:/path_to_output/ \
     -icnv_call_job_id=job-xxx \
     -icnv_reports=true \
-    -isnv_reports=true \ 
+    -isnv_reports=true \
     -iartemis=true \
     -iqc_file=file-xxx
 ```
@@ -138,7 +138,7 @@ Running SNV reports with specified config file:
 ```
 dx run app-eggd_dias_batch \
     -iassay_config_file=file-xxx \
-    -imanifest_file=file-xxx \
+    -imanifest_files=file-xxx \
     -isingle_output_dir=project-xxx:/path_to_output/ \
     -isnv_reports=true
 ```
@@ -147,7 +147,7 @@ Running all modes in testing:
 ```
 dx run app-eggd_dias_batch \
     -iassay=CEN \
-    -imanifest_file=file-xxx \
+    -imanifest_files=file-xxx \
     -isingle_output_dir=project-xxx:/path_to_output/ \
     -icnv_call=true \
     -icnv_reports=true \
@@ -155,6 +155,19 @@ dx run app-eggd_dias_batch \
     -imosaic_reports=true
 ```
 
+Running CNV calling, CNV reports, SNV reports and Artemis with 2 manifest files:
+```
+dx run app-eggd_dias_batch \
+    -iassay=CEN \
+    -isingle_output_dir=project-xxx:/path_to_output/ \
+    -imanifest_files=file-xxx \
+    -imanifest_files=file-yyy \
+    -iqc_file=file-zzz \
+    -icnv_call=true \
+    -icnv_reports=true \
+    -isnv_reports=true \
+    -iartemis=true
+```
 
 ## Config file design
 
