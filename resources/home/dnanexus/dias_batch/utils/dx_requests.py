@@ -816,9 +816,9 @@ class DXExecute():
         # this will either be Epic, Gemini or both
         manifest_source = set([x['manifest_source'] for x in manifest.values()])
 
-        if manifest_source == 'Epic':
+        if manifest_source == {'Epic'}:
             pattern = name_patterns.get('Epic')
-        elif manifest_source == 'Gemini':
+        elif manifest_source == {'Gemini'}:
             pattern = name_patterns.get('Gemini')
         elif manifest_source == {'Epic', 'Gemini'}:
             # got 2 (or more) manifests with a mix => use both

@@ -151,7 +151,7 @@ class CheckInputs():
         modes.pop(0)
         if any([
             self.inputs.get(x) for x in modes
-        ]) and not self.inputs.get('manifest_file'):
+        ]) and not self.inputs.get('manifest_files'):
             self.errors.append(
                 'Reports argument specified with no manifest file'
             )
@@ -268,10 +268,11 @@ def main(
         # and format into a mapping of sampleID -> test codes
         print(f"{len(manifest_files)} manifest file(s) passed")
         manifest = {}
+        manifest_source = {}
 
         for file in manifest_files:
             manifest_data = DXManage().read_dxfile(file)
-            manifest_data = parse_manifest(
+            manifest_data, source = parse_manifest(
                 contents=manifest_data,
                 split_tests=split_tests,
                 subset=manifest_subset
@@ -279,6 +280,7 @@ def main(
 
             # combine manifest data to previous
             manifest = {**manifest, **manifest_data}
+            manifest_source = {**manifest_source, **source}
 
         print("Final parsed manifest")
         prettier_print(manifest)
@@ -295,6 +297,14 @@ def main(
             manifest=manifest,
             genepanels=genepanels
         )
+
+        # combine manifest source for each sample into its manifest values
+        print('MANIFEST SOURCE')
+        print(manifest_source)
+        manifest = {
+            sample: {**manifest[sample], **manifest_source[sample]}
+            for sample in manifest
+        }
 
     launched_jobs = {}
     cnv_report_errors = snv_report_errors = mosaic_report_errors = \
@@ -431,9 +441,13 @@ def main(
     app_details = dxpy.DXApp(dxid=job_details['executable']).describe()
 
     # overwrite manifest job ID in job details with name to write to summary
-    job_details['runInput']['manifest_file'] = dxpy.describe(
-        job_details['runInput']['manifest_file']['$dnanexus_link']
-    )['name']
+    manifest_names = []
+    for file in job_details['runInput']['manifest_file']:
+        manifest_names.append(dxpy.describe(
+            job_details['runInput']['manifest_file']['$dnanexus_link']
+        )['name'])
+
+    job_details['runInput']['manifest_file'] = ', '.join(manifest_names)
 
     write_summary_report(
         summary_file,
