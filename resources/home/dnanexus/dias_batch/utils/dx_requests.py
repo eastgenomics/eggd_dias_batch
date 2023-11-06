@@ -80,7 +80,7 @@ class DXManage():
         -------
         dict
             contents of config file
-        
+
         Raises
         ------
         AssertionError
@@ -287,7 +287,7 @@ class DXManage():
         -------
         list
             contents of file as a list split on '\n'
-        
+
         Raises
         ------
         RuntimeError
@@ -343,7 +343,7 @@ class DXManage():
             can be unarchived
         - archived -> file fully archived, will take time to unarchive fully
         - unarchiving -> already requested unarchiving but not yet
-            completed, skip trying to unarchive again 
+            completed, skip trying to unarchive again
 
         Parameters
         ---------
@@ -353,7 +353,7 @@ class DXManage():
             if to automatically unarchive files
         samples : list
             list of sample names to filter down files to check
-        
+
         Raises
         ------
         RuntimeError
@@ -611,7 +611,7 @@ class DXExecute():
         -------
         str
             job ID of launch cnv calling job
-        
+
         Raises
         ------
         dxpy.exceptions.DXJobFailureError
@@ -721,7 +721,6 @@ class DXExecute():
             workflow_id,
             single_output_dir,
             manifest,
-            manifest_source,
             config,
             start,
             name_patterns,
@@ -746,9 +745,6 @@ class DXExecute():
             dnanexus path to Dias single output
         manifest : dict
             mapping of sampleID -> testCodes parsed from manifest
-        manifest_source : str
-            source of manifest (Epic or Gemini), required for filtering
-            pattern against sample name
         config : dict
             subset of assay config file containing the inputs for the given
             mode being run (i.e. {'modes': {'cnv_reports': {...}})
@@ -779,10 +775,10 @@ class DXExecute():
             dict of any errors found (i.e samples with no files)
         dict
             dict of per sample summary of names used for jobs
-        
+
         Raises
         ------
-        AssertionError
+        RuntimeError
             Raised when name patterns not present in config file
         RuntimeError
             Raised when invalid mode set
@@ -817,15 +813,27 @@ class DXExecute():
             reports = '\n\t'.join(sorted(xlsx_reports))
             print(f"xlsx reports found:\n\t{reports}")
 
-        if manifest_source == 'Epic':
-            pattern = name_patterns.get('Epic')
-        else:
-            pattern = name_patterns.get('Gemini')
 
-        assert pattern, (
-            f"No name pattern found for {manifest_source} parsed from "
-            "assay config file"
-        )
+        # this will either be Epic, Gemini or both
+        manifest_source = set([x['manifest_source'] for x in manifest.values()])
+
+        if manifest_source == {'Epic'}:
+            pattern = name_patterns.get('Epic')
+            manifest_source = 'Epic'
+        elif manifest_source == {'Gemini'}:
+            pattern = name_patterns.get('Gemini')
+            manifest_source = 'Gemini'
+        elif manifest_source == {'Epic', 'Gemini'}:
+            # got 2 (or more) manifests with a mix => use both
+            pattern = (
+                fr"{name_patterns.get('Gemini')}|{name_patterns.get('Epic')}"
+            )
+            manifest_source = 'Epic&Gemini'
+        else:
+            # who knows what happens if we got here
+            raise RuntimeError(
+                f'Unable to correctly parse manifest source. Parsed: {manifest_source}'
+            )
 
         vcf_files = []
         mosdepth_files = []
@@ -926,7 +934,7 @@ class DXExecute():
             if not vcf_files:
                 error = (
                     f"Found no vcf files! {mode} reports in {single_output_dir} "
-                    f"and subdir {vcf_dir} with pattern {vcf_name}" 
+                    f"and subdir {vcf_dir} with pattern {vcf_name}"
                 )
 
                 raise RuntimeError(error)

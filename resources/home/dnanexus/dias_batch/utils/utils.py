@@ -122,6 +122,9 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
 
         if manifest:
             file_handle.write(
+                f"\nManifest(s) parsed: {job['runInput']['manifest_files']}\n"
+            )
+            file_handle.write(
                 f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
             )
 
@@ -214,7 +217,7 @@ def fill_config_reference_inputs(config) -> dict:
     -------
     dict
         config with input files parsed in
-    
+
     Raises
     ------
     RuntimeError
@@ -297,7 +300,7 @@ def parse_genepanels(contents) -> pd.DataFrame:
     This will drop the HGNC ID column and keep the unique rows left (i.e.
     one row per clinical indication / panel), and adds the test code as
     a separate column.
-    
+
     Example resultant dataframe:
 
     +-----------+-----------------------+---------------------------+
@@ -343,7 +346,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
 
                                     |
                                     ▼
-                                        
+
     +-----------+-----------------------+---------------------------+
     | test_code |      indication      |        panel_name          |
     +-----------+-----------------------+---------------------------+
@@ -361,7 +364,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     -------
     pd.DataFrame
         genepanels with test code split to separate column
-    
+
     Raises
     ------
     RuntimeError
@@ -386,7 +389,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     return genepanels
 
 
-def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFrame, str]:
+def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Parse manifest data from file read in DNAnexus
 
@@ -407,9 +410,10 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     dict
         mapping of sampleID (str): 'tests': testCodes (list)
         e.g. {'sample1': {'tests': [['panel1']]}}
-    str
-        source of manifest file (either Epic or Gemini)
-    
+    dict
+        mapping of sampleID (str): manifest_source (str; either 'Gemini'
+        or 'Epic')
+
     Raises
     ------
     AssertionError
@@ -436,10 +440,13 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     # for Gemini samples we will squash these down to a single list due
     # to how they are booked in and get split to multiple lines (it's going
     # away anyway so this is just for handling legacy samples)
+    manifest_source = {}
 
     if all('\t' in x for x in contents if x):
         # this is an old Gemini manifest => should just have sampleID -> CI
         contents = [x.split('\t') for x in contents if x]
+
+        source = 'Gemini'
 
         # sense check data does only have 2 columns
         assert all([len(x) == 2 for x in contents]), (
@@ -450,8 +457,10 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
         sample_names = {x[0] for x in contents}
         data = {name: {'tests': [[]]} for name in sample_names}
 
-        for sample in contents:
-            test_codes = sample[1].replace(' ', '').split(',')
+        for sample, tests in contents:
+            test_codes = tests.replace(' ', '').split(',')
+
+            manifest_source[sample] = {'manifest_source': 'Gemini'}
 
             for test_code in test_codes:
                 # add test codes to samples list, keeping just the code part
@@ -466,9 +475,7 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
                     # in utils.check_manifest_valid_test_codes()
                     code = test_code
 
-                data[sample[0]]['tests'][0].append(code)
-
-        manifest_source = 'Gemini'
+                data[sample]['tests'][0].append(code)
 
     elif all(';' in x for x in contents[1:] if x):
         # csv file => Epic style manifest
@@ -477,6 +484,8 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
         # first row is just batch ID and 2nd is column names
         contents = [x.split(';') for x in contents if x]
         manifest = pd.DataFrame(contents[2:], columns=contents[1])
+
+        source = 'Epic'
 
         # sense check we have columns we need
         required = [
@@ -513,7 +522,6 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
             '-' + manifest['Re-analysis Specimen ID']
 
         manifest = manifest[['SampleID', 'ReanalysisID', 'Test Codes']]
-        manifest_source = 'Epic'
 
         data = defaultdict(lambda: defaultdict(list))
 
@@ -527,8 +535,10 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
             # preferentially use ReanalysisID if present
             if re.match(r"[\d\w]+-[\d\w]+", row.ReanalysisID):
                 data[row.ReanalysisID]['tests'].append(test_codes)
+                manifest_source[row.ReanalysisID] = {'manifest_source': 'Epic'}
             elif re.match(r"[\d\w]+-[\d\w]+", row.SampleID):
                 data[row.SampleID]['tests'].append(test_codes)
+                manifest_source[row.SampleID] = {'manifest_source': 'Epic'}
             else:
                 # some funky with this sample naming
                 raise RuntimeError(
@@ -560,14 +570,13 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
             if sample in subset
         }
 
-
     if split_tests:
         data = split_manifest_tests(data)
 
     samples = ('\n\t').join([
         f"{x[0]} -> {x[1]['tests']}" for x in data.items()
     ])
-    print(f"\n \n{manifest_source} manifest parsed:\n\t{samples}")
+    print(f"\n \n{source} manifest parsed:\n\t{samples}")
 
     return data, manifest_source
 
@@ -690,7 +699,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     -------
     dict
         dict of manifest with valid test codes
-    
+
     Raises
     ------
     RuntimeError
@@ -842,7 +851,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     -------
     dict
         manifest dict with additional panel and indication strings
-    
+
     Raises
     ------
     AssertionError

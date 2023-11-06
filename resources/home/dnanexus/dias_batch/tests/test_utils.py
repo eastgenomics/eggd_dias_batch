@@ -118,7 +118,6 @@ class TestCheckReportIndex():
         )
 
 
-
 class TestWriteSummaryReport():
     """
     Tests for utils.write_summary_report()
@@ -146,7 +145,7 @@ class TestWriteSummaryReport():
             'assay_config_file': {
                 '$dnanexus_link': 'file-GZFV3184VjyV3JZgQx0GBkBz'
             },
-            'manifest_file': 'manifest.txt',
+            'manifest_files': 'manifest.txt',
             'qc_file': {
                 '$dnanexus_link': 'file-GYPg1fj4YXKbxV560Zfy3XFv'
             }
@@ -245,8 +244,11 @@ class TestWriteSummaryReport():
             x.replace('\t', '') for x in written_inputs if x
         ])
 
+        original_inputs = deepcopy(self.job_details['runInput'])
+        original_inputs['Manifest(s) parsed'] = 'manifest.txt'
+
         original_inputs = sorted([
-            f"{k}: {v}" for k, v in self.job_details['runInput'].items()
+            f"{k}: {v}" for k, v in original_inputs.items()
         ])
 
         assert written_inputs == original_inputs, 'Inputs incorrectly written'
