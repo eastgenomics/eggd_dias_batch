@@ -346,7 +346,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
 
                                     |
                                     ▼
-                                        
+
     +-----------+-----------------------+---------------------------+
     | test_code |      indication      |        panel_name          |
     +-----------+-----------------------+---------------------------+
@@ -364,7 +364,7 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     -------
     pd.DataFrame
         genepanels with test code split to separate column
-    
+
     Raises
     ------
     RuntimeError
@@ -522,7 +522,6 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
             '-' + manifest['Re-analysis Specimen ID']
 
         manifest = manifest[['SampleID', 'ReanalysisID', 'Test Codes']]
-        manifest_source = 'Epic'
 
         data = defaultdict(lambda: defaultdict(list))
 
