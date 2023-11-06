@@ -441,13 +441,12 @@ def main(
     app_details = dxpy.DXApp(dxid=job_details['executable']).describe()
 
     # overwrite manifest job ID in job details with name to write to summary
-    manifest_names = []
-    for file in job_details['runInput']['manifest_file']:
-        manifest_names.append(dxpy.describe(
-            job_details['runInput']['manifest_file']['$dnanexus_link']
-        )['name'])
+    if manifest_files:
+        manifest_names = []
+        for file in job_details['runInput']['manifest_files']:
+            manifest_names.append(dxpy.describe(file['$dnanexus_link'])['name'])
 
-    job_details['runInput']['manifest_file'] = ', '.join(manifest_names)
+        job_details['runInput']['manifest_files'] = ', '.join(manifest_names)
 
     write_summary_report(
         summary_file,

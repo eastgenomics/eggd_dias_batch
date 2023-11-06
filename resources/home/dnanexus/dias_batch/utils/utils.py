@@ -122,6 +122,9 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
 
         if manifest:
             file_handle.write(
+                f"\nManifest(s) parsed: {job['runInput']['manifest_files']}\n"
+            )
+            file_handle.write(
                 f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
             )
 
