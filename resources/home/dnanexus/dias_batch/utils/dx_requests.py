@@ -778,7 +778,7 @@ class DXExecute():
 
         Raises
         ------
-        AssertionError
+        RuntimeError
             Raised when name patterns not present in config file
         RuntimeError
             Raised when invalid mode set
@@ -813,7 +813,6 @@ class DXExecute():
             reports = '\n\t'.join(sorted(xlsx_reports))
             print(f"xlsx reports found:\n\t{reports}")
 
-        print(manifest)
 
         # this will either be Epic, Gemini or both
         manifest_source = set([x['manifest_source'] for x in manifest.values()])
