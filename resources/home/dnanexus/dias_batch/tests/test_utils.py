@@ -356,7 +356,7 @@ class TestWriteSummaryReport():
 class TestMakePath():
     """
     Tests for utils.make_path()
-    
+
     Function expects  to take any number of strings with variable '/' and
     format nicely as a path for DNAnexus queries, dropping project-
     prefix if present
@@ -536,7 +536,7 @@ class TestParseGenePanels():
 class TestSplitGenePanelsTestCodes():
     """
     Tests for utils.split_gene_panels_test_codes()
-    
+
     Function takes the read in genepanels file and splits out the test code
     that prefixes the clinical indication (i.e. R337.1 -> R337.1_CADASIL_G)
     """
@@ -743,7 +743,7 @@ class TestParseManifest:
         Where 'Re-analysis Specimen ID' or 'Re-analysis Instrument ID'
         are specified these should be used over the Specimen ID and
         Instrument columns, as these contain the original IDs that we need
-        
+
         The last row in our test epic manifest has GM2308111 and X225111
         for the reanalysis IDs, therefore we check this ends up in our
         manifest dict
@@ -757,11 +757,11 @@ class TestParseManifest:
     def test_epic_missing_sample_id_caught(self):
         """
         Reanalysis ID and SampleID columns are concatenations of
-        {Re-analysis Specimen ID}-{Re-analysis Instrument ID} and 
+        {Re-analysis Specimen ID}-{Re-analysis Instrument ID} and
         {Specimen ID}-{Instrument ID} columns, respectively.
-        
+
         We check generated sample IDs are valid against
-        r'[\d\w]+-[\d\w]+', therefore test we catch malformed IDs 
+        r'[\d\w]+-[\d\w]+', therefore test we catch malformed IDs
         """
         data = deepcopy(self.epic_data)
 
@@ -848,7 +848,7 @@ class TestFilterManifestSamplesByFiles():
 
     Function filters out sample names that either don't meet a specified
     regex pattern (i.e. [\w\d]+-[\w\d]+- for Epic sample naming) or have
-    no files available against a list of samples found to use as inputs  
+    no files available against a list of samples found to use as inputs
     """
     with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
         epic_data = file_handle.read().splitlines()

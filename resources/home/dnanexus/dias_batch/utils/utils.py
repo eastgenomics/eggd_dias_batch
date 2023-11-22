@@ -193,7 +193,7 @@ def make_path(*path) -> str:
     Returns
     -------
     str
-        nicely formated path with leading and trailing forward slash
+        nicely formatted path with leading and trailing forward slash
     """
     path = '/'.join([
         re.sub(r"project-[\d\w]+:", "", x).lstrip('/').rstrip('/')
@@ -480,7 +480,7 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     elif all(';' in x for x in contents[1:] if x):
         # csv file => Epic style manifest
         # (not actually a csv file even though they call it .csv since it
-        # has ; as a delimeter and everything is a lie)
+        # has ; as a delimiter and everything is a lie)
         # first row is just batch ID and 2nd is column names
         contents = [x.split(';') for x in contents if x]
         manifest = pd.DataFrame(contents[2:], columns=contents[1])
@@ -540,7 +540,7 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
                 data[row.SampleID]['tests'].append(test_codes)
                 manifest_source[row.SampleID] = {'manifest_source': 'Epic'}
             else:
-                # some funky with this sample naming
+                # something funky with this sample naming
                 raise RuntimeError(
                     f"Error in sample formatting of row {idx + 1} in manifest:"
                     f"\n\t{row}"
@@ -796,7 +796,7 @@ def split_manifest_tests(data) -> dict:
         all_split_test_codes = []
         for test_list in test_codes['tests']:
             test_genes = []
-            for idx, sub_test in enumerate(test_list):
+            for sub_test in test_list:
                 if re.match(r"[RC][\d]+\.[\d]+", sub_test):
                     # it's a panel => split it out
                     all_split_test_codes.append([sub_test])
@@ -882,7 +882,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
 
                     # SPOILER: in older genepanels it isn't always 1:1 as we
                     # have 'single gene panels' (which aren't actually single
-                    # genes as there's multiple but OH WELL), this is not a
+                    # genes as there's multiple but OH WELL). This is not a
                     # thing in Eris and there's only ~20, so for these we will
                     # just dump all the single gene 'panel' names into one
                     # and they can deal with that, example of this hot mess:
