@@ -161,8 +161,9 @@ class TestCheckInputs():
 class TestMain():
     """
     Tests for dias_batch.main
-    
+
     This is the main entry point into the app, tests are just to show that
     functions are called when expected as there is little other logic in here
     """
+    # TODO I should probably finish this test off at some point
     pass

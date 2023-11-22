@@ -209,7 +209,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         )
 
         assert config['version'] == '1.2.1', (
-            "Incorrect config file version returned"            
+            "Incorrect config file version returned"
         )
 
 
@@ -514,7 +514,7 @@ class TestDXManageReadDXfile():
         """
         Test when file input is a dict (i.e. $dnanexus_link mapping) that
         we correctly parse the link to query with
-        
+
         set variables for reading the file
         """
         file = {
@@ -574,8 +574,6 @@ class TestDXManageReadDXfile():
         """
         Test when file input is string with both project and file IDs
         that this get correctly split and used
-        
-        set variables for reading the file
         """
         # project and file should get split and pass the assert, we have
         # patched DXFile.read() so nothing will get returned as we expect
@@ -597,7 +595,7 @@ class TestDXManageCheckArchivalState():
     """
     Tests for DXManage.check_archival_state()
 
-    Function takes in a list of DXFileObjeects (and optionally a list
+    Function takes in a list of DXFileObjects (and optionally a list
     of sample names to filter by), and checks the archival state of
     the files to ensure all are live before launching jobs
     """
@@ -1471,7 +1469,10 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_find.side_effect = [[], [], []]
         with pytest.raises(
             RuntimeError,
-            match=f'Failed to find excluded intervals bed file from job-QaTZ9qEwkEsovKLs14DSdNqb'
+            match=(
+                'Failed to find excluded intervals bed file '
+                'from job-QaTZ9qEwkEsovKLs14DSdNqb'
+            )
         ):
             DXExecute().reports_workflow(
                 mode='CNV',

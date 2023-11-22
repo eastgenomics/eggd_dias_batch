@@ -232,7 +232,7 @@ def main(
 
     check = CheckInputs(**locals())
 
-    # assign single out dir in case of missing /output prefix to path
+    # assign single out dir in case of missing / output prefix to path
     single_output_dir = check.inputs['single_output_dir']
 
     # time of running for naming output folders
