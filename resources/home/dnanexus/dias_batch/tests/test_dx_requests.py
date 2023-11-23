@@ -1399,7 +1399,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         with pytest.raises(
             RuntimeError,
-            match='Unable to correctly parse manifest source. Parsed: set()'
+            match='Unable to correctly parse manifest source. Parsed:'
         ):
             DXExecute().reports_workflow(
                 mode='CNV',

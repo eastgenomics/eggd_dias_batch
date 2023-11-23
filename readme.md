@@ -4,37 +4,44 @@
 
 DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given directory of Dias single output and a manifest file.
 
-
+---
 ## What inputs are required for this app to run?
 
-**Required**
+#### Required
 - `-iassay` (`str`): string of assay to run analysis for (CEN or TWE), used for searching of config files automatically (if `-iassay_config_file` not specified)
-- `-iassay_config_file` (`file`): Config file for assay, if not provided will search assay_config_dir for files (using `-iassay`)
 - `-isingle_output_dir` (`str`): path to output directory of Dias single to use as input files
 - `-imanifest_files` (`array:file`): one or more manifest files from Epic or Gemini, maps sample ID -> required test codes / HGNC IDs (required for running any reports mode)
 - `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_only required when `-iartemis=true` specified_)
 
-**Useful ones**
+#### Useful ones
 
+**Strings**
+- `assay_config_dir` (`str`): DNANexus project:path to directory containing config files, the highest version for the given `-assay` string will be used
 - `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run
 - `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
-- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)
 - `-imanifest_subset` (`str`): comma separated string of samples in manifest on which to ONLY run jobs (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
+
+**Files**
+- `-iassay_config_file` (`file`): Config file for assay, if not provided will search default `assay_config_dir` for highest version config file for the given `-assay` string
+- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)
+
+**Booleans**
 - `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
 - `-iunarchive` (`bool`):  controls whether to automatically unarchive any required files that are archived. Default is to fail the app with a list of files required to unarchive. If set to true, all required files will start to be unarchived and the job will exit with a zero exit code and the job tagged to state no jobs were launched
 
 
-**Running modes**
+#### Running modes
 - `-icnv_call` (`bool`): controls if to run CNV calling
 - `-icnv_reports` (`bool`): controls if to run CNV reports workflows
 - `-isnv_reports` (`bool`): controls if to run SNV reports workflows
 - `-imosaic_reports` (`bool`): controls if to run mosaic reports workflow
 - `-iartemis` (`bool`): controls if to run eggd_artemis
 
-**Testing**
+#### Testing
 - `-itesting` (`bool`): controls if to run in testing mode and terminate all launched jobs after launching
 - `-isample_limit` (`int`): no. of samples to launch jobs for, used during testing to speed up running of app
 
+---
 
 ## How does this app work?
 
@@ -108,6 +115,7 @@ n.b.
     - get parent path of both if true to set as input
 - launch eggd_artemis, will be dependent on **all** SNV and CNV report workflows completing
 
+---
 
 ### Example commands
 
@@ -168,6 +176,8 @@ dx run app-eggd_dias_batch \
     -isnv_reports=true \
     -iartemis=true
 ```
+
+---
 
 ## Config file design
 
@@ -276,8 +286,10 @@ The definitions of inputs for CNV calling and each reports workflow should be de
         }
         ```
 
+---
 
 ## What does this app output
 
 - `summary_report` (`file`) - text summary file with details on jobs run and any samples / tests excluded from analysis
 
+---

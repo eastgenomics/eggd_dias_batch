@@ -14,6 +14,15 @@
             "group": ""
           },
           {
+            "name": "assay_config_dir",
+            "label": "assay config dir",
+            "class": "string",
+            "optional": true,
+            "default": "project-Fkb6Gkj433GVVvj73J7x8KbV:/dynamic_files/dias_batch_configs/",
+            "help": "path to directory containing assay config files",
+            "group": ""
+          },
+          {
             "name": "assay_config_file",
             "label": "assay config file",
             "class": "file",
