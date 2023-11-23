@@ -242,11 +242,14 @@ def main(
         assay_config = DXManage().read_assay_config_file(
             file=assay_config_file.get('$dnanexus_link')
         )
-
-    if assay and assay_config_dir:
+    elif assay and assay_config_dir:
         assay_config = DXManage().get_assay_config(
             assay=assay,
             path=assay_config_dir
+        )
+    else:
+        raise RuntimeError(
+            "No assay config file or assay and config dir provided"
         )
 
     assay_config = fill_config_reference_inputs(assay_config)
