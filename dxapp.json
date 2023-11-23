@@ -16,7 +16,7 @@
           {
             "name": "assay_config_dir",
             "label": "assay config dir",
-            "class": "str",
+            "class": "string",
             "optional": true,
             "default": "project-Fkb6Gkj433GVVvj73J7x8KbV:/dynamic_files/dias_batch_configs/",
             "help": "path to directory containing assay config files",
