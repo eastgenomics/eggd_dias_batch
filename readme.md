@@ -2,7 +2,7 @@
 
 ## What are typical use cases for this app?
 
-DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given directory of Dias single output and a manifest file.
+DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic reports workflows as well as eggd_artemis from a given directory of Dias single output and a manifest file(s).
 
 ---
 ## What inputs are required for this app to run?
@@ -16,7 +16,7 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 #### Useful ones
 
 **Strings**
-- `assay_config_dir` (`str`): DNANexus project:path to directory containing config files, the highest version for the given `-assay` string will be used
+- `-iassay_config_dir` (`str`): DNANexus project:path to directory containing config files, the highest version for the given `-iassay` string will be used
 - `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run
 - `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
 - `-imanifest_subset` (`str`): comma separated string of samples in manifest on which to ONLY run jobs (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
@@ -36,6 +36,8 @@ DNAnexus app for launching SNV, CNV and mosaic reports workflow from a given dir
 - `-isnv_reports` (`bool`): controls if to run SNV reports workflows
 - `-imosaic_reports` (`bool`): controls if to run mosaic reports workflow
 - `-iartemis` (`bool`): controls if to run eggd_artemis
+
+*n.b. the default is for all running modes to be false, therefore if none are specified the app will raise and error and exit*
 
 #### Testing
 - `-itesting` (`bool`): controls if to run in testing mode and terminate all launched jobs after launching
