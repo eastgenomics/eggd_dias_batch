@@ -844,6 +844,7 @@ class DXExecute():
 
         vcf_files = []
         mosdepth_files = []
+        excluded_intervals_bed_file = []
 
         # gather errors to display in summary report
         errors = {}
