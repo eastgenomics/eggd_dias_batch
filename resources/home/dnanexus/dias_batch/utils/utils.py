@@ -909,6 +909,14 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                         panel_str = ';'.join(
                             genepanels_row['panel_name'].tolist()
                         )
+
+                        # try clean up the panel string and drop
+                        # duplicated _SG_panel_1.0.0
+                        if '_SG_panel_1.0.0' in panel_str:
+                            panel_str = (
+                                f"{re.sub(r'_SG_panel_1.0.0', '', panel_str)}"
+                                "_SG_panel_1.0.0"
+                            )
                     else:
                         # this is nice and sane and 1:1
                         panel_str = genepanels_row.iloc[0].panel_name

@@ -1232,10 +1232,8 @@ class TestAddPanelsAndIndicationsToManifest():
                 "tests": [["R208.1"]],
                 "panels": [
                     [
-                        "HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;"
-                        "HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;"
-                        "HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;"
-                        "HGNC:9823_SG_panel_1.0.0"
+                        "HGNC:1100;HGNC:1101;HGNC:16627;HGNC:26144;HGNC:795;"
+                        "HGNC:9820;HGNC:9823_SG_panel_1.0.0"
                     ]
                 ],
                 "indications": [
@@ -1255,11 +1253,9 @@ class TestAddPanelsAndIndicationsToManifest():
                 "tests": [["R208.1", "R216.1"]],
                 "panels": [
                     [
-                        "HGNC:1100_SG_panel_1.0.0;HGNC:1101_SG_panel_1.0.0;"
-                        "HGNC:16627_SG_panel_1.0.0;HGNC:26144_SG_panel_1.0.0;"
-                        "HGNC:795_SG_panel_1.0.0;HGNC:9820_SG_panel_1.0.0;"
-                        "HGNC:9823_SG_panel_1.0.0",
-                        "HGNC:11998_SG_panel_1.0.0;HGNC:17284_SG_panel_1.0.0"
+                        "HGNC:1100;HGNC:1101;HGNC:16627;HGNC:26144;HGNC:795;"
+                        "HGNC:9820;HGNC:9823_SG_panel_1.0.0",
+                        "HGNC:11998;HGNC:17284_SG_panel_1.0.0"
                     ]
                 ],
                 "indications": [
