@@ -494,8 +494,8 @@ class DXManage():
 
             if not unarchived:
                 raise RuntimeError(
-                    f"[Attempt {attempt}/5] Too many errors trying unarchiving "
-                    f"file: {dx_file['id']}. Exiting."
+                    f"[Attempt {attempt}/5] Too many errors trying to "
+                    f"unarchive file: {dx_file['id']}. Exiting."
                 )
 
         # build a handy command to dump into the logs for people to check
