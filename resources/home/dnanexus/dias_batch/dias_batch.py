@@ -69,6 +69,7 @@ class CheckInputs():
         self.check_cnv_calling_for_cnv_reports()
         self.check_artemis_inputs()
         self.check_exclude_str_and_file()
+        self.check_exclude_samples_file_id()
 
         if self.errors:
             errors = '; '.join(x for x in self.errors)
@@ -212,6 +213,19 @@ class CheckInputs():
                 "Both -iexclude_samples and -iexclude_samples_file specified, "
                 "only one may be specified"
             )
+
+    def check_exclude_samples_file_id(self):
+        """
+        Check if input to -iexclude_samples is a file-xxx string and should
+        have been provided to -iexclude_samples_file
+        """
+        if self.inputs.get('exclude_samples'):
+            if re.match(r"file-", self.inputs.get('exclude_samples')):
+                self.errors.append(
+                    "DNAnexus file ID provided to -iexclude_samples, "
+                    "rerun and provide this as -iexclude_samples_file="
+                    f"{self.inputs.get('exclude_samples')}"
+                )
 
 
 @dxpy.entry_point('main')

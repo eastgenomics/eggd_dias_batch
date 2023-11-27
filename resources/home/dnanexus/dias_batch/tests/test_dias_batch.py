@@ -183,6 +183,32 @@ class TestCheckInputs():
         )
 
 
+    def test_exclude_samples_with_file_id(self, mocker):
+        """
+        Test for check_exclude_samples_file_id() to check if a file ID
+        has been provided to exclude_samples instead of exclude_samples_file
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        mocker.return_value = None
+        check = CheckInputs()
+        check.errors = []
+
+        check.inputs = {
+            "exclude_samples": "file-abc123"
+        }
+
+        check.check_exclude_samples_file_id()
+
+        correct_error = ([
+            "DNAnexus file ID provided to -iexclude_samples, "
+            "rerun and provide this as -iexclude_samples_file=file-abc123"
+        ])
+
+        assert check.errors == correct_error, (
+            "Error not raise from file ID provided to exclude_samples"
+        )
+
+
 class TestMain():
     """
     Tests for dias_batch.main
