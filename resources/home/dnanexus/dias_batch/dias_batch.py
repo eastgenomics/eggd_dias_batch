@@ -69,9 +69,9 @@ class CheckInputs():
         self.check_artemis_inputs()
 
         if self.errors:
-            errors = '\n\t'.join(x for x in self.errors)
+            errors = '; '.join(x for x in self.errors)
             raise RuntimeError(
-                f"Errors in inputs passed:\n\t{errors}"
+                f"Errors in job inputs:\n\t{errors}"
             )
 
         print("Inputs valid, continuing...")
@@ -155,6 +155,17 @@ class CheckInputs():
         ]) and not self.inputs.get('manifest_files'):
             self.errors.append(
                 'Reports argument specified with no manifest file'
+            )
+
+    def check_cnv_calling_cnv_job_id_mutually_exclusive(self):
+        """
+        Check that both cnv_call and cnv_call_job_id have not been
+        specified together
+        """
+        if self.inputs.get('cnv_call') and self.inputs.get('cnv_call_job_id'):
+            self.errors.append(
+                'Both mutually exclusive cnv_call and '
+                'cnv_call_job_id inputs  specified'
             )
 
     def check_cnv_calling_for_cnv_reports(self):
