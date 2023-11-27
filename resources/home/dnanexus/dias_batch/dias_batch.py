@@ -112,11 +112,11 @@ class CheckInputs():
         if not self.inputs.get('single_output_dir'):
             return
 
-        if self.inputs['single_output_dir'].startswith('project'):
-            project, path = self.inputs['single_output_dir'].split(':')
+        if self.inputs['single_output_dir'].startswith('project-'):
+            project, path = self.inputs['single_output_dir'].strip().split(':')
         else:
             project = os.environ.get("DX_PROJECT_CONTEXT_ID")
-            path = self.inputs['single_output_dir']
+            path = self.inputs['single_output_dir'].strip()
 
         files = list(dxpy.find_data_objects(
             project=project,
