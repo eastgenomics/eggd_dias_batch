@@ -177,7 +177,7 @@ class CheckInputs():
         """Check if running artemis that the required inputs are set"""
         if self.inputs.get('artemis'):
             if (
-                not self.inputs.get('cnv_reports') or
+                not self.inputs.get('cnv_reports') and
                 not self.inputs.get('snv_reports')
             ):
                 self.errors.append(
