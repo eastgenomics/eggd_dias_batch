@@ -24,7 +24,11 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 **Files**
 - `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and will only be used when `-iartemis=true` specified_)
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search default `assay_config_dir` for highest version config file for the given `-assay` string
-- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)
+- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line. Epic samples should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`) Example formatting of exclude_samples_file`:
+    ```
+    X225201
+    125558769-23272R0123
+    ```
 
 **Booleans**
 - `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
