@@ -1131,29 +1131,24 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
 
     def test_exclude_invalid_sample(self):
         """
-        Test when exclude samples is specified with a sample not in BAM
-        files that a warning is printed
+        Test when exclude samples is specified with an sample name that
+        has no BAM file present a RuntimeError is correctly raised from
+        the call to utils.check_exclude_samples
         """
-        DXExecute().cnv_calling(
-            config=deepcopy(self.config),
-            single_output_dir='',
-            exclude=['sample1000'],
-            start='',
-            wait=False,
-            unarchive=False
+        correct_error = (
+            "samples provided to exclude from CNV calling not valid: "
+            r"\['sample1000'\]"
         )
 
-        stdout = self.capsys.readouterr().out
-
-        correct_warning = (
-            "WARNING: sample ID(s) provided to exclude not present in bam "
-            "files found for CNV calling:\n\t['sample1000']\nIgnoring "
-            "these and continuing..."
-        )
-
-        assert correct_warning in stdout, (
-            'Invalid exclude sample specified not correctly removed'
-        )
+        with pytest.raises(RuntimeError, match=correct_error):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=['sample1000'],
+                start='',
+                wait=False,
+                unarchive=False
+            )
 
 
     def test_correct_error_raised_on_calling_failing(self):
