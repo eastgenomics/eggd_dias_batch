@@ -1323,3 +1323,13 @@ class TestAddPanelsAndIndicationsToManifest():
                 manifest=manifest,
                 genepanels=self.genepanels
             )
+
+
+class TestCheckExcludeSamples():
+    """
+    Tests for utils.check_exclude_samples()
+
+    Function checks the specified list of exclude samples against either
+    list of BAM files (for CNV calling) or the manifest (CNV reports) to
+    ensure all samples specified are valid for excluding
+    """
