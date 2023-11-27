@@ -22,7 +22,7 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 - `-imanifest_subset` (`str`): comma separated string of samples in manifest on which to ONLY run jobs (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
 
 **Files**
-- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and is only required when `-iartemis=true` specified_)
+- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and will only be used when `-iartemis=true` specified_)
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search default `assay_config_dir` for highest version config file for the given `-assay` string
 - `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)
 
