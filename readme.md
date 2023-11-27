@@ -18,8 +18,8 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 **Strings**
 - `-iassay_config_dir` (`str`): DNANexus project:path to directory containing config files, the highest version for the given `-iassay` string will be used
 - `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run (_n.b. this is mutually exclusive with `-icnv_call`_)
-- `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
-- `-imanifest_subset` (`str`): comma separated string of samples in manifest on which to ONLY run jobs (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
+- `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
+- `-imanifest_subset` (`str`): comma separated string of Epic samples in manifest on which to ONLY run jobs (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`)). This option is to be used if an Epic batch had mistakes in the manifest, which have now been corrected. This will filter the updated batch so that reports jobs are only run for the corrected samples and not the whole batch.
 
 **Files**
 - `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and will only be used when `-iartemis=true` specified_)
