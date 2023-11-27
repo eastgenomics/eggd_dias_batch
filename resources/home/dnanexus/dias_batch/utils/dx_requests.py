@@ -632,9 +632,14 @@ class DXExecute():
             single_output_dir, cnv_config['inputs']['bambais']['folder']
         )
 
+        # check if we're searching for files in different project
+        remote_project = re.match(r"project-[\w]+", single_output_dir)
+        if remote_project:
+            bam_dir = f"{remote_project.group()}:{bam_dir}"
+
         files = DXManage().find_files(
             pattern=cnv_config['inputs']['bambais']['name'],
-            path=f"{os.environ.get('DX_PROJECT_CONTEXT_ID')}:{bam_dir}"
+            path=bam_dir
         )
 
         printable_files = '\n\t'.join([x['describe']['name'] for x in files])
