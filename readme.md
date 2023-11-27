@@ -17,7 +17,7 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 
 **Strings**
 - `-iassay_config_dir` (`str`): DNANexus project:path to directory containing config files, the highest version for the given `-iassay` string will be used
-- `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run
+- `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run (_n.b. this is mutually exclusive with `-icnv_call`_)
 - `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
 - `-imanifest_subset` (`str`): comma separated string of samples in manifest on which to ONLY run jobs (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
 
@@ -32,7 +32,7 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 
 
 #### Running modes
-- `-icnv_call` (`bool`): controls if to run CNV calling
+- `-icnv_call` (`bool`): controls if to run CNV calling (_n.b. this is mutually exclusive with `-icnv_call_job_id`_)
 - `-icnv_reports` (`bool`): controls if to run CNV reports workflows
 - `-isnv_reports` (`bool`): controls if to run SNV reports workflows
 - `-imosaic_reports` (`bool`): controls if to run mosaic reports workflow
