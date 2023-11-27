@@ -186,12 +186,6 @@ class CheckInputs():
                     "-isnv_reports"
                 )
 
-            if not self.inputs.get('qc_file'):
-                self.errors.append(
-                    "Artemis specified to run but no QC .xlsx provided. "
-                    "Please rerun specifying -iqc_xlsx"
-                )
-
     def check_exclude_str_and_file(self):
         """
         Check when -iexclude_samples or -iexclude_samples_file is passed
