@@ -65,8 +65,10 @@ class CheckInputs():
         self.check_assay_config_dir()
         self.check_mode_set()
         self.check_single_output_dir()
+        self.check_cnv_call_and_cnv_call_job_id_mutually_exclusive()
         self.check_cnv_calling_for_cnv_reports()
         self.check_artemis_inputs()
+        self.check_exclude_str_and_file()
 
         if self.errors:
             errors = '; '.join(x for x in self.errors)
@@ -157,7 +159,7 @@ class CheckInputs():
                 'Reports argument specified with no manifest file'
             )
 
-    def check_cnv_calling_cnv_job_id_mutually_exclusive(self):
+    def check_cnv_call_and_cnv_call_job_id_mutually_exclusive(self):
         """
         Check that both cnv_call and cnv_call_job_id have not been
         specified together
