@@ -167,7 +167,7 @@ class CheckInputs():
         if self.inputs.get('cnv_call') and self.inputs.get('cnv_call_job_id'):
             self.errors.append(
                 'Both mutually exclusive cnv_call and '
-                'cnv_call_job_id inputs  specified'
+                'cnv_call_job_id inputs specified'
             )
 
     def check_cnv_calling_for_cnv_reports(self):

@@ -134,6 +134,31 @@ class TestCheckInputs():
             'Error not raised for reports mode and missing manifest'
         )
 
+    def test_error_raised_invalid_cnv_mode(self, mocker):
+        """
+        Test error is raised when both cnv_call and cnv_call_job_id specified
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        mocker.return_value = None
+        check = CheckInputs()
+        check.errors = []
+        check.inputs = {}
+
+        check.inputs['cnv_call'] = True
+        check.inputs['cnv_call_job_id'] = 'job-xxx'
+
+        check.check_cnv_call_and_cnv_call_job_id_mutually_exclusive()
+
+        correct_error = ([
+            "Both mutually exclusive cnv_call and "
+            "cnv_call_job_id inputs specified"
+        ])
+
+        assert check.errors == correct_error, (
+            'Incorrect error raised for checking cnv call mode'
+        )
+
+
     def test_error_raised_for_cnv_reports_invalid(self, mocker):
         """
         Test when CNV reports is to be run that an error is raised if
