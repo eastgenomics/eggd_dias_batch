@@ -1333,3 +1333,53 @@ class TestCheckExcludeSamples():
     list of BAM files (for CNV calling) or the manifest (CNV reports) to
     ensure all samples specified are valid for excluding
     """
+    def test_error_raised_when_no_bam_files(self):
+        """
+        Test when sample specified to exclude has no BAM files
+        found, check will be when running for CNV calling
+        """
+        samples = [
+            'sample1.bam',
+            'sample2.bam',
+            'sample3.bam'
+        ]
+
+        exclude = ['sample4']
+
+        expected_error = (
+            "samples provided to exclude from CNV calling not "
+            r"valid: \['sample4'\]"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            utils.check_exclude_samples(
+                samples=samples,
+                exclude=exclude,
+                mode='calling'
+            )
+
+    def test_error_raised_when_sample_not_in_manifest(self):
+        """
+        Test error raised when sample specified to exclude not in
+        the samples parsed from the manifest, check will be running
+        when CNV calling
+        """
+        samples = [
+            'sample1-a',
+            'sample2-b',
+            'sample-c'
+        ]
+
+        exclude = ['sample-d']
+
+        expected_error = (
+            "samples provided to exclude from CNV reports not "
+            r"valid: \['sample-d'\]"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            utils.check_exclude_samples(
+                samples=samples,
+                exclude=exclude,
+                mode='reports'
+            )
