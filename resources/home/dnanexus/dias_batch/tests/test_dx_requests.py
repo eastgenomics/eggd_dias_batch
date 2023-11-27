@@ -833,7 +833,7 @@ class TestDXManageUnarchiveFiles():
                 "'dx describe --json {} ' | grep archival | uniq -c"
             ),
             "This job can be relaunched once unarchiving is complete by running:",
-            "dx run app-eggd_dias_batch --clone None -iunarchive=false"
+            "dx run app-eggd_dias_batch --clone None"
         ]
 
         assert all(x in stdout for x in expected_stdout), (
@@ -856,7 +856,7 @@ class TestDXManageUnarchiveFiles():
         """
         with pytest.raises(
             RuntimeError,
-            match=r'\[Attempt 5/5\] Error in unarchiving file: file-xxx'
+            match=r'\[Attempt 5/5\] Too many errors trying to unarchive file: file-xxx'
         ):
             DXManage().unarchive_files(self.files)
 

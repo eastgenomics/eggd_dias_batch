@@ -85,8 +85,9 @@ class CheckInputs():
 
     def check_assay_config_dir(self):
         """Check that assay config dir is not empty"""
-        if not self.inputs.get('assay_config_dir'):
-            return
+        if not self.inputs.get('assay_config_dir') or \
+            self.inputs.get('assay_config_file'):
+                return
 
         project, path = self.inputs['assay_config_dir'].split(':')
         files = list(dxpy.find_data_objects(

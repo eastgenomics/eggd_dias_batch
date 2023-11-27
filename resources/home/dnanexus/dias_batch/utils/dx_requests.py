@@ -430,7 +430,7 @@ class DXManage():
                 )
 
             print(
-                "-iunarchive specified, will start unarchiving..."
+                "\n \n-iunarchive=true specified, will start unarchiving...\n \n"
             )
             self.unarchive_files(to_unarchive)
         else:
@@ -473,8 +473,6 @@ class DXManage():
                         project=dx_file['project'],
                         dxid=dx_file['id']
                     ).unarchive()
-                    unarchived = True
-                    break
                 except Exception as error:
                     print(
                         f"\n[Attempt {attempt}/5] Error in unarchiving file:\n"
@@ -482,14 +480,22 @@ class DXManage():
                     )
                     sleep(sleepy_time)
                     sleepy_time = sleepy_time * 2
-            print(
+                else:
+                    unarchived = True
+                    # add a sleep once unarchive request to keep DNAnexus
+                    # happy since they don't seem to understand queuing
+                    sleep(2)
+                    break
+
+                print(
                     f"[Attempt {attempt}/5] Error in unarchiving "
                     f"file: {dx_file['id']}"
                 )
+
             if not unarchived:
                 raise RuntimeError(
-                    f"[Attempt {attempt}/5] Error in unarchiving "
-                    f"file: {dx_file['id']}"
+                    f"[Attempt {attempt}/5] Too many errors trying to "
+                    f"unarchive file: {dx_file['id']}. Exiting."
                 )
 
         # build a handy command to dump into the logs for people to check
@@ -500,8 +506,8 @@ class DXManage():
         )
 
         print(
-            f"\nUnarchiving requested for {len(files)} files, this will take "
-            "some time...\n \n"
+            f"\n \nUnarchiving requested for {len(files)} files, this "
+            "will take some time...\n \n"
         )
 
         print(
@@ -512,12 +518,12 @@ class DXManage():
         print(
             "This job can be relaunched once unarchiving is complete by "
             "running:\n \n\tdx run app-eggd_dias_batch --clone "
-            f"{os.environ.get('DX_JOB_ID')} -iunarchive=false"
+            f"{os.environ.get('DX_JOB_ID')}"
         )
 
         # tag job to know its not launched any jobs
         dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
-            f"Archiving of {len(files)} requested, no jobs launched."
+            [f"Unarchiving of {len(files)} requested, no jobs launched"]
         )
 
         sys.exit(0)
@@ -838,6 +844,7 @@ class DXExecute():
 
         vcf_files = []
         mosdepth_files = []
+        excluded_intervals_bed_file = []
 
         # gather errors to display in summary report
         errors = {}
@@ -853,21 +860,21 @@ class DXExecute():
             vcf_name = config.get('inputs').get(vcf_input_field).get('name')
 
             print('\n \nSearching for excluded intervals bed file')
-            excluded_intervals_bed = list(DXManage().find_files(
+            excluded_intervals_bed_file = list(DXManage().find_files(
                 path=f"{job_details.get('project')}:{job_details.get('folder')}",
                 pattern="_excluded_intervals.bed$",
                 limit=1
             ))
 
-            if not excluded_intervals_bed:
+            if not excluded_intervals_bed_file:
                 raise RuntimeError(
                     f"Failed to find excluded intervals bed file from {call_job_id}"
             )
 
             excluded_intervals_bed = {
                 "$dnanexus_link": {
-                    "project": excluded_intervals_bed[0]['project'],
-                    "id": excluded_intervals_bed[0]['id']
+                    "project": excluded_intervals_bed_file[0]['project'],
+                    "id": excluded_intervals_bed_file[0]['id']
                 }
             }
 
@@ -1014,7 +1021,7 @@ class DXExecute():
 
         # check to ensure all vcfs (and mosdepth files for SNVs) are unarchived
         DXManage().check_archival_state(
-            files=vcf_files + mosdepth_files,
+            files=vcf_files + mosdepth_files + excluded_intervals_bed_file,
             samples=manifest.keys(),
             unarchive=unarchive
         )
