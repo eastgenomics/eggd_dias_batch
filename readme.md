@@ -11,7 +11,7 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 - `-iassay` (`str`): string of assay to run analysis for (CEN or TWE), used for searching of config files automatically (if `-iassay_config_file` not specified)
 - `-isingle_output_dir` (`str`): path to output directory of Dias single to use as input files
 - `-imanifest_files` (`array:file`): one or more manifest files from Epic or Gemini, maps sample ID -> required test codes / HGNC IDs (required for running any reports mode)
-- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_only required when `-iartemis=true` specified_)
+
 
 #### Useful ones
 
@@ -22,6 +22,7 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 - `-imanifest_subset` (`str`): comma separated string of samples in manifest on which to ONLY run jobs (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
 
 **Files**
+- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and will only be used when `-iartemis=true` specified_)
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search default `assay_config_dir` for highest version config file for the given `-assay` string
 - `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)
 
@@ -115,6 +116,7 @@ n.b.
 - check if inputs provided are valid
 - check if one or more jobs launched for SNV / CNV reports
     - get parent path of both if true to set as input
+- optionally check if QC xlsx provided to use as input
 - launch eggd_artemis, will be dependent on **all** SNV and CNV report workflows completing
 
 ---

@@ -177,19 +177,13 @@ class CheckInputs():
         """Check if running artemis that the required inputs are set"""
         if self.inputs.get('artemis'):
             if (
-                not self.inputs.get('cnv_reports') or
+                not self.inputs.get('cnv_reports') and
                 not self.inputs.get('snv_reports')
             ):
                 self.errors.append(
                     "Artemis specified to run but no snv or cnv reports "
                     "specified. Please rerun with -icnv_reports and / or "
                     "-isnv_reports"
-                )
-
-            if not self.inputs.get('qc_file'):
-                self.errors.append(
-                    "Artemis specified to run but no QC .xlsx provided. "
-                    "Please rerun specifying -iqc_xlsx"
                 )
 
     def check_exclude_str_and_file(self):
