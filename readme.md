@@ -1,6 +1,6 @@
 # eggd_dias_batch (DNAnexus Platform App)
 
-![example workflow](https://github.com/eastgenomics/dias_batch_running/actions/workflows/pytest.yml/badge.svg)
+![pytest](https://github.com/eastgenomics/dias_batch_running/actions/workflows/pytest.yml/badge.svg)
 
 ## What are typical use cases for this app?
 
