@@ -1,7 +1,5 @@
 name: pytest
-on: [
-  pull request
-]
+on: [push]
 
 jobs:
   build:
@@ -20,4 +18,4 @@ jobs:
         pipenv install --dev
     - name: Test with pytest
       run: |
-        pytest resources/home/dnanexus/dias_batch/
+        pytest --cov resources/home/dnanexus/dias_batch/
