@@ -1,5 +1,7 @@
 # eggd_dias_batch (DNAnexus Platform App)
 
+![example workflow](https://github.com/eastgenomics/dias_batch_running/actions/workflows/pytest.yml/badge.svg)
+
 ## What are typical use cases for this app?
 
 DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic reports workflows as well as eggd_artemis from a given directory of Dias single output and a manifest file(s).
