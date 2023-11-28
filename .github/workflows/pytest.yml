@@ -18,4 +18,4 @@ jobs:
         pipenv install --dev
     - name: Test with pytest
       run: |
-        pytest --cov resources/home/dnanexus/dias_batch/
+        pytest -vv --cov resources/home/dnanexus/dias_batch/
