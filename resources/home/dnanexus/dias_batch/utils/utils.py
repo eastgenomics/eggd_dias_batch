@@ -944,3 +944,53 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     PPRINT(manifest_with_panels)
 
     return manifest_with_panels
+
+
+def check_exclude_samples(samples, exclude, mode) -> dict:
+    """
+    Exclude samples specified to either -iexclude_samples or
+    -iexclude_samples_file from the manifest used for CNV calling
+    and / or CNV reports
+
+    Parameters
+    ----------
+    samples : list
+        list of sample names, will either be list of bam files found
+        (before CNV calling) or sample names from manifest (if called
+        from CNV reports)
+    exclude : list[str]
+        list of sample names to exclude from generating reports (n.b.
+        this is ONLY for CNV reports), will be formatted as
+        InstrumentID-SpecimenID (i.e. [123245111-33202R00111, ...])
+    mode : str
+        calling | reports, used to add context to error message
+
+    Raises
+    -------
+    RuntimeError
+        Raised when one or more exclude_samples not present in sample list
+    """
+    exclude_not_present = [
+        name for name in exclude
+        if not any([sample.startswith(name) for sample in samples])
+    ]
+
+    if exclude_not_present:
+        # provide some more info in logs for debugging
+        print(
+            f"Samples provided to exclude: {exclude}"
+        )
+        if mode == "calling":
+            print(f"BAM files found to use for CNV calling: {samples}")
+        else:
+            print(f"Samples parsed from manifest: {samples}")
+
+        print(
+            "Samples specified to exclude that do not appear to be valid: "
+            f"{exclude_not_present}"
+        )
+
+        raise RuntimeError(
+            f"samples provided to exclude from CNV {mode} "
+            f"not valid: {exclude_not_present}"
+        )

@@ -4,3 +4,4 @@ test.py
 /*.txt
 /*.tsv
 *.coverage
+htmlcov/*

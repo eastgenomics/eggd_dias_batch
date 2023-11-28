@@ -17,6 +17,7 @@ from packaging.version import Version
 import pandas as pd
 
 from .utils import (
+    check_exclude_samples,
     check_report_index,
     filter_manifest_samples_by_files,
     make_path,
@@ -631,9 +632,14 @@ class DXExecute():
             single_output_dir, cnv_config['inputs']['bambais']['folder']
         )
 
+        # check if we're searching for files in different project
+        remote_project = re.match(r"project-[\w]+", single_output_dir)
+        if remote_project:
+            bam_dir = f"{remote_project.group()}:{bam_dir}"
+
         files = DXManage().find_files(
             pattern=cnv_config['inputs']['bambais']['name'],
-            path=f"{os.environ.get('DX_PROJECT_CONTEXT_ID')}:{bam_dir}"
+            path=bam_dir
         )
 
         printable_files = '\n\t'.join([x['describe']['name'] for x in files])
@@ -643,24 +649,15 @@ class DXExecute():
         )
 
         if exclude:
+            # filtering out sample files specified from -iexclude
             samples = '\n\t'.join(exclude)
             print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
 
-            # filtering out sample files specified from -iexclude, assuming
-            # here there are no typos, sample names are given as found in
-            # samplesheet and that bam files are named as sampleID_other_stuff.bam
-            exclude_not_present = [
-                name for name in exclude
-                if not any([
-                    x['describe']['name'].startswith(name) for x in files
-                ])
-            ]
-            if exclude_not_present:
-                print(
-                    "WARNING: sample ID(s) provided to exclude not present in "
-                    f"bam files found for CNV calling:\n\t{exclude_not_present}"
-                    "\nIgnoring these and continuing..."
-                )
+            check_exclude_samples(
+                samples=[x['describe']['name'] for x in files],
+                exclude=exclude,
+                mode='calling'
+            )
 
             # get the files of samples we're not excluding
             files = [
@@ -898,6 +895,12 @@ class DXExecute():
             if exclude:
                 # exclude samples specified and won't have been through CNV
                 # calling => exclude trying to launch CNV reports for these
+                check_exclude_samples(
+                    samples=manifest.keys(),
+                    exclude=exclude,
+                    mode='reports'
+                )
+
                 excluded = [
                     sample for sample in manifest.keys() if sample in exclude
                 ]
