@@ -11,6 +11,7 @@ from time import strftime, localtime
 from typing import Tuple
 
 import dxpy
+from packaging.version import Version
 import pandas as pd
 
 # for prettier viewing in the logs
@@ -944,6 +945,38 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     PPRINT(manifest_with_panels)
 
     return manifest_with_panels
+
+
+def check_athena_version(workflow, stage_inputs, indications) -> dict:
+    """
+    Checks the version of eggd_athena being used in SNV reports workflow,
+    and if >=1.6.0 adds additional input of clinical indication string.
+
+    Parameters
+    ----------
+    workflow : dict
+        dxpy.describe() output of the workflow
+    stage_inputs : dict
+        inputs dictionary to add input to
+    indications : str
+        str of clinical indication to add as input to eggd_athena/1.6.0+
+
+    Returns
+    -------
+    dict
+        inputs dictionary with added input
+    """
+    athena_version = [
+        x['executable'] for x in workflow['stages']
+        if 'athena' in x['executable']
+    ][0]
+
+    if Version(
+        re.search(r'[\d]\.[\d]\.[\d]', athena_version).group()
+    ) >= '1.6.0':
+        stage_inputs['stage-rpt_athena.indication'] = indications
+
+    return stage_inputs
 
 
 def check_exclude_samples(samples, exclude, mode) -> dict:
