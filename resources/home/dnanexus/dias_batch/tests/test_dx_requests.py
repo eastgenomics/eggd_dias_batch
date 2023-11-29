@@ -1269,6 +1269,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.workflow_patch = mock.patch('utils.dx_requests.dxpy.DXWorkflow')
         self.describe_patch = mock.patch('utils.dx_requests.dxpy.describe')
         self.timer_patch = mock.patch('utils.dx_requests.timer')
+        self.athena_patch = mock.patch('utils.dx_requests.check_athena_version')
+
 
         self.mock_find = self.find_patch.start()
         self.mock_job = self.job_patch.start()
@@ -1280,6 +1282,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_workflow = self.workflow_patch.start()
         self.mock_describe = self.describe_patch.start()
         self.mock_timer = self.timer_patch.start()
+        self.mock_athena = self.athena_patch.start()
 
 
         # Below are some generalised expected returns for each of the
@@ -1376,7 +1379,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_workflow.stop()
         self.mock_describe.stop()
         self.mock_timer.stop()
-
+        self.mock_athena.stop()
 
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):

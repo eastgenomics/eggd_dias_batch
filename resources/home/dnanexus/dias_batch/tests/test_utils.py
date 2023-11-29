@@ -1325,6 +1325,67 @@ class TestAddPanelsAndIndicationsToManifest():
             )
 
 
+class TestCheckAthenaVersion():
+    """
+    Tests for utils.check_athena_version()
+
+    Function checks from the workflow details if eggd_athena/1.6.0+ is
+    being used as this has an additional input, this allows for backwards
+    compatibility with dias_reports using eggd_athena <1.6.0
+
+    We will test that when the eggd_athena app of version 1.4.0 (current
+    in dias reports) is present the input is not added, and when 1.6.0+
+    it is added
+    """
+    def test_version_1_4_0(self):
+        """
+        Test when egdd_athena/1.4.0 is in workflow that the input is
+        not added to the input dict
+        """
+        workflow_details = {
+            "stages": [
+                {
+                    "executable": "eggd_athena/1.4.0"
+                }
+            ]
+        }
+
+        input = utils.check_athena_version(
+            workflow=workflow_details,
+            stage_inputs={},
+            indications='test_indication'
+        )
+
+        assert input == {}, "workflow inputs wrongly modified for athena 1.4.0"
+
+    def test_version_6_4_0(self):
+        """
+        Test when egdd_athena/1.6.0 is in workflow that the indication
+        input is added to the input dict
+        """
+        workflow_details = {
+            "stages": [
+                {
+                    "executable": "eggd_athena/1.6.0"
+                }
+            ]
+        }
+
+        expected_return = {
+            'stage-rpt_athena.indication': 'test_indication'
+        }
+
+        input = utils.check_athena_version(
+            workflow=workflow_details,
+            stage_inputs={},
+            indications='test_indication'
+        )
+
+        assert input == expected_return, (
+            "workflow inputs wrongly modified for athena 1.6.0"
+        )
+
+
 class TestCheckExcludeSamples():
     """
     Tests for utils.check_exclude_samples()

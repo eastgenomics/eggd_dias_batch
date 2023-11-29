@@ -17,6 +17,7 @@ from packaging.version import Version
 import pandas as pd
 
 from .utils import (
+    check_athena_version,
     check_exclude_samples,
     check_report_index,
     filter_manifest_samples_by_files,
@@ -1144,6 +1145,13 @@ class DXExecute():
                     input['stage-rpt_generate_workbook.output_prefix'] = name
                     input['stage-rpt_athena.name'] = name
 
+                    # handle new input in eggd_athena v1.6.0 and still using
+                    # eggd_athena v1.4.0, can be removed once > v1.4.0 used
+                    input = check_athena_version(
+                        workflow=workflow_details,
+                        stage_inputs=input,
+                        indications=indications
+                    )
 
                 # now we can finally run the reports workflow
                 job_handle = dxpy.DXWorkflow(
