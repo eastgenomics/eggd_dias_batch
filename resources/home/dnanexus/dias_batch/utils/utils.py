@@ -969,12 +969,13 @@ def check_athena_version(workflow, stage_inputs, indications) -> dict:
     athena_version = [
         x['executable'] for x in workflow['stages']
         if 'athena' in x['executable']
-    ][0]
+    ]
 
-    if Version(
-        re.search(r'[\d]\.[\d]\.[\d]', athena_version).group()
-    ) >= '1.6.0':
-        stage_inputs['stage-rpt_athena.indication'] = indications
+    if athena_version:
+        if Version(
+            re.search(r'[\d]\.[\d]\.[\d]', athena_version[0]).group()
+        ) >= Version('1.6.0'):
+            stage_inputs['stage-rpt_athena.indication'] = indications
 
     return stage_inputs
 
