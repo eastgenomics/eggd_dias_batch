@@ -20,7 +20,7 @@
             "instance_type": "mem2_ssd1_v2_x8",
             "inputs": {
                 "bambais": {
-                    "folder": "/sentieon-dnaseq-4.2.1/",
+                    "folder": "/sentieon-dnaseq",
                     "name": ".bam$|.bam.bai$"
                 },
                 "GATK_docker": {
