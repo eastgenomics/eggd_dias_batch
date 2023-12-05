@@ -636,6 +636,9 @@ class DXExecute():
             path=bam_dir
         )
 
+        # sense check we find files and the dir isn't empty
+        assert files, "No BAM files found for CNV calling"
+
         printable_files = '\n\t'.join([x['describe']['name'] for x in files])
         print(
             f"Found {len(files)} .bam/.bai files in {bam_dir}:"
