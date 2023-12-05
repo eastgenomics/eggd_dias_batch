@@ -286,37 +286,38 @@ class TestDXManageGetFileProjectContext():
     Function takes a DXFile ID and returns a project ID in which
     the file has been found in a live state
     """
-
+    @patch('utils.dx_requests.dxpy.DXFile.list_projects')
     @patch('utils.dx_requests.dxpy.DXFile.describe')
     @patch('utils.dx_requests.dxpy.DXFile')
-    @patch('utils.dx_requests.dxpy.find_data_objects')
     def test_no_live_files(
             self,
-            mock_find,
             mock_file,
-            mock_describe
+            mock_describe,
+            mock_list
         ):
         """
         Test that when no files in a live state are found that an
         AssertionError is raised
         """
-        # patch the DXFile object to nothing as we won't use it,
-        # and the output of dx find to be a minimal set of describe calls
-        mock_describe.return_value = {}
-        mock_find.return_value = [
+        # patch the DXFile object that read() gets called on
+        mock_file.return_value = dxpy.DXFile
+        mock_list.return_value = {
+            'project-xxx': 'CONTRIBUTE',
+            'project-yyy': 'CONTRIBUTE'
+        }
+
+        # mock describing each project:file context found
+        mock_describe.side_effect = [
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
-                    'archivalState': 'archived'
-                }
+                'archivalState': 'archived'
             },
             {
-                'project': 'project-xxx',
+                'project': 'project-yyy',
                 'id': 'file-xxx',
-                'describe' : {
-                    'archivalState': 'archival'
-                }
+                'archivalState': 'archival'
+
             }
         ]
 
@@ -325,38 +326,39 @@ class TestDXManageGetFileProjectContext():
         with pytest.raises(AssertionError, match=correct_error):
             DXManage().get_file_project_context(file='file-xxx')
 
-
+    @patch('utils.dx_requests.dxpy.DXFile.list_projects')
     @patch('utils.dx_requests.dxpy.DXFile.describe')
     @patch('utils.dx_requests.dxpy.DXFile')
-    @patch('utils.dx_requests.dxpy.find_data_objects')
     def test_live_files(
         self,
-        mock_find,
         mock_file,
         mock_describe,
+        mock_list,
         capsys
     ):
         """
         Test when some live files are found, we correctly return the
         first one to use as the project context
         """
-        # patch the DXFile object to nothing as we won't use it,
-        # and the output of dx find to be a minimal set of describe calls
-        mock_describe.return_value = {}
-        mock_find.return_value = [
+        # patch the DXFile object that read() gets called on
+        mock_file.return_value = dxpy.DXFile
+        mock_list.return_value = {
+            'project-xxx': 'CONTRIBUTE',
+            'project-yyy': 'CONTRIBUTE'
+        }
+
+        # mock describing each project:file context found
+        mock_describe.side_effect = [
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe': {
-                    'archivalState': 'live'
-                }
+                'archivalState': 'live'
             },
             {
                 'project': 'project-yyy',
                 'id': 'file-xxx',
-                'describe': {
-                    'archivalState': 'live'
-                }
+                'archivalState': 'live'
+
             }
         ]
 
@@ -373,7 +375,7 @@ class TestDXManageGetFileProjectContext():
         if expected_print not in stdout:
             errors.append('Did not print expected file project context')
 
-        if not returned == mock_find.return_value[0]:
+        if not returned['project'] == 'project-xxx':
             errors.append('Incorrect file context returned')
 
         assert not errors, errors
