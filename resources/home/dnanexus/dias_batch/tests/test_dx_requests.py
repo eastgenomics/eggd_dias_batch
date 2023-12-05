@@ -1208,6 +1208,27 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             )
 
 
+    def test_assertion_error_raised_on_no_files_found(self):
+        """
+        If no BAM files are found after searching the given directory
+        an AssertionError should be raised, test this happens
+        """
+        self.mock_find.return_value = []
+
+        with pytest.raises(
+            AssertionError,
+            match='No BAM files found for CNV calling'
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[],
+                start='',
+                wait=True,
+                unarchive=False
+            )
+
+
 class TestDXExecuteReportsWorkflow(unittest.TestCase):
     """
     Unit tests for DXExecute.reports_workflow
