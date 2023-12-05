@@ -771,7 +771,7 @@ class TestDXManageCheckArchivalState():
         )
 
 
-class TestDXManageUnarchiveFiles():
+class TestDXManageUnarchiveFiles(unittest.TestCase):
     """
     Tests for DXManage.unarchive_files()
 
@@ -814,12 +814,60 @@ class TestDXManageUnarchiveFiles():
         Test that dxpy.api.project_unarchive() gets called on
         the provided list of DXFile objects
         """
-        # mock_unarchive.return_value = True
         DXManage().unarchive_files(
             self.files
         )
 
         mock_unarchive.assert_called()
+
+
+    @patch('utils.dx_requests.dxpy.DXJob.add_tags')
+    @patch('utils.dx_requests.dxpy.DXJob')
+    @patch('utils.dx_requests.dxpy.api.project_unarchive')
+    @patch('utils.dx_requests.sys.exit')
+    def test_unarchive_called_per_project(
+            self,
+            exit,
+            mock_unarchive,
+            mock_job,
+            mock_tags
+        ):
+        """
+        If files found are in more than one project the function
+        will loop over each set of files per project, test that this
+        correctly happens where files are in 3 projects
+        """
+        # minimal example of 3 files in 3 separate projects
+        files = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1-file1',
+                    'archivalState': 'archived'
+                }
+            },
+            {
+                'project': 'project-yyy',
+                'id': 'file-yyy',
+                'describe': {
+                    'name': 'sample2-file1',
+                    'archivalState': 'archived'
+                }
+            },
+            {
+                'project': 'project-zzz',
+                'id': 'file-zzz',
+                'describe': {
+                    'name': 'sample2-file1',
+                    'archivalState': 'archived'
+                }
+            }
+        ]
+
+        DXManage().unarchive_files(files)
+
+        self.assertEqual(mock_unarchive.call_count, 3)
 
 
     @patch(
