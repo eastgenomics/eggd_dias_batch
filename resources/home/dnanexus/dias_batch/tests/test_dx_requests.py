@@ -1037,9 +1037,13 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             }
         ]
 
-        # first dxpy.describe call is on app ID, second is on job ID
+        # first dxpy.describe call is on the project ID to get the project
+        # name, second is on app ID and third is on job ID
         # patch in minimal responses with required keys
         self.mock_describe.side_effect = [
+            {
+                'name': '002_test_project'
+            },
             {
                 'name': 'GATK_gCNV_call',
                 'version': '1.2.3'
