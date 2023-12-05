@@ -25,18 +25,14 @@
                 },
                 "GATK_docker": {
                     "$dnanexus_link": {
-                        "$dnanexus_link": {
-                            "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
-                            "id": "file-GBBP9JQ433GxV97xBpQkzYZx"
-                        }
+                        "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                        "id": "file-GBBP9JQ433GxV97xBpQkzYZx"
                     }
                 },
                 "annotation_tsv": {
                     "$dnanexus_link": {
-                        "$dnanexus_link": {
-                            "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
-                            "id": "file-GFPxzPQ4V50z4pv230p82G0q"
-                        }
+                        "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                        "id": "file-GFPxzPQ4V50z4pv230p82G0q"
                     }
                 },
                 "interval_list": {
