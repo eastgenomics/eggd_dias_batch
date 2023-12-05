@@ -179,17 +179,22 @@ class DXManage():
         """
         print(f"Searching all projects for: {file}")
 
-        file_details = dxpy.DXFile(dxid=file).describe()
-        files = dxpy.find_data_objects(
-            name=file_details['name'],
-            describe=True
-        )
+        # find projects where file exists and get DXFile objects for
+        # each to check archivalState, list_projects() returns list of
+        # dicts where key is the project ID and value is permission level
+        projects = dxpy.DXFile(dxid=file).list_projects()
+        print(f"Found file in {len(projects)} projects")
+
+        files = [
+            dxpy.DXFile(dxid=file, project=id).describe()
+            for id in projects.keys()
+        ]
 
         # filter out any archived files or those resolving
         # to the current job container context
         files = [
             x for x in files
-            if x['describe']['archivalState'] == 'live'
+            if x['archivalState'] == 'live'
             and not re.match(r"^container-[\d\w]+$", x['project'])
         ]
         assert files, f"No live files could be found for the ID: {file}"
