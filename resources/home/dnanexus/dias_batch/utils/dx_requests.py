@@ -619,16 +619,10 @@ class DXExecute():
         print("\n \nBuilding inputs for CNV calling")
         cnv_config = config['modes']['cnv_call']
 
-        # find BAM files and format as $dnanexus_link inputs to add to config
-        bam_dir = make_path(
-            single_output_dir, cnv_config['inputs']['bambais']['folder']
-        )
-
         # check if we're searching for files in different project,
         # and set the project input name accordingly
         remote_project = re.match(r"project-[\w]+", single_output_dir)
         if remote_project:
-            bam_dir = f"{remote_project.group()}:{bam_dir}"
             project_name = dxpy.describe(remote_project.group()).get('name')
         else:
             project_name = dxpy.describe(
@@ -638,7 +632,8 @@ class DXExecute():
 
         files = DXManage().find_files(
             pattern=cnv_config['inputs']['bambais']['name'],
-            path=bam_dir
+            path=single_output_dir,
+            subdir=cnv_config['inputs']['bambais']['folder']
         )
 
         # sense check we find files and the dir isn't empty
@@ -646,7 +641,7 @@ class DXExecute():
 
         printable_files = '\n\t'.join([x['describe']['name'] for x in files])
         print(
-            f"Found {len(files)} .bam/.bai files in {bam_dir}:"
+            f"Found {len(files)} .bam/.bai files:"
             f"\n\t{printable_files}"
         )
 
