@@ -633,10 +633,17 @@ class DXExecute():
             single_output_dir, cnv_config['inputs']['bambais']['folder']
         )
 
-        # check if we're searching for files in different project
+        # check if we're searching for files in different project,
+        # and set the project input name accordingly
         remote_project = re.match(r"project-[\w]+", single_output_dir)
         if remote_project:
             bam_dir = f"{remote_project.group()}:{bam_dir}"
+            project_name = dxpy.describe(remote_project.group()).get('name')
+        else:
+            project_name = dxpy.describe(
+                os.environ.get('DX_PROJECT_CONTEXT_ID')).get('name')
+
+        cnv_config['inputs']['run_name'] = project_name
 
         files = DXManage().find_files(
             pattern=cnv_config['inputs']['bambais']['name'],
