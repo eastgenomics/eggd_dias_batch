@@ -4,6 +4,7 @@ as running jobs.
 """
 from copy import deepcopy
 import concurrent.futures
+from itertools import groupby
 import json
 import os
 import re
@@ -462,48 +463,33 @@ class DXManage():
         Raises
         ------
         RuntimeError
-            Raised if unarchiving fails after 5 attempts on a given file
+            Raised if unarchiving fails for a set of project files
         """
-        for idx, dx_file in enumerate(files):
-            print(
-                f"[{idx+1}/{len(files)}] Unarchiving "
-                f"{dx_file['describe']['name']} ({dx_file['id']})"
-            )
+        # split list of files into sub lists by project they're present
+        # in in case of multiple projects
+        projects = [
+            list(g) for k, g in groupby(files, lambda x: x['project'])
+        ]
 
-            # add some buffer in case DNAnexus gets angry at lots of requests
-            sleepy_time = 10
-            unarchived = False
-
-            for attempt in range(1, 6):
-                try:
-                    dxpy.DXFile(
-                        project=dx_file['project'],
-                        dxid=dx_file['id']
-                    ).unarchive()
-                except Exception as error:
-                    print(
-                        f"\n[Attempt {attempt}/5] Error in unarchiving file:\n"
-                        f"\t{error}\n\nWaiting {sleepy_time}s to retry"
-                    )
-                    sleep(sleepy_time)
-                    sleepy_time = sleepy_time * 2
-                else:
-                    unarchived = True
-                    # add a sleep once unarchive request to keep DNAnexus
-                    # happy since they don't seem to understand queuing
-                    sleep(2)
-                    break
-
+        for project_files in projects:
+            try:
+                dxpy.api.project_unarchive(
+                    project_files[0]['project'],
+                    input_params={
+                        "files": [
+                            x['id'] for x in project_files
+                        ]
+                    }
+                )
+            except Exception as error:
+                # API spec doesn't list the potential exceptions raised,
+                # catch everything and exit on any error
                 print(
-                    f"[Attempt {attempt}/5] Error in unarchiving "
-                    f"file: {dx_file['id']}"
+                    "Error unarchving files for "
+                    f"{project_files[0]['project']}: {error}"
                 )
+                raise RuntimeError("Error unarchiving files")
 
-            if not unarchived:
-                raise RuntimeError(
-                    f"[Attempt {attempt}/5] Too many errors trying to "
-                    f"unarchive file: {dx_file['id']}. Exiting."
-                )
 
         # build a handy command to dump into the logs for people to check
         # the state of all of the files we're unarchiving later on
@@ -654,6 +640,9 @@ class DXExecute():
             pattern=cnv_config['inputs']['bambais']['name'],
             path=bam_dir
         )
+
+        # sense check we find files and the dir isn't empty
+        assert files, "No BAM files found for CNV calling"
 
         printable_files = '\n\t'.join([x['describe']['name'] for x in files])
         print(

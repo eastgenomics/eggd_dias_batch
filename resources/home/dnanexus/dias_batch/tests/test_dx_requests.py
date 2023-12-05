@@ -773,7 +773,7 @@ class TestDXManageCheckArchivalState():
         )
 
 
-class TestDXManageUnarchiveFiles():
+class TestDXManageUnarchiveFiles(unittest.TestCase):
     """
     Tests for DXManage.unarchive_files()
 
@@ -803,62 +803,91 @@ class TestDXManageUnarchiveFiles():
 
     @patch('utils.dx_requests.dxpy.DXJob.add_tags')
     @patch('utils.dx_requests.dxpy.DXJob')
-    @patch('utils.dx_requests.dxpy.DXFile.unarchive')
-    @patch('utils.dx_requests.dxpy.DXFile')
+    @patch('utils.dx_requests.dxpy.api.project_unarchive')
     @patch('utils.dx_requests.sys.exit')
     def test_unarchiving_called(
             self,
             exit,
-            mock_file,
             mock_unarchive,
             mock_job,
-            mock_tags,
-            capsys
+            mock_tags
         ):
         """
-        Test that DXFile.unarchive() gets called on the provided list
-        of DXFile objects
+        Test that dxpy.api.project_unarchive() gets called on
+        the provided list of DXFile objects
         """
-        # mock_unarchive.return_value = True
         DXManage().unarchive_files(
             self.files
         )
 
-        # lots of prints go to stdout once we have started unarchiving
-        stdout = capsys.readouterr().out
-
-        expected_stdout = [
-            "Unarchiving requested for 2 files, this will take some time...",
-            "The state of all files may be checked with the following command:",
-            (
-                "echo file-xxx file-xxx | xargs -n1 -d' ' -P32 -I{} bash -c "
-                "'dx describe --json {} ' | grep archival | uniq -c"
-            ),
-            "This job can be relaunched once unarchiving is complete by running:",
-            "dx run app-eggd_dias_batch --clone None"
-        ]
-
-        assert all(x in stdout for x in expected_stdout), (
-            "stdout does not contain the expected output"
-        )
+        mock_unarchive.assert_called()
 
 
-    @patch('utils.dx_requests.dxpy.DXFile', side_effect=Exception('Error'))
-    @patch('utils.dx_requests.sleep')
-    def test_error_raised_if_unable_to_unarchive(
+    @patch('utils.dx_requests.dxpy.DXJob.add_tags')
+    @patch('utils.dx_requests.dxpy.DXJob')
+    @patch('utils.dx_requests.dxpy.api.project_unarchive')
+    @patch('utils.dx_requests.sys.exit')
+    def test_unarchive_called_per_project(
             self,
-            mock_sleep,
-            mock_dxfile
+            exit,
+            mock_unarchive,
+            mock_job,
+            mock_tags
         ):
         """
-        Function will try and catch up to 5 times to unarchive a file,
-        if it can't unarchive a file an error should be raised. Here
-        we make it raise an Exception to test it in the loop and ensure
-        that it stops after failing.
+        If files found are in more than one project the function
+        will loop over each set of files per project, test that this
+        correctly happens where files are in 3 projects
+        """
+        # minimal example of 3 files in 3 separate projects
+        files = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe': {
+                    'name': 'sample1-file1',
+                    'archivalState': 'archived'
+                }
+            },
+            {
+                'project': 'project-yyy',
+                'id': 'file-yyy',
+                'describe': {
+                    'name': 'sample2-file1',
+                    'archivalState': 'archived'
+                }
+            },
+            {
+                'project': 'project-zzz',
+                'id': 'file-zzz',
+                'describe': {
+                    'name': 'sample2-file1',
+                    'archivalState': 'archived'
+                }
+            }
+        ]
+
+        DXManage().unarchive_files(files)
+
+        self.assertEqual(mock_unarchive.call_count, 3)
+
+
+    @patch(
+        'utils.dx_requests.dxpy.api.project_unarchive',
+        side_effect=Exception('someDNAnexusAPIError')
+    )
+    def test_error_raised_if_unable_to_unarchive(
+            self,
+            mock_unarchive
+        ):
+        """
+        If any error is raised during calling dxpy.api.project_unarchive
+        it will be caught and raise a RuntimeError, test that if an
+        Exception is raised we get the expected error message
         """
         with pytest.raises(
             RuntimeError,
-            match=r'\[Attempt 5/5\] Too many errors trying to unarchive file: file-xxx'
+            match='Error unarchiving files'
         ):
             DXManage().unarchive_files(self.files)
 
@@ -1170,6 +1199,27 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
 
         with pytest.raises(
             dxpy.exceptions.DXJobFailureError, match='oh no :sadpanda:'
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[],
+                start='',
+                wait=True,
+                unarchive=False
+            )
+
+
+    def test_assertion_error_raised_on_no_files_found(self):
+        """
+        If no BAM files are found after searching the given directory
+        an AssertionError should be raised, test this happens
+        """
+        self.mock_find.return_value = []
+
+        with pytest.raises(
+            AssertionError,
+            match='No BAM files found for CNV calling'
         ):
             DXExecute().cnv_calling(
                 config=deepcopy(self.config),
