@@ -619,11 +619,6 @@ class DXExecute():
         print("\n \nBuilding inputs for CNV calling")
         cnv_config = config['modes']['cnv_call']
 
-        # find BAM files and format as $dnanexus_link inputs to add to config
-        # bam_dir = make_path(
-        #     single_output_dir, cnv_config['inputs']['bambais']['folder']
-        # )
-
         # check if we're searching for files in different project,
         # and set the project input name accordingly
         remote_project = re.match(r"project-[\w]+", single_output_dir)
