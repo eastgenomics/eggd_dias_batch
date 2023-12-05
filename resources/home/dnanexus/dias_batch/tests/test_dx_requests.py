@@ -483,7 +483,7 @@ class TestDXManageFindFiles():
         expected_warning = (
             'WARNING: some files found are in an archived state, if these are '
             'for samples to be analysed this will raise an error...'
-            '\n[\n    "file1 (file-xxx)"\n]'
+            '\n[\n⠀⠀"file1 (file-xxx)"\n]'
         )
 
         assert expected_warning in stdout, (
