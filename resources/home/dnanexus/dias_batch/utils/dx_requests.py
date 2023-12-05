@@ -180,10 +180,10 @@ class DXManage():
         print(f"Searching all projects for: {file}")
 
         # find projects where file exists and get DXFile objects for
-        # each to check archivalState, list_projects() returns list of
-        # dicts where key is the project ID and value is permission level
+        # each to check archivalState, list_projects() returns dict
+        # where key is the project ID and value is permission level
         projects = dxpy.DXFile(dxid=file).list_projects()
-        print(f"Found file in {len(projects)} projects")
+        print(f"Found file in {len(projects)} project(s)")
 
         files = [
             dxpy.DXFile(dxid=file, project=id).describe()
