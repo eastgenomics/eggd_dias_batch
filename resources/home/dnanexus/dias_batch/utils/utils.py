@@ -14,6 +14,7 @@ import dxpy
 from packaging.version import Version
 import pandas as pd
 
+
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 200)
 pd.set_option('max_colwidth', 1500)
@@ -987,7 +988,7 @@ def check_athena_version(workflow, stage_inputs, indications) -> dict:
     return stage_inputs
 
 
-def check_exclude_samples(samples, exclude, mode) -> dict:
+def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
     """
     Exclude samples specified to either -iexclude_samples or
     -iexclude_samples_file from the manifest used for CNV calling
@@ -1005,18 +1006,70 @@ def check_exclude_samples(samples, exclude, mode) -> dict:
         InstrumentID-SpecimenID (i.e. [123245111-33202R00111, ...])
     mode : str
         calling | reports, used to add context to error message
+    single_dir : str (optional)
+        single output directory, used to check for bam files where given
+        sample doesn't appear in manifest to ensure its not a typo for
+        launching reports
 
     Raises
     -------
     RuntimeError
         Raised when one or more exclude_samples not present in sample list
     """
+    print("Checking provided exclude sample names are valid...")
     exclude_not_present = [
         name for name in exclude
         if not any([sample.startswith(name) for sample in samples])
     ]
 
     if exclude_not_present:
+        if mode == 'reports' and single_dir:
+            # one or more exclude samples not in manifest samples passed,
+            # check the single output directory for BAM files, if found
+            # count these as valid and drop from the exclude_not_present
+            print(
+                "The following samples were not present in the list of valid "
+                f"sample names: {exclude_not_present}\n\nChecking the single "
+                f"output directory ({single_dir}) for BAM files to be able "
+                "to exclude"
+            )
+            sample_with_bam = []
+
+            # ensure if single dir being specified with a project we use it
+            project = None
+            if single_dir.startswith('project-'):
+                project, single_dir = single_dir.split(':', 1)
+
+            for sample in exclude_not_present:
+                print(
+                    f"\nChecking {sample} for BAM file in project {project} "
+                    f"and folder {single_dir}"
+                )
+                bam = list(dxpy.find_data_objects(
+                    name=f"^{sample}.*.bam$",
+                    name_mode='regexp',
+                    project=project,
+                    folder=single_dir,
+                    limit=1,
+                    describe=True
+                ))
+
+                if bam:
+                    print(f"Found bam file: {bam[0]['describe']['name']}")
+                    sample_with_bam.append(sample)
+                else:
+                    print(f"No bam file found for {sample}")
+
+            exclude_not_present = list(
+                set(exclude_not_present) - set(sample_with_bam))
+
+            if not exclude_not_present:
+                print(
+                    "All samples specified to exclude have BAM file present "
+                    "and therefore valid to be excluded from running reports"
+                )
+                return
+
         # provide some more info in logs for debugging
         print(
             f"Samples provided to exclude: {exclude}"
@@ -1035,3 +1088,5 @@ def check_exclude_samples(samples, exclude, mode) -> dict:
             f"samples provided to exclude from CNV {mode} "
             f"not valid: {exclude_not_present}"
         )
+    else:
+        print("All exclude sample names valid")
