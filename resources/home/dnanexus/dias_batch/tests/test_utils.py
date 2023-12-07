@@ -1444,3 +1444,79 @@ class TestCheckExcludeSamples():
                 exclude=exclude,
                 mode='reports'
             )
+
+    @patch('utils.utils.dxpy.find_data_objects')
+    def test_excluded_samples_not_in_manifest_but_have_bam_files(
+            self,
+            mock_find
+        ):
+        """
+        When running CNV reports, samples specified to exclude may not
+        be in the manifest (i.e when they have failed), for these we
+        have an additional check for if they have a BAM file in the
+        single output directory. If they do, they pass the check for
+        being a valid sample to exclude and not a typo.
+        """
+        samples = [
+            'sample1-a',
+            'sample2-b',
+            'sample-c'
+        ]
+
+        exclude = ['sample-d']
+
+        # minimal dx find data return for sample BAM file being present
+        mock_find.return_value = [
+            {
+                "id": "file-xxx",
+                "describe": {
+                    "name": "sample-d_some_suffixes.bam"
+                }
+            }
+        ]
+
+        # no error should be raised
+        utils.check_exclude_samples(
+            samples=samples,
+            exclude=exclude,
+            mode='reports',
+            single_dir='project-xxx:/output/runX'
+        )
+
+
+    @patch('utils.utils.dxpy.find_data_objects')
+    def test_excluded_samples_not_in_manifest_and_have_no_bam_files(
+            self,
+            mock_find
+        ):
+        """
+        When running CNV reports, samples specified to exclude may not
+        be in the manifest (i.e when they have failed), for these we
+        have an additional check for if they have a BAM file in the
+        single output directory.
+        If they do not, they will not pass the check for being a valid
+        sample to exclude and should still raise a RuntimeError
+        """
+        samples = [
+            'sample1-a',
+            'sample2-b',
+            'sample-c'
+        ]
+
+        exclude = ['sample-d']
+
+        # empty dx find data return for sample with no BAM file
+        mock_find.return_value = []
+
+        expected_error = (
+            "samples provided to exclude from CNV reports not "
+            r"valid: \['sample-d'\]"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            utils.check_exclude_samples(
+                samples=samples,
+                exclude=exclude,
+                mode='reports',
+                single_dir='project-xxx:/output/runX'
+            )

@@ -895,7 +895,8 @@ class DXExecute():
                 check_exclude_samples(
                     samples=manifest.keys(),
                     exclude=exclude,
-                    mode='reports'
+                    mode='reports',
+                    single_dir=single_output_dir
                 )
 
                 excluded = [
