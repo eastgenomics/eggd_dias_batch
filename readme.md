@@ -251,7 +251,7 @@ The definitions of inputs for CNV calling and each reports workflow should be de
 **Example format of a reports workflow structure**:
 ```
 "cnv_reports": {
-        "instance_type": {
+        "stage_instance_types": {
             "stage-cnv_vep.vcf": "mem2_ssd2_v2_x72"
         },
         "inputs": {
@@ -276,7 +276,7 @@ The definitions of inputs for CNV calling and each reports workflow should be de
                 "name": "_segments.vcf$"
             },
 ```
-- `instance_type` (`dict`; optional) : mapping of stage-name to instance type to use, this will override the app and workflow defaults
+- `stage_instance_types` (`dict`; optional) : mapping of stage-name to instance type to use, this will override the app and workflow defaults
 - `inputs` (`dict`) : mapping of each stage input field to required input
     - inputs may be defined as regular integers / strings / booleans, `$dnanexus_link` file mappings or using `INPUT-` placeholders
     - `INPUT-` placeholders are followed by a reference key from the `reference_files` mapping in the top level of the config file, and are parsed at run time into the inputs for the workflow (i.e. use of `"stage-cnv_generate_bed_vep.gene_panels": "INPUT-genepanels"` would result be replace by `project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562`, correctly formatted as a `$dnanexus_link` mapping)
