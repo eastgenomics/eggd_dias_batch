@@ -1160,6 +1160,7 @@ class DXExecute():
                     name=f"{workflow_details['name']}_{sample}_{codes} ({mode})",
                     folder=parent_folder,
                     stage_folders=stage_folders,
+                    stage_instance_types=config.get("stage_instance_types"),
                     depends_on=parent
                 )
 

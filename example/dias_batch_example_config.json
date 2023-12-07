@@ -98,6 +98,10 @@
             }
         },
         "snv_reports": {
+            "stage_instance_types": {
+                "stage-rpt_vep": "mem2_ssd1_v2_x32",
+                "stage-rpt_athena": "mem2_ssd1_v2_x36"
+            },
             "inputs": {
                 "stage-rpt_generate_bed_athena.exons_nirvana": "INPUT-exons_nirvana",
                 "stage-rpt_generate_bed_athena.nirvana_genes2transcripts": "INPUT-genes2transcripts",
