@@ -226,7 +226,6 @@ class TestCheckInputs():
         }
 
         mock_file.return_value.describe.return_value = {
-            'file': "file-xxx",
             'name': "file.fastq"
         }
 
