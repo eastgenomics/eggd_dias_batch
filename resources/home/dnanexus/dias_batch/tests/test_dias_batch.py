@@ -209,7 +209,6 @@ class TestCheckInputs():
             "Error not raised when file ID provided to exclude_samples"
         )
 
-    #@patch('utils.dx_requests.dxpy.DXFile.describe')
     @patch('utils.dx_requests.dxpy.DXFile')
     def test_qc_status_file_is_valid(self, mock_file, mocker):
         """
