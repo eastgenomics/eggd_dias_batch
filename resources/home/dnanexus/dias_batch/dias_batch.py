@@ -72,7 +72,6 @@ class CheckInputs():
         self.check_exclude_samples_file_id()
         self.check_qc_file()
 
-
         if self.errors:
             errors = '; '.join(x for x in self.errors)
             raise RuntimeError(
