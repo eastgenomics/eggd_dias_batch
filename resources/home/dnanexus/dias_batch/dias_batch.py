@@ -205,7 +205,14 @@ class CheckInputs():
         """Check QC status file for artemis is an .xlsx as expected"""
         if self.inputs.get('artemis'):
             if self.inputs.get('qc_file'):
-                if not re.search(r".xlsx$", str(self.inputs.get('qc_file'))):
+                file_details = dxpy.DXFile(
+                    re.match(
+                        r'file-[\d\w]+', self.inputs.get('qc_file')
+                    ).group()
+                ).describe()
+                qc_file_name = file_details['name']
+
+                if not re.search(r".xlsx$", qc_file_name):
                     self.errors.append(
                     "Artemis specified to run with QC status file. File given "
                     "as QC status report is not an .xlsx file. Please rerun "
