@@ -211,7 +211,7 @@ class CheckInputs():
                 ).describe()
                 qc_file_name = file_details['name']
 
-                if not re.search(r".xlsx$", qc_file_name):
+                if not qc_file_name.endswith(".xlsx"):
                     self.errors.append(
                         "Artemis specified to run with QC status file. File "
                         "given as QC status report is not an .xlsx file. "

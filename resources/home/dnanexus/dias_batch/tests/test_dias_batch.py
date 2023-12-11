@@ -3,6 +3,7 @@ Tests for CheckInputs() that are run at the beginning of dias batch
 """
 import os
 import sys
+import dxpy
 from unittest.mock import patch
 
 
@@ -208,7 +209,9 @@ class TestCheckInputs():
             "Error not raised when file ID provided to exclude_samples"
         )
 
-    def test_qc_status_file_is_valid(self, mocker):
+    #@patch('utils.dx_requests.dxpy.DXFile.describe')
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_qc_status_file_is_valid(self, mock_file, mocker):
         """
         Test check_qc_file() to check that an error will be raised if a
         file that is not an .xlsx file is passed as the QC status file,
@@ -217,10 +220,16 @@ class TestCheckInputs():
         mocker.return_value = None
         check = CheckInputs()
         check.errors = []
-
         check.inputs = {
             'artemis': True,
-            'qc_file': "file.fastq"
+            'qc_file': {
+                 '$dnanexus_link': "file-xxx"
+            }
+        }
+
+        mock_file.return_value.describe.return_value = {
+            'file': "file-xxx",
+            'name': "file.fastq"
         }
 
         check.check_qc_file()
