@@ -55,7 +55,7 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 
 ## How does this app work?
 
-The app takes as a minimum input a path to Dias single output, an assay config, and at least one of the above listed running modes. The default behaviour is to pass an assay string specified to run for (with `-iassay`), which will search DNAnexus for the highest version config file in `-iassay_config_dir`  (default: `default_path`)  and use this for analysis. Alternatively, an assay config file may be specified to use instead with `-iassay_config_file`. If running a reports workflow a manifest file must also be specified.
+The app takes as a minimum input a path to Dias single output, an assay config, and at least one of the above listed running modes. The default behaviour is to pass an assay string specified to run for (with `-iassay`), which will search DNAnexus for the highest version config file in `-iassay_config_dir`  (default: `001_Reference:/dynamic_files/dias_batch_configs/`)  and use this for analysis. Alternatively, an assay config file may be specified to use instead with `-iassay_config_file`. If running a reports workflow a manifest file must also be specified.
 
 The general behaviour of each mode is as follows:
 
