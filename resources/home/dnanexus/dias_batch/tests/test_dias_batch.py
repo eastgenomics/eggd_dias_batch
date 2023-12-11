@@ -3,7 +3,6 @@ Tests for CheckInputs() that are run at the beginning of dias batch
 """
 import os
 import sys
-import dxpy
 from unittest.mock import patch
 
 
