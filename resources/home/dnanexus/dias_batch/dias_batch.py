@@ -205,7 +205,7 @@ class CheckInputs():
         """Check QC status file for artemis is an .xlsx as expected"""
         if self.inputs.get('artemis'):
             if self.inputs.get('qc_file'):
-                if not re.match(r".xlsx$", str(self.inputs.get('qc_file'))):
+                if not re.search(r".xlsx$", str(self.inputs.get('qc_file'))):
                     self.errors.append(
                     "Artemis specified to run with QC status file. File given "
                     "as QC status report is not an .xlsx file. Please rerun "
