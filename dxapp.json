@@ -43,7 +43,7 @@
             "label": "QC file",
             "class": "file",
             "optional": true,
-            "help": "QC .xlsx file, required if running eggd_artemis"
+            "help": "QC .xlsx file. optional input to eggd_artemis"
           },
           {
             "name": "split_tests",
@@ -64,7 +64,7 @@
             "label": "exclude samples file",
             "class": "file",
             "optional": true,
-            "help": "file of samples to exclude from CNV calling / CNV reports, one sample name per line (as found in manifest)"
+            "help": "file of samples to exclude from CNV calling / CNV reports, one sample name per line (`InstrumentID-SpecimenID` for Epic samples, X number for Gemini samples)"
           },
           {
             "name": "manifest_subset",

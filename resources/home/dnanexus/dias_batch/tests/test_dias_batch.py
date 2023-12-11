@@ -205,7 +205,40 @@ class TestCheckInputs():
         ])
 
         assert check.errors == correct_error, (
-            "Error not raise from file ID provided to exclude_samples"
+            "Error not raised when file ID provided to exclude_samples"
+        )
+
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_qc_status_file_is_valid(self, mock_file, mocker):
+        """
+        Test check_qc_file() to check that an error will be raised if a
+        file that is not an .xlsx file is passed as the QC status file,
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        mocker.return_value = None
+        check = CheckInputs()
+        check.errors = []
+        check.inputs = {
+            'artemis': True,
+            'qc_file': {
+                 '$dnanexus_link': "file-xxx"
+            }
+        }
+
+        mock_file.return_value.describe.return_value = {
+            'name': "file.fastq"
+        }
+
+        check.check_qc_file()
+
+        correct_error = ([
+            "Artemis specified to run with QC status file. File given "
+            "as QC status report is not an .xlsx file. Please rerun "
+            "with correct QC status file"
+        ])
+
+        assert check.errors == correct_error, (
+            "Error not raised when non .xlsx file provided to check_qc_file()"
         )
 
 
