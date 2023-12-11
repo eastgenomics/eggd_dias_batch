@@ -118,7 +118,7 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
 
     with open(output, 'w') as file_handle:
         file_handle.write(
-            f"Jobs launched from {app['name']} ({app['version']}) at {time} "
+            f"Jobs launched from {app.get('name')} ({app.get('version')}) at {time} "
             f"by {job['launchedBy'].replace('user-', '')} in {job['id']}\n"
         )
 
