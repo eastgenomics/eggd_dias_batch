@@ -70,6 +70,8 @@ class CheckInputs():
         self.check_artemis_inputs()
         self.check_exclude_str_and_file()
         self.check_exclude_samples_file_id()
+        self.check_qc_file()
+
 
         if self.errors:
             errors = '; '.join(x for x in self.errors)
@@ -198,6 +200,17 @@ class CheckInputs():
                     "Artemis specified to run but no snv or cnv reports "
                     "specified. Please rerun with -icnv_reports and / or "
                     "-isnv_reports"
+                )
+
+    def check_qc_file(self):
+        """Check QC status file for artemis is an .xlsx as expected"""
+        if self.inputs.get('artemis'):
+            if self.inputs.get('qc_file'):
+                if not re.match(r".xlsx$", str(self.inputs.get('qc_file'))):
+                    self.errors.append(
+                    "Artemis specified to run with QC status file. File given "
+                    "as QC status report is not an .xlsx file. Please rerun "
+                    "with correct QC status file"
                 )
 
     def check_exclude_str_and_file(self):
