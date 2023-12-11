@@ -461,7 +461,7 @@ def main(
     summary_file = f"{project_name}_{start_time}_job_summary.txt"
 
     job_details = dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).describe()
-    app_details = dxpy.describe(dxid=job_details['executable'])
+    app_details = dxpy.describe(job_details['executable'])
 
     # overwrite manifest job ID in job details with name to write to summary
     if manifest_files:
