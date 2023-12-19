@@ -1,3 +1,6 @@
+archive/*
+test.py
 *.pyc
-*.tsv
-*.json
+/*.tsv
+*.coverage
+htmlcov/*

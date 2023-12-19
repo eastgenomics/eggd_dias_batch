@@ -1,0 +1,24 @@
+{
+    "reference_files": {
+        "genepanels": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562",
+        "exons_nirvana": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gk7gZ47gypK7ZZ",
+        "genes2transcripts": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GV4P970433Gj6812zGVBZvB4",
+        "exonsfile": "project-Fkb6Gkj433GVVvj73J7x8KbV:file-GF611Z8433Gf99pBPbJkV7bq"
+    },
+    "modes": {
+        "workflow_1": {
+            "inputs": {
+                "stage_1.input_1": "INPUT-exons_nirvana",
+                "stage_1.input_2": "INPUT-genes2transcripts",
+                "stage_2.input_1": "INPUT-genepanels"
+            }
+        },
+        "workflow_2": {
+            "inputs": {
+                "stage_1.input_1": "INPUT-exons_nirvana",
+                "stage_2.input_1": "INPUT-exonsfile",
+                "stage2.input_2": "other_non_reference_input"
+            }
+        }
+    }
+}

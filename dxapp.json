@@ -1,0 +1,207 @@
+{
+    "name": "eggd_dias_batch",
+    "title": "eggd_dias_batch",
+    "version": "3.0.0",
+    "summary": "Launches downstream analyses for Dias",
+    "dxapi": "1.0.0",
+    "inputSpec": [
+        {
+            "name": "assay",
+            "label": "assay",
+            "class": "string",
+            "optional": false,
+            "help": "string of assay to run analysis for (CEN or TWE)",
+            "group": ""
+          },
+          {
+            "name": "assay_config_dir",
+            "label": "assay config dir",
+            "class": "string",
+            "optional": true,
+            "default": "project-Fkb6Gkj433GVVvj73J7x8KbV:/dynamic_files/dias_batch_configs/",
+            "help": "path to directory containing assay config files",
+            "group": ""
+          },
+          {
+            "name": "assay_config_file",
+            "label": "assay config file",
+            "class": "file",
+            "optional": true,
+            "help": "Config file for assay, if not provided will search assay_config_dir for files",
+            "group": ""
+          },
+          {
+            "name": "manifest_files",
+            "label": "manifest files",
+            "class": "array:file",
+            "optional": true,
+            "help": "manifest file(s) of sample -> panel",
+            "group": ""
+          },
+          {
+            "name": "qc_file",
+            "label": "QC file",
+            "class": "file",
+            "optional": true,
+            "help": "QC .xlsx file. optional input to eggd_artemis"
+          },
+          {
+            "name": "split_tests",
+            "label": "split tests",
+            "class": "boolean",
+            "optional": true,
+            "help": "controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one"
+          },
+          {
+            "name": "exclude_samples",
+            "label": "exclude samples",
+            "class": "string",
+            "optional": true,
+            "help": "comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))"
+          },
+          {
+            "name": "exclude_samples_file",
+            "label": "exclude samples file",
+            "class": "file",
+            "optional": true,
+            "help": "file of samples to exclude from CNV calling / CNV reports, one sample name per line (`InstrumentID-SpecimenID` for Epic samples, X number for Gemini samples)"
+          },
+          {
+            "name": "manifest_subset",
+            "label": "manifest subset",
+            "class": "string",
+            "optional": true,
+            "help": "comma separated string of samples in manifest on which to ONLY run jobs (these should be formatted as ` InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))"
+          },
+          {
+            "name": "single_output_dir",
+            "label": "single output directory",
+            "class": "string",
+            "optional": false,
+            "help": "path to output directory of dias single",
+            "group": ""
+          },
+          {
+            "name": "cnv_call_job_id",
+            "label": "CNV call job ID",
+            "class": "string",
+            "optional": true,
+            "help": "job ID of CNV calling to use for generating CNV reports, if running calling and reports together the job ID of the calling job will be used"
+          },
+          {
+            "name": "cnv_call",
+            "label": "cnv call",
+            "class": "boolean",
+            "optional": true,
+            "help": "run cnv calling",
+            "group": "mode"
+          },
+          {
+            "name": "cnv_reports",
+            "label": "cnv reports",
+            "class": "boolean",
+            "optional": true,
+            "help": "run cnv reports",
+            "group": "mode"
+          },
+          {
+            "name": "snv_reports",
+            "label": "snv reports",
+            "class": "boolean",
+            "optional": true,
+            "help": "run snv reports",
+            "group": "mode"
+          },
+          {
+            "name": "mosaic_reports",
+            "label": "mosaic reports",
+            "class": "boolean",
+            "optional": true,
+            "help": "run mosaic reports",
+            "group": "mode"
+          },
+          {
+            "name": "artemis",
+            "label": "artemis",
+            "class": "boolean",
+            "optional": true,
+            "help": "run eggd_artemis",
+            "group": "mode"
+          },
+          {
+            "name": "testing",
+            "label": "testing",
+            "class": "boolean",
+            "optional": true,
+            "help": "run in testing mode, will terminate all jobs",
+            "group": "test"
+          },
+          {
+            "name": "sample_limit",
+            "label": "sample limit",
+            "class": "int",
+            "optional": true,
+            "help": "no. of samples to limit launching reports workflow jobs for",
+            "group": "test"
+          },
+          {
+            "name": "unarchive",
+            "label": "unarchive",
+            "class": "boolean",
+            "optional": true,
+            "default": false,
+            "help": "controls whether to automatically unarchive any required files that are archived. Default is to fail the app with a list of files required to unarchive. If set to true, all required files will start to be unarchived and the job will exit with a zero exit code and the job tagged to state no jobs were launched"
+          }
+    ],
+    "outputSpec": [
+      {
+        "name": "summary_report",
+        "label": "summary report",
+        "class": "file",
+        "optional": true,
+        "help": "text file with summary of jobs launched and any errors encountered"
+      },
+      {
+        "name": "launched_jobs",
+        "label": "launched jobs",
+        "class": "string",
+        "optional": true,
+        "help": "comma separated string of launched jobs"
+      }
+    ],
+    "runSpec": {
+        "timeoutPolicy": {
+          "*": {
+            "hours": 8
+          }
+        },
+        "interpreter": "python3",
+        "file": "resources/home/dnanexus/dias_batch/dias_batch.py",
+        "distribution": "Ubuntu",
+        "release": "20.04",
+        "version": "0",
+        "headJobOnDemand": true
+    },
+    "access": {
+        "network": [
+            "*"
+        ],
+        "allProjects":"CONTRIBUTE",
+        "project": "CONTRIBUTE"
+    },
+    "developers":[
+        "org-emee_1"
+    ],
+    "authorizedUsers": [
+        "org-emee_1"
+    ],
+    "regionalOptions": {
+        "aws:eu-central-1": {
+            "systemRequirements": {
+                "*": {
+                    "instanceType": "mem1_ssd1_v2_x2"
+                }
+            }
+        }
+    }
+}
