@@ -442,7 +442,7 @@ def main(
         ]
 
         if snv_path or cnv_path:
-            if assay_config['modes']['artemis']['inputs']['url_duration']:
+            if 'url_duration' in assay_config['modes']['artemis']['inputs']:
                 artemis_job = DXExecute().artemis(
                     single_output_dir=single_output_dir,
                     app_id=assay_config.get('artemis_app_id'),
