@@ -457,7 +457,8 @@ def main(
                 qc_xlsx=qc_file,
                 snv_output=snv_path,
                 cnv_output=cnv_path,
-                capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed']
+                capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
+                url_duration=assay_config['modes']['artemis']['inputs']['url_duration']
             )
 
             launched_jobs['artemis'] = [artemis_job]
