@@ -1982,7 +1982,8 @@ class TestDXExecuteArtemis():
             qc_xlsx='file-xxx',
             capture_bed='file-xxx',
             snv_output=None,
-            cnv_output=None
+            cnv_output=None,
+            url_duration=None
         )
 
         assert job == 'job-QaTZ9qEwkEsovKLs14DSdNqb', (

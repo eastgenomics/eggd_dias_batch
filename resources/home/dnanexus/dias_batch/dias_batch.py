@@ -359,27 +359,20 @@ def main(
         parent = None
 
     if cnv_call:
-        if cnv_call_job_id:
-            print(
-                "WARNING: both 'cnv_call' set and 'cnv_call_job_id' "
-                "specified.\nWill use output of specified job "
-                f"({cnv_call_job_id}) instead of running CNV calling."
-            )
-        else:
-            # check if we're running reports after and to hold app
-            # until CNV calling completes
-            wait = True if cnv_reports else False
+        # check if we're running reports after and to hold app
+        # until CNV calling completes
+        wait = True if cnv_reports else False
 
-            cnv_call_job_id = DXExecute().cnv_calling(
-                config=assay_config,
-                single_output_dir=single_output_dir,
-                exclude=exclude_samples,
-                start=start_time,
-                wait=wait,
-                unarchive=unarchive
-            )
+        cnv_call_job_id = DXExecute().cnv_calling(
+            config=assay_config,
+            single_output_dir=single_output_dir,
+            exclude=exclude_samples,
+            start=start_time,
+            wait=wait,
+            unarchive=unarchive
+        )
 
-            launched_jobs['CNV calling'] = [cnv_call_job_id]
+        launched_jobs['CNV calling'] = [cnv_call_job_id]
 
     if cnv_reports:
         cnv_report_jobs, cnv_report_errors, cnv_report_summary = \
@@ -457,7 +450,8 @@ def main(
                 qc_xlsx=qc_file,
                 snv_output=snv_path,
                 cnv_output=cnv_path,
-                capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed']
+                capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
+                url_duration=assay_config['modes']['artemis']['inputs']['url_duration']
             )
 
             launched_jobs['artemis'] = [artemis_job]

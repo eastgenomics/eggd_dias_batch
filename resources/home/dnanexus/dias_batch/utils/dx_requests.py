@@ -1195,7 +1195,8 @@ class DXExecute():
             qc_xlsx,
             capture_bed,
             snv_output=None,
-            cnv_output=None
+            cnv_output=None,
+            url_duration=None
         ) -> str:
         """
         Launch eggd_artemis to generate xlsx file of download links
@@ -1218,6 +1219,8 @@ class DXExecute():
             output path of SNV reports (if run), by default None
         cnv_output : str (optional)
             output path of CNV reports (if run), by default None
+        url_duration : str (optional)
+            expiry time in seconds for artemis urls, by default None
 
         Returns
         -------
@@ -1227,12 +1230,21 @@ class DXExecute():
         details = dxpy.DXApp(app_id).describe()
         path = make_path(single_output_dir, details['name'], start)
 
-        app_input = {
-            "snv_path": snv_output,
-            "cnv_path": cnv_output,
-            "qc_status": qc_xlsx,
-            "bed_file": capture_bed
-        }
+        if url_duration:
+            app_input = {
+                "snv_path": snv_output,
+                "cnv_path": cnv_output,
+                "qc_status": qc_xlsx,
+                "bed_file": capture_bed,
+                "url_duration": url_duration
+            }
+        else:
+            app_input = {
+                "snv_path": snv_output,
+                "cnv_path": cnv_output,
+                "qc_status": qc_xlsx,
+                "bed_file": capture_bed,
+            }
 
         job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
