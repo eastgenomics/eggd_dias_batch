@@ -442,17 +442,29 @@ def main(
         ]
 
         if snv_path or cnv_path:
-            artemis_job = DXExecute().artemis(
-                single_output_dir=single_output_dir,
-                app_id=assay_config.get('artemis_app_id'),
-                dependent_jobs=dependent_jobs,
-                start=start_time,
-                qc_xlsx=qc_file,
-                snv_output=snv_path,
-                cnv_output=cnv_path,
-                capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
-                url_duration=assay_config['modes']['artemis']['inputs']['url_duration']
-            )
+            if 'url_duration' in assay_config['modes']['artemis']['inputs']:
+                artemis_job = DXExecute().artemis(
+                    single_output_dir=single_output_dir,
+                    app_id=assay_config.get('artemis_app_id'),
+                    dependent_jobs=dependent_jobs,
+                    start=start_time,
+                    qc_xlsx=qc_file,
+                    snv_output=snv_path,
+                    cnv_output=cnv_path,
+                    capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
+                    url_duration=assay_config['modes']['artemis']['inputs']['url_duration']
+                )
+            else:
+                artemis_job = DXExecute().artemis(
+                    single_output_dir=single_output_dir,
+                    app_id=assay_config.get('artemis_app_id'),
+                    dependent_jobs=dependent_jobs,
+                    start=start_time,
+                    qc_xlsx=qc_file,
+                    snv_output=snv_path,
+                    cnv_output=cnv_path,
+                    capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed']
+                )
 
             launched_jobs['artemis'] = [artemis_job]
         else:
