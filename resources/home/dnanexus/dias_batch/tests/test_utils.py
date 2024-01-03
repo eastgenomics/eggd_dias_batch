@@ -1394,6 +1394,26 @@ class TestCheckExcludeSamples():
     list of BAM files (for CNV calling) or the manifest (CNV reports) to
     ensure all samples specified are valid for excluding
     """
+    def test_no_error_raised_when_valid_samples_provided_to_exclude(self):
+        """
+        Test that when samples provided to exclude are in the list of
+        sample files, no error is raised as expected
+        """
+        samples = [
+            'sample1.bam',
+            'sample2.bam',
+            'sample3.bam'
+        ]
+
+        exclude = ['sample1', 'sample2']
+
+        utils.check_exclude_samples(
+            samples=samples,
+            exclude=exclude,
+            mode='calling'
+        )
+
+
     def test_error_raised_when_no_bam_files(self):
         """
         Test when sample specified to exclude has no BAM files
@@ -1418,6 +1438,7 @@ class TestCheckExcludeSamples():
                 exclude=exclude,
                 mode='calling'
             )
+
 
     def test_error_raised_when_sample_not_in_manifest(self):
         """
@@ -1520,3 +1541,40 @@ class TestCheckExcludeSamples():
                 mode='reports',
                 single_dir='project-xxx:/output/runX'
             )
+
+
+    @patch('utils.utils.dxpy.find_data_objects')
+    def test_control_sample_pattern_not_checked_against_files(
+            self,
+            mock_find,
+            capsys
+        ):
+        """
+        Test when control sample pattern (from `-iexclude_controls`) is
+        in the list of exclude patterns that it is ignored when checking.
+
+        This is because controls may not be always on a run and it is a
+        fixed pattern, therefore it is not specified by the user directly.
+
+        Here we just want to test when it is the only pattern that it is
+        removed from the list to check, and therefore it will pass the check
+        """
+        samples = [
+            'sample1.bam',
+            'sample2.bam',
+            'sample3.bam'
+        ]
+
+        exclude = [r'^\w+-\w+Q\w+-']
+
+        utils.check_exclude_samples(
+            samples=samples,
+            exclude=exclude,
+            mode='calling'
+        )
+
+        stdout = capsys.readouterr().out
+
+        assert 'All exclude sample names valid' in stdout, (
+            'regex control pattern not correctly removed from checking'
+        )

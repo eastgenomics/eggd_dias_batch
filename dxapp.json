@@ -1,7 +1,7 @@
 {
     "name": "eggd_dias_batch",
     "title": "eggd_dias_batch",
-    "version": "3.0.1",
+    "version": "3.1.0",
     "summary": "Launches downstream analyses for Dias",
     "dxapi": "1.0.0",
     "inputSpec": [
@@ -65,6 +65,14 @@
             "class": "file",
             "optional": true,
             "help": "file of samples to exclude from CNV calling / CNV reports, one sample name per line (`InstrumentID-SpecimenID` for Epic samples, X number for Gemini samples)"
+          },
+          {
+            "name": "exclude_controls",
+            "label": "exclude controls",
+            "class": "boolean",
+            "default": true,
+            "optional": true,
+            "help": "controls if to automatically exclude Epic control samples"
           },
           {
             "name": "manifest_subset",
