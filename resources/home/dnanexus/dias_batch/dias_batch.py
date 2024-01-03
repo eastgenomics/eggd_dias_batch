@@ -252,8 +252,9 @@ def main(
     assay_config_dir=None,
     manifest_files=None,
     split_tests=False,
-    exclude_samples=None,
+    exclude_samples=[],
     exclude_samples_file=None,
+    exclude_controls=None,
     manifest_subset=None,
     single_output_dir=None,
     cnv_call_job_id=None,
@@ -298,6 +299,10 @@ def main(
 
     if exclude_samples_file:
         exclude_samples = DXManage().read_dxfile(exclude_samples_file)
+
+    if exclude_controls:
+        # pattern to default to excluding Epic control samples
+        exclude_samples.append(r'^\w+-\w+Q\w+-')
 
     # parse and format genepanels file
     genepanels_data = DXManage().read_dxfile(
@@ -363,7 +368,7 @@ def main(
         # until CNV calling completes
         wait = True if cnv_reports else False
 
-        cnv_call_job_id = DXExecute().cnv_calling(
+        cnv_call_job_id, cnv_call_excluded_files = DXExecute().cnv_calling(
             config=assay_config,
             single_output_dir=single_output_dir,
             exclude=exclude_samples,
@@ -502,6 +507,7 @@ def main(
         manifest=manifest,
         launched_jobs=launched_jobs,
         excluded=exclude_samples,
+        cnv_call_excluded=cnv_call_excluded_files,
         snv_report_errors=snv_report_errors,
         cnv_report_errors=cnv_report_errors,
         mosaic_report_errors=mosaic_report_errors,

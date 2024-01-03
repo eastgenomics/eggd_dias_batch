@@ -610,6 +610,8 @@ class DXExecute():
         -------
         str
             job ID of launch cnv calling job
+        list
+            list of files excluded from CNV calling
 
         Raises
         ------
@@ -645,6 +647,8 @@ class DXExecute():
             f"\n\t{printable_files}"
         )
 
+        excluded_files = []
+
         if exclude:
             # filtering out sample files specified from -iexclude
             samples = '\n\t'.join(exclude)
@@ -656,11 +660,19 @@ class DXExecute():
                 mode='calling'
             )
 
+            # get the files we are excluding to log in the summary report
+            excluded_files = [
+                file for file in files
+                if any([
+                    re.match(x, file['describe']['name']) for x in exclude
+                ])
+            ]
+
             # get the files of samples we're not excluding
             files = [
                 file for file in files
                 if not any([
-                    file['describe']['name'].startswith(x) for x in exclude
+                    re.match(x, file['describe']['name']) for x in exclude
                 ])
             ]
 
@@ -668,6 +680,13 @@ class DXExecute():
             print(
                 f"{len(files)} .bam/.bai files after excluding:"
                 f"\n\t{printable_files}"
+            )
+
+            printable_excluded = '\n\t'.join([
+                x['describe']['name'] for x in excluded_files])
+            print(
+                f"{len(excluded_files)} .bam/.bai files excluded:"
+                f"\n\t{printable_excluded}"
             )
 
         # check to ensure all bams are unarchived
@@ -712,7 +731,7 @@ class DXExecute():
         else:
             print(f'CNV calling launched: {job_id}\n')
 
-        return job_id
+        return job_id, excluded_files
 
 
     def reports_workflow(

@@ -144,6 +144,13 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
                 f"{', '.join(sorted(summary.get('excluded')))}"
             )
 
+        if summary.get('cnv_call_excluded'):
+            file_handle.write(
+                "Files matched and excluded from CNV calling "
+                f"({len(summary.get('cnv_call_excluded'))}): "
+                f"{', '.join(sorted(summary.get('cnv_call_excluded')))}"
+            )
+
         launched_jobs = '\n\t'.join([
             f"{k} : {len(v)} jobs" if len(v) > 1
             else f"{k} : {len(v)} job"
@@ -232,8 +239,7 @@ def fill_config_reference_inputs(config) -> dict:
     RuntimeError
         Raised when provided reference in assay config has no file-[\d\w]+ ID
     """
-    print("\n \nFilling config file with reference files, before:")
-    prettier_print(config)
+    print("\n \nFilling config file with reference files...")
 
     print("Reference files to add:")
     prettier_print(config['reference_files'])
@@ -1017,9 +1023,13 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
         Raised when one or more exclude_samples not present in sample list
     """
     print("Checking provided exclude sample names are valid...")
+
+    # check that provided exclude names/patterns match to at least one
+    # sample, excluding the control pattern as there may not be one
     exclude_not_present = [
         name for name in exclude
-        if not any([sample.startswith(name) for sample in samples])
+        if not any([re.match(name, sample) for sample in samples])
+        and not re.match(r'^\w+-\w+Q\w+-', name)
     ]
 
     if exclude_not_present:
