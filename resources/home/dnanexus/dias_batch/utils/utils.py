@@ -1029,7 +1029,7 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
     exclude_not_present = [
         name for name in exclude
         if not any([re.match(name, sample) for sample in samples])
-        and not re.match(r'^\w+-\w+Q\w+-', name)
+        and not name == r'^\w+-\w+Q\w+-'
     ]
 
     if exclude_not_present:
