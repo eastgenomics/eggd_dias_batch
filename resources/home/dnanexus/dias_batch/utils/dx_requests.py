@@ -647,9 +647,6 @@ class DXExecute():
 
         if exclude:
             # filtering out sample files specified from -iexclude
-            samples = '\n\t'.join(exclude)
-            print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
-
             check_exclude_samples(
                 samples=[x['describe']['name'] for x in files],
                 exclude=exclude,
