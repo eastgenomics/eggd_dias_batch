@@ -1227,21 +1227,13 @@ class DXExecute():
         details = dxpy.DXApp(app_id).describe()
         path = make_path(single_output_dir, details['name'], start)
 
-        if url_duration:
-            app_input = {
-                "snv_path": snv_output,
-                "cnv_path": cnv_output,
-                "qc_status": qc_xlsx,
-                "bed_file": capture_bed,
-                "url_duration": url_duration
-            }
-        else:
-            app_input = {
-                "snv_path": snv_output,
-                "cnv_path": cnv_output,
-                "qc_status": qc_xlsx,
-                "bed_file": capture_bed,
-            }
+        app_input = {
+            "snv_path": snv_output,
+            "cnv_path": cnv_output,
+            "qc_status": qc_xlsx,
+            "bed_file": capture_bed,
+            "url_duration": url_duration
+        }
 
         job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
