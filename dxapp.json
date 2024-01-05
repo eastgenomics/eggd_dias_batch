@@ -9,7 +9,7 @@
             "name": "assay",
             "label": "assay",
             "class": "string",
-            "optional": false,
+            "optional": true,
             "help": "string of assay to run analysis for (CEN or TWE)",
             "group": ""
           },

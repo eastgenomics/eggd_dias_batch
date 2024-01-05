@@ -82,9 +82,16 @@ class CheckInputs():
 
     def check_assay(self):
         """Check assay string passed is valid"""
-        if self.inputs['assay'] not in ['CEN', 'TWE']:
+        if self.inputs['assay'] and self.inputs['assay'] not in ['CEN', 'TWE']:
             self.errors.append(
                 f"Invalid assay passed: {self.inputs['assay']}"
+            )
+
+    def check_assay_string_or_assay_config_specified(self):
+        """Check for either the assay string and / or assay config file"""
+        if not self.inputs['assay'] and not self.inputs['assay_config_file']:
+            self.errors.append(
+                'Neither assay or assay_config_file specified'
             )
 
     def check_assay_config_dir(self):
