@@ -42,6 +42,25 @@ class TestCheckInputs():
             'Error not raised for invalid assay string'
         )
 
+    def test_missing_assay_str_and_assay_config_file(self, mocker):
+        """
+        Test error is raised when neither assay string or assay config
+        file are specified
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        check = CheckInputs()
+        check.errors = []
+        check.inputs = {
+            'assay': None,
+            'assay_config_file': None
+        }
+
+        check.check_assay_string_or_assay_config_specified()
+
+        assert check.errors == [
+            'Neither assay or assay_config_file specified'
+        ], 'Error not raised when assay str and assay config file missing'
+
     @patch('utils.dx_requests.dxpy.find_data_objects')
     def test_assay_config_dir(self, test_patch, mocker):
         """
@@ -158,7 +177,6 @@ class TestCheckInputs():
             'Incorrect error raised for checking cnv call mode'
         )
 
-
     def test_error_raised_for_cnv_reports_invalid(self, mocker):
         """
         Test when CNV reports is to be run that an error is raised if
@@ -181,7 +199,6 @@ class TestCheckInputs():
         assert check.errors == correct_error, (
             "Error not raised for CNV reports missing CNV call / job ID"
         )
-
 
     def test_exclude_samples_with_file_id(self, mocker):
         """
