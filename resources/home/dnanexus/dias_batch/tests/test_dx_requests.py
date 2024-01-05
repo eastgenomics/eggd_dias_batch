@@ -2,11 +2,6 @@
 The majority of functions in dx_requests.py relate to interacting with
 DNAnexus via dxpy API calls to either manage data (in DXManage) or for
 launching jobs (in DXExecute).
-
-Functions not covered by unit tests:
-    - Everything in DXExecute - all functions relate to launching jobs,
-        going to test these manually by running the app (probably, we shall
-        see if I get the motivation to try patch things well to test them)
 """
 from copy import deepcopy
 import os
