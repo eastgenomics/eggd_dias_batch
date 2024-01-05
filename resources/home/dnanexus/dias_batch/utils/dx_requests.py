@@ -335,7 +335,8 @@ class DXManage():
             f"project: {project}, file: {file_id}"
         )
 
-        return dxpy.DXFile(project=project, dxid=file_id).read().split('\n')
+        return dxpy.DXFile(
+            project=project, dxid=file_id).read().rstrip('\n').split('\n')
 
 
     def check_archival_state(self, files, unarchive, samples=None) -> None:
