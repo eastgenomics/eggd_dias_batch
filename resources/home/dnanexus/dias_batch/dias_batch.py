@@ -324,7 +324,8 @@ def main(
         manifest = {}
         manifest_source = {}
 
-        for file in manifest_files:
+        for idx, file in enumerate(manifest_files, 1):
+            print(f"Parsing file {idx}/{len(manifest_files)}")
             manifest_data = DXManage().read_dxfile(file)
             manifest_data, source = parse_manifest(
                 contents=manifest_data,
@@ -336,8 +337,8 @@ def main(
             manifest = {**manifest, **manifest_data}
             manifest_source = {**manifest_source, **source}
 
-        print("Parsed manifest(s)")
-        prettier_print(manifest)
+        print("Parsed manifest(s):")
+        print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in manifest.items()}))
 
         # filter manifest tests against genepanels to ensure what has been
         # requested are test codes or HGNC IDs we recognise
