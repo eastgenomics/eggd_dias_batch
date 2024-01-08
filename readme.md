@@ -34,6 +34,7 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
     ```
 
 **Booleans**
+- `-iexclude_controls` (`bool`): controls if to automatically exclude control samples from CNV calling based on the regex pattern `'^\w+-\w+Q\w+-'` (default: `true`)
 - `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
 - `-iunarchive` (`bool`):  controls whether to automatically unarchive any required files that are archived. Default is to fail the app with a list of files required to unarchive. If set to true, all required files will start to be unarchived and the job will exit with a zero exit code and the job tagged to state no jobs were launched
 
