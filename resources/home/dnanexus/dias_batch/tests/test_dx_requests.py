@@ -588,6 +588,20 @@ class TestDXManageReadDXfile():
             DXManage().read_dxfile(file='invalid_str')
 
 
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_trailing_blank_line_removed(self, mock_file):
+        """
+        If the file has a blank line at the end this would result in
+        the file being read into a list with an empty string at the
+        end => test that we correctly remove this
+        """
+        mock_file.return_value.read.return_value = 'line1\nline2\nline3\n'
+
+        contents = DXManage().read_dxfile(file='project-xxx:file-xxx')
+
+        assert contents == ['line1', 'line2', 'line3']
+
+
 class TestDXManageCheckArchivalState():
     """
     Tests for DXManage.check_archival_state()
