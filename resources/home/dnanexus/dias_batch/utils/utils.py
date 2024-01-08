@@ -1023,9 +1023,9 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
         Raised when one or more exclude_samples not present in sample list
     """
     print("Checking provided exclude sample names are valid...")
+    print(f"Samples specified to exclude:\n{prettier_print(exclude)}")
 
     # check that provided exclude names/patterns match to at least one
-    # sample, excluding the control pattern as there may not be one
     exclude_not_present = [
         name for name in exclude
         if not any([re.match(name, sample) for sample in samples])

@@ -82,9 +82,16 @@ class CheckInputs():
 
     def check_assay(self):
         """Check assay string passed is valid"""
-        if self.inputs['assay'] not in ['CEN', 'TWE']:
+        if self.inputs['assay'] and self.inputs['assay'] not in ['CEN', 'TWE']:
             self.errors.append(
                 f"Invalid assay passed: {self.inputs['assay']}"
+            )
+
+    def check_assay_string_or_assay_config_specified(self):
+        """Check for either the assay string and / or assay config file"""
+        if not self.inputs['assay'] and not self.inputs['assay_config_file']:
+            self.errors.append(
+                'Neither assay or assay_config_file specified'
             )
 
     def check_assay_config_dir(self):
@@ -447,29 +454,20 @@ def main(
         ]
 
         if snv_path or cnv_path:
-            if 'url_duration' in assay_config['modes']['artemis']['inputs']:
-                artemis_job = DXExecute().artemis(
-                    single_output_dir=single_output_dir,
-                    app_id=assay_config.get('artemis_app_id'),
-                    dependent_jobs=dependent_jobs,
-                    start=start_time,
-                    qc_xlsx=qc_file,
-                    snv_output=snv_path,
-                    cnv_output=cnv_path,
-                    capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
-                    url_duration=assay_config['modes']['artemis']['inputs']['url_duration']
-                )
-            else:
-                artemis_job = DXExecute().artemis(
-                    single_output_dir=single_output_dir,
-                    app_id=assay_config.get('artemis_app_id'),
-                    dependent_jobs=dependent_jobs,
-                    start=start_time,
-                    qc_xlsx=qc_file,
-                    snv_output=snv_path,
-                    cnv_output=cnv_path,
-                    capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed']
-                )
+            url_duration = assay_config[
+                'modes']['artemis']['inputs'].get('url_duration', None)
+
+            artemis_job = DXExecute().artemis(
+                single_output_dir=single_output_dir,
+                app_id=assay_config.get('artemis_app_id'),
+                dependent_jobs=dependent_jobs,
+                start=start_time,
+                qc_xlsx=qc_file,
+                snv_output=snv_path,
+                cnv_output=cnv_path,
+                capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
+                url_duration=url_duration
+            )
 
             launched_jobs['artemis'] = [artemis_job]
         else:
