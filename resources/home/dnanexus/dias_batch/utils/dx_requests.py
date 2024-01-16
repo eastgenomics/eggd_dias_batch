@@ -1255,9 +1255,11 @@ class DXExecute():
             "cnv_path": cnv_output,
             "qc_status": qc_xlsx,
             "bed_file": capture_bed,
-            "url_duration": url_duration,
-            "multiqc_report": multiqc_report
+            "url_duration": url_duration
         }
+
+        if details.get('version') >= '1.4.0':
+            app_input["multiqc_report"] = multiqc_report
 
         job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
