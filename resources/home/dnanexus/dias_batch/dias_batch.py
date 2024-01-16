@@ -363,7 +363,7 @@ def main(
     launched_jobs = {}
     cnv_report_errors = snv_report_errors = mosaic_report_errors = \
         cnv_call_excluded_files = cnv_report_summary = snv_report_summary = \
-            mosaic_report_summary = None
+        mosaic_report_summary = None
 
     # set downstream jobs to be dependent on parent batch job, wonderfully
     # hacky way to not actually start any downstream jobs in testing mode and
