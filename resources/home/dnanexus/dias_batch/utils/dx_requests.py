@@ -1259,7 +1259,7 @@ class DXExecute():
             "url_duration": url_duration
         }
 
-        if details.get('version') >= '1.4.0':
+        if details.get('version') >= '1.4.0' and multiqc_report:
             app_input["multiqc_report"] = multiqc_report
 
         print(f"Inputs for eggd_artemis:\n{prettier_print(app_input)}")
