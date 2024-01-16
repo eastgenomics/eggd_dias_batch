@@ -1262,7 +1262,8 @@ class DXExecute():
         if details.get('version') >= '1.4.0' and multiqc_report:
             app_input["multiqc_report"] = multiqc_report
 
-        print(f"Inputs for eggd_artemis:\n{prettier_print(app_input)}")
+        print("Inputs for eggd_artemis:")
+        print(prettier_print(app_input))
 
         job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
