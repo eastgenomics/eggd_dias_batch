@@ -1263,7 +1263,7 @@ class DXExecute():
             app_input["multiqc_report"] = multiqc_report
 
         print("Inputs for eggd_artemis:")
-        print(prettier_print(app_input))
+        prettier_print(app_input)
 
         job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
