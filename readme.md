@@ -25,8 +25,8 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 - `-imanifest_subset` (`str`): comma separated string of Epic samples in manifest on which to ONLY run jobs (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`)). This option is to be used if an Epic batch had mistakes in the manifest, which have now been corrected. This will filter the updated batch so that reports jobs are only run for the corrected samples and not the whole batch.
 
 **Files**
-- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and will only be used when `-iartemis=true` specified_)
-- `-imultiqc_report` (`file`): HTML MultiQC report (_this is an optional input file for eggd\_artemis and will pass the file as input to suppress searching for a MultiQC job in the project_)
+- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and should only be specified with `-iartemis=true`_)
+- `-imultiqc_report` (`file`): HTML MultiQC report (_this is an optional input file for eggd\_artemis and should only be specified with `-iartemis=true`, it will pass the file as input to suppress searching for a MultiQC job in the project_)
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search default `assay_config_dir` for highest version config file for the given `-assay` string
 - `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line. Epic samples should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`) Example formatting of exclude_samples_file`:
     ```
