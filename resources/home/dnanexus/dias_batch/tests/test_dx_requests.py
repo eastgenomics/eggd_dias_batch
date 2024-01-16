@@ -1955,7 +1955,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         )
 
 
-class TestDXExecuteArtemis():
+class TestDXExecuteArtemis(unittest.TestCase):
     """
     Test for DXExecute.artemis
 
@@ -1966,7 +1966,7 @@ class TestDXExecuteArtemis():
     """
 
     @patch('utils.dx_requests.make_path')
-    @patch('utils.dx_requests.dxpy.DXApp.describe')
+    @patch('utils.dx_requests.dxpy.describe')
     @patch('utils.dx_requests.dxpy.DXApp')
     def test_called(
         self,
@@ -1983,6 +1983,11 @@ class TestDXExecuteArtemis():
         job_obj._dxid = 'job-QaTZ9qEwkEsovKLs14DSdNqb'
         mock_app.return_value.run.return_value = job_obj
 
+        mock_describe.return_value = {
+            'name': 'eggd_artemis',
+            'version': '1.3.0'
+        }
+
         job = DXExecute().artemis(
             single_output_dir='/output_path/',
             app_id='app-xxx',
@@ -1998,6 +2003,42 @@ class TestDXExecuteArtemis():
         assert job == 'job-QaTZ9qEwkEsovKLs14DSdNqb', (
             'Job ID returned from running Artemis incorrect'
         )
+
+    @patch('utils.dx_requests.make_path')
+    @patch('utils.dx_requests.dxpy.describe')
+    @patch('utils.dx_requests.dxpy.DXApp')
+    def test_multiqc_report_added(
+        self,
+        mock_app,
+        mock_describe,
+        mock_path
+    ):
+        """
+        Test that when eggd_artemis >=1.4.0 that multiqc_report is
+        specified as an input when running the app
+        """
+        # mock app describe output to be 1.4.0 => add multiqc_report
+        mock_describe.return_value = {
+            'name': 'eggd_artemis',
+            'version': '1.4.0'
+        }
+
+        DXExecute().artemis(
+            single_output_dir='/output_path/',
+            app_id='app-xxx',
+            dependent_jobs=[],
+            start='230922_1012',
+            qc_xlsx='file-xxx',
+            capture_bed='file-xxx',
+            snv_output=None,
+            cnv_output=None,
+            url_duration=None,
+            multiqc_report='file-xxx'
+        )
+
+        run_input = mock_app.return_value.run.call_args.kwargs
+
+        self.assertEqual(run_input['app_input']['multiqc_report'], 'file-xxx')
 
 
 class TestDXExecuteTerminate(unittest.TestCase):

@@ -271,6 +271,7 @@ def main(
     mosaic_reports=False,
     artemis=False,
     qc_file=None,
+    multiqc_report=None,
     testing=False,
     sample_limit=None,
     unarchive=None
@@ -361,7 +362,8 @@ def main(
 
     launched_jobs = {}
     cnv_report_errors = snv_report_errors = mosaic_report_errors = \
-        cnv_report_summary = snv_report_summary = mosaic_report_summary = None
+        cnv_call_excluded_files = cnv_report_summary = snv_report_summary = \
+        mosaic_report_summary = None
 
     # set downstream jobs to be dependent on parent batch job, wonderfully
     # hacky way to not actually start any downstream jobs in testing mode and
@@ -467,7 +469,8 @@ def main(
                 snv_output=snv_path,
                 cnv_output=cnv_path,
                 capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
-                url_duration=url_duration
+                url_duration=url_duration,
+                multiqc_report=multiqc_report
             )
 
             launched_jobs['artemis'] = [artemis_job]

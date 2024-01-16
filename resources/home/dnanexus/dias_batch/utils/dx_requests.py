@@ -1213,7 +1213,8 @@ class DXExecute():
             capture_bed,
             snv_output=None,
             cnv_output=None,
-            url_duration=None
+            url_duration=None,
+            multiqc_report=None
         ) -> str:
         """
         Launch eggd_artemis to generate xlsx file of download links
@@ -1238,13 +1239,16 @@ class DXExecute():
             output path of CNV reports (if run), by default None
         url_duration : str (optional)
             expiry time in seconds for artemis urls, by default None
+        multiqc_report : str (optional)
+            file ID of MultiQC report to specify as input
 
         Returns
         -------
         str
             job ID of launched job
         """
-        details = dxpy.DXApp(app_id).describe()
+        print("Launching eggd_artemis")
+        details = dxpy.describe(app_id)
         path = make_path(single_output_dir, details['name'], start)
 
         app_input = {
@@ -1254,6 +1258,12 @@ class DXExecute():
             "bed_file": capture_bed,
             "url_duration": url_duration
         }
+
+        if details.get('version') >= '1.4.0' and multiqc_report:
+            app_input["multiqc_report"] = multiqc_report
+
+        print("Inputs for eggd_artemis:")
+        prettier_print(app_input)
 
         job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
