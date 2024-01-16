@@ -271,6 +271,7 @@ def main(
     mosaic_reports=False,
     artemis=False,
     qc_file=None,
+    multiqc_report=None,
     testing=False,
     sample_limit=None,
     unarchive=None
@@ -467,7 +468,8 @@ def main(
                 snv_output=snv_path,
                 cnv_output=cnv_path,
                 capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
-                url_duration=url_duration
+                url_duration=url_duration,
+                multiqc_report=multiqc_report
             )
 
             launched_jobs['artemis'] = [artemis_job]

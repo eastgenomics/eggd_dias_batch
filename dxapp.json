@@ -46,6 +46,13 @@
             "help": "QC .xlsx file. optional input to eggd_artemis"
           },
           {
+            "name": "multiqc_report",
+            "label": "MultiQC report",
+            "class": "file",
+            "optional": true,
+            "help": "MultiQC report, optional input to eggd_artemis"
+          },
+          {
             "name": "split_tests",
             "label": "split tests",
             "class": "boolean",
