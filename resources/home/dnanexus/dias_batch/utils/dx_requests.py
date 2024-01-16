@@ -1247,6 +1247,7 @@ class DXExecute():
         str
             job ID of launched job
         """
+        print("Launching eggd_artemis")
         details = dxpy.describe(app_id)
         path = make_path(single_output_dir, details['name'], start)
 
@@ -1260,6 +1261,8 @@ class DXExecute():
 
         if details.get('version') >= '1.4.0':
             app_input["multiqc_report"] = multiqc_report
+
+        print(f"Inputs for eggd_artemis:\n{prettier_print(app_input)}")
 
         job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,
