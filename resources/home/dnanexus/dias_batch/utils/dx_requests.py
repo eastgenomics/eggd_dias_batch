@@ -1247,7 +1247,7 @@ class DXExecute():
         str
             job ID of launched job
         """
-        details = dxpy.DXApp(app_id).describe()
+        details = dxpy.describe(app_id)
         path = make_path(single_output_dir, details['name'], start)
 
         app_input = {
