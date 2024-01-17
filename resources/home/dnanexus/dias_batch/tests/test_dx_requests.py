@@ -314,7 +314,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         self.mock_file.return_value = dxpy.DXFile
 
         # patch the output from DXFile.read() to simulate looping over
-        # the return of reading multiple configs
+        # the return of reading multiple configs with 2 of the same version
         self.mock_loads.side_effect = [
             {'assay': 'test', 'version': '1.0.0'},
             {'assay': 'test', 'version': '1.1.0'},
@@ -323,8 +323,8 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
 
         expected_error = (
             "Error: more than one file found for highest version of test "
-            "configs. Files found:\\n\\tconfig2.json \(file-yyy\)\\n\\t"
-            "config3.json \(file-zzz\)"
+            r"configs. Files found:\\n\\tconfig2.json \(file-yyy\)\\n\\t"
+            r"config3.json \(file-zzz\)"
         )
 
         with pytest.raises(RuntimeError, match=expected_error):
