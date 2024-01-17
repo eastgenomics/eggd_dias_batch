@@ -11,7 +11,6 @@ from unittest import mock
 from unittest.mock import patch
 
 import dxpy
-import pandas as pd
 import pytest
 
 

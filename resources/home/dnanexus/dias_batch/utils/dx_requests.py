@@ -10,7 +10,6 @@ import json
 import os
 import re
 import sys
-from time import sleep
 from timeit import default_timer as timer
 from typing import List, Tuple
 
