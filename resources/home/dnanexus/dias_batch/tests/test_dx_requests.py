@@ -11,6 +11,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import dxpy
+import pandas as pd
 import pytest
 
 
@@ -322,8 +323,8 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
 
         expected_error = (
             "Error: more than one file found for highest version of test "
-            r"configs. Files found:\\n\\tconfig2.json \(file-yyy\)\\n\\t"
-            r"config3.json \(file-zzz\)"
+            "configs. Files found:\\n\\tconfig2.json \(file-yyy\)\\n\\t"
+            "config3.json \(file-zzz\)"
         )
 
         with pytest.raises(RuntimeError, match=expected_error):
