@@ -2,6 +2,7 @@
 Functions related to querying and managing objects in DNAnexus, as well
 as running jobs.
 """
+from collections import defaultdict
 from copy import deepcopy
 import concurrent.futures
 from itertools import groupby
@@ -119,6 +120,7 @@ class DXManage():
         print(f"\nAssay config files found:\n\t{files_ids}")
 
         highest_config = {}
+        config_version_files = defaultdict(list)
 
         for file in files:
             if not file['describe']['archivalState'] == 'live':
@@ -137,6 +139,12 @@ class DXManage():
             if not config_data.get('assay') == assay:
                 continue
 
+            # build a log of files found for each version to ensure we
+            # only find one of each version to unambiguously get highest
+            config_version_files[config_data.get('version')].append(
+                (file['describe']['name'], file['id'])
+            )
+
             if Version(config_data.get('version')) > Version(highest_config.get('version', '0')):
                 config_data['dxid'] = file['id']
                 config_data['name'] = file['describe']['name']
@@ -145,6 +153,17 @@ class DXManage():
         assert highest_config, (
             f"No config file was found for {assay} from {path}"
         )
+
+        if len(config_version_files[highest_config['version']]) > 1:
+            files = '\n\t'.join([
+                f"{x[0]} ({x[1]})"
+                for x in config_version_files[highest_config['version']]
+            ])
+
+            raise RuntimeError(
+                f"Error: more than one file found for highest version of "
+                f"{assay} configs. Files found:\n\t{files}"
+            )
 
         print(
             f"Highest version config found for {assay} was "

@@ -274,6 +274,66 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         )
 
 
+    def test_multiple_files_raises_error(self):
+        """
+        Test that when more than one file found for same config version
+        that a RuntimeError is raised since we can't unambiguously tell
+        which file to use
+        """
+        # set output of find to be minimal describe call output with
+        # required keys for iterating over, here we need a dict per
+        # `mock_read` return values that we want to test with
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'config1.json',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-yyy',
+                'describe' : {
+                    'name': 'config2.json',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-zzz',
+                'describe' : {
+                    'name': 'config3.json',
+                    'archivalState': 'live'
+                }
+            }
+        ]
+
+        # patch the DXFile object that read() gets called on
+        self.mock_file.return_value = dxpy.DXFile
+
+        # patch the output from DXFile.read() to simulate looping over
+        # the return of reading multiple configs
+        self.mock_loads.side_effect = [
+            {'assay': 'test', 'version': '1.0.0'},
+            {'assay': 'test', 'version': '1.1.0'},
+            {'assay': 'test', 'version': '1.1.0'},
+        ]
+
+        expected_error = (
+            "Error: more than one file found for highest version of test "
+            "configs. Files found:\\n\\tconfig2.json \(file-yyy\)\\n\\t"
+            "config3.json \(file-zzz\)"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            DXManage().get_assay_config(
+                path='project-xxx:/test_path',
+                assay='test'
+            )
+
+
 class TestDXManageGetFileProjectContext():
     """
     Tests for DXManage.get_file_project_context()
