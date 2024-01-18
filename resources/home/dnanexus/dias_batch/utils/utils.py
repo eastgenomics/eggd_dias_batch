@@ -744,10 +744,10 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
             for test in test_list:
                 if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
                     valid_tests.append(test)
-                elif test == 'Research Use':
+                elif test.lower().replace(' ', '') == 'researchuse':
                     # more Epic weirdness, chuck these out but don't break
                     print(
-                        f"WARNING: {sample} booked for 'Research Use' test, "
+                        f"WARNING: {sample} booked for '{test}' test, "
                         f"skipping this test code and continuing..."
                     )
                 else:
