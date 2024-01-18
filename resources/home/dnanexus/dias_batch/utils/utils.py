@@ -757,8 +757,22 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
                 valid[sample]['tests'].append(sorted(set(valid_tests)))
 
         if sample_invalid_test:
-            # sample had one or more invalid test code
-            invalid[sample].extend(sample_invalid_test)
+            # sample had one or more invalid test code, check to see if
+            # valid same code exists from diff version already for sample
+            # i.e CNV test code where SNV present
+            versionless_codes = [
+                code.split('.')[0] for codes in valid[sample]['tests']
+                for code in codes
+            ]
+
+            sample_invalid_test = [
+                test for test in sample_invalid_test
+                if not test.split('.')[0] in versionless_codes
+            ]
+
+            if sample_invalid_test:
+                # didn't already have a valid code with different version
+                invalid[sample].extend(sample_invalid_test)
 
     if invalid:
         raise RuntimeError(
