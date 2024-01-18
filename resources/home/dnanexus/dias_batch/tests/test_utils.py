@@ -1065,10 +1065,12 @@ class TestCheckManifestValidTestCodes():
         column, we want to skip these as they're not a valid test code and
         not raise an error
         """
-        # add in 'Research Use' as a test code to a manifest sample
+        # add in different forms of 'Research Use' as a test code to a
+        # manifest sample
         manifest_copy = deepcopy(self.manifest)
         manifest_copy['424487111-53214R00111']['tests'].append([
-            'Research Use'])
+            'Research Use', 'ResearchUse', 'researchUse', 'research use'
+        ])
 
         correct_test_codes = [['R208.1', 'R216.1']]
 
