@@ -137,6 +137,17 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
                 f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
             )
 
+        if summary.get('kinda_valid_codes'):
+            # codes not present in genepanels but skipped from raising error
+            # as valid code with different version present for the sample
+            file_handle.write(
+                "Test codes not in genepanels skipped due to having matching "
+                "valid test code for sample: "
+            )
+            file_handle.write(
+                prettier_print(summary.get('kinda_valid_codes'))
+            )
+
         if summary.get('excluded'):
             file_handle.write(
                 "\nSamples specified to exclude from CNV calling and CNV "
@@ -715,8 +726,8 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     dict
         dict of manifest with valid test codes
     dict
-        dict mapping samples to list of codes that were skipped but
-        aren't invalid as a valid other version of same code existed
+        dict mapping samples to list of dicts with codes that were skipped
+        but aren't invalid as a valid other version of same code existed
 
     Raises
     ------

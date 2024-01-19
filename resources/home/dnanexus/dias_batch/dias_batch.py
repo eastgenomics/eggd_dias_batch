@@ -343,7 +343,7 @@ def main(
 
         # filter manifest tests against genepanels to ensure what has been
         # requested are test codes or HGNC IDs we recognise
-        manifest = check_manifest_valid_test_codes(
+        manifest, kinda_valid_codes = check_manifest_valid_test_codes(
             manifest=manifest,
             genepanels=genepanels
         )
@@ -510,6 +510,7 @@ def main(
         launched_jobs=launched_jobs,
         excluded=exclude_samples,
         cnv_call_excluded=cnv_call_excluded_files,
+        kinda_valid_codes=kinda_valid_codes,
         snv_report_errors=snv_report_errors,
         cnv_report_errors=cnv_report_errors,
         mosaic_report_errors=mosaic_report_errors,
