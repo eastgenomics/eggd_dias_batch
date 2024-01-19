@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import unittest
 from unittest.mock import patch
 
 import pandas as pd
@@ -997,7 +998,7 @@ class TestFilterManifestSamplesByFiles():
         )
 
 
-class TestCheckManifestValidTestCodes():
+class TestCheckManifestValidTestCodes(unittest.TestCase):
     """
     Tests for utils.check_manifest_valid_test_codes()
 
@@ -1022,7 +1023,7 @@ class TestCheckManifestValidTestCodes():
         format dict of the manifest -> test codes as is passed in, therefore
         test that this is true
         """
-        tested_manifest = utils.check_manifest_valid_test_codes(
+        tested_manifest, _ = utils.check_manifest_valid_test_codes(
             manifest=self.manifest, genepanels=self.genepanels
         )
 
@@ -1042,7 +1043,6 @@ class TestCheckManifestValidTestCodes():
             utils.check_manifest_valid_test_codes(
                 manifest=manifest_copy, genepanels=self.genepanels
             )
-
 
     def test_error_raised_when_manifest_contains_invalid_test_code(self):
         """
@@ -1074,7 +1074,7 @@ class TestCheckManifestValidTestCodes():
 
         correct_test_codes = [['R208.1', 'R216.1']]
 
-        tested_manifest = utils.check_manifest_valid_test_codes(
+        tested_manifest, _ = utils.check_manifest_valid_test_codes(
             manifest=manifest_copy, genepanels=self.genepanels
         )
         sample_test_codes = tested_manifest['424487111-53214R00111']['tests']
@@ -1082,6 +1082,60 @@ class TestCheckManifestValidTestCodes():
         assert sample_test_codes == correct_test_codes, (
             'Test codes not correctly parsed when "Research Use" present'
         )
+
+    def test_kinda_valid_codes_returned(self):
+        """
+        When a valid code is present for a sample but there is an invalid
+        code (i.e one not in genepanels) we check if that invalid code
+        matches a valid one without the version (i.e. R1.1 valid but R1.2
+        not). If so, these are not flagged as invalid but returned
+        separately to log in the reports summary
+        """
+        # add in some additional non-valid codes that match a valid code,
+        # ensuring we have every form of how tests can be combined from
+        # the manifest (i.e one list vs split)
+        manifest_copy = deepcopy(self.manifest)
+        manifest_copy['123245111-23146R00111']['tests'].append(['R207.2'])
+        manifest_copy['224289111-33202R00111']['tests'].append(['R208.2', 'R208.3'])
+        manifest_copy['324338111-43206R00111']['tests'][0].append('R134.2')
+
+        _, kinda_valid = utils.check_manifest_valid_test_codes(
+            manifest=manifest_copy, genepanels=self.genepanels
+        )
+
+        correct_kinda_valid = {
+            '123245111-23146R00111': [{'R207.2': 'R207.1'}],
+            '224289111-33202R00111': [{'R208.2': 'R208.1'}, {'R208.3': 'R208.1'}],
+            '324338111-43206R00111': [{'R134.2': 'R134.1'}]
+        }
+
+        self.assertEqual(kinda_valid, correct_kinda_valid)
+
+
+    def test_error_raised_with_invalid_and_kinda_valid_codes_returned(self):
+        """
+        Test that when both invalid and kinda valid test codes are present,
+        we still catch and raise a RuntimeError on those invalid codes
+        """
+        # add in both an additional non-valid codes that match a valid
+        # code and an invalid code
+        manifest_copy = deepcopy(self.manifest)
+
+        # kinda valid code
+        manifest_copy['123245111-23146R00111']['tests'].append(['R207.2'])
+
+        # invalid code
+        manifest_copy['224289111-33202R00111']['tests'].append(['999.9'])
+
+        expected_error = re.escape((
+            "One or more samples had an invalid test code requested: "
+            "{'224289111-33202R00111': ['999.9']}"
+        ))
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            utils.check_manifest_valid_test_codes(
+                manifest=manifest_copy, genepanels=self.genepanels
+            )
 
 
 class TestSplitManifestTests():
