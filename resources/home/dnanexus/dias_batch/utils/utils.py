@@ -714,6 +714,9 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     -------
     dict
         dict of manifest with valid test codes
+    dict
+        dict mapping samples to list of codes that were skipped but
+        aren't invalid as a valid other version of same code existed
 
     Raises
     ------
@@ -723,6 +726,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     print("\n \nChecking test codes in manifest are valid...")
     invalid = defaultdict(list)
     valid = defaultdict(lambda: defaultdict(list))
+    kinda_valid = defaultdict(list)
 
     genepanels_test_codes = sorted(set(genepanels['test_code'].tolist()))
 
@@ -760,15 +764,31 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
             # sample had one or more invalid test code, check to see if
             # valid same code exists from diff version already for sample
             # i.e CNV test code where SNV present
-            versionless_codes = [
-                code.split('.')[0] for codes in valid[sample]['tests']
-                for code in codes
+            valid_codes = [
+                code for codes in valid[sample]['tests'] for code in codes
+            ]
+            versionless_codes = [code.split('.')[0] for code in valid_codes]
+
+            # invalid codes we have already found a valid code for
+            kinda_valid_codes = [
+                test for test in sample_invalid_test
+                if test.split('.')[0] in versionless_codes
             ]
 
-            sample_invalid_test = [
-                test for test in sample_invalid_test
-                if not test.split('.')[0] in versionless_codes
-            ]
+            if kinda_valid_codes:
+                # get mapping of valid code that matched against to record
+                # in report summary
+                kinda_valid_mapping = [
+                    {invalid: valid} for invalid in kinda_valid_codes
+                    for valid in valid_codes
+                    if invalid.split('.')[0] == valid.split('.')[0]
+                ]
+
+                kinda_valid[sample] = kinda_valid_mapping
+
+            sample_invalid_test = list(
+                set(sample_invalid_test) - set(kinda_valid_codes)
+            )
 
             if sample_invalid_test:
                 # didn't already have a valid code with different version
@@ -776,12 +796,13 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
 
     if invalid:
         raise RuntimeError(
-            f"One or more samples had an invalid test code requested: {invalid}"
+            "One or more samples had an invalid test code requested: "
+            f"{dict(invalid)}"
         )
     else:
         print("All sample test codes valid!")
 
-    return valid
+    return valid, dict(kinda_valid)
 
 
 def split_manifest_tests(data) -> dict:
