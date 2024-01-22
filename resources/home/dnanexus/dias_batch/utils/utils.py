@@ -697,7 +697,7 @@ def filter_manifest_samples_by_files(
     return manifest_with_files, manifest_no_match, manifest_no_files
 
 
-def drop_test_code_version(manifest, mosaic_codes, exact_codes):
+def drop_test_code_version(manifest, mosaic_codes=[], exact_codes=[]):
     """
     Removes the versions from the test codes and removes any duplicates
     to ensure when selecting from genepanels file that missing codes

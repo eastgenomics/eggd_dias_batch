@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import unittest
 from unittest.mock import patch
 
 import pandas as pd
@@ -995,6 +996,78 @@ class TestFilterManifestSamplesByFiles():
         assert manifest == manifest_w_files, (
             'files incorrectly added to manifest'
         )
+
+
+class TestDropTestCodeVersion(unittest.TestCase):
+    """
+    Tests for utils.drop_test_code_version()
+
+    Function removes the version suffix from the test codes in the manifest
+    to allow for removing duplicate tests for a sample in the manifest
+    from having .1 and .2 of the same test.
+    """
+    manifest = {
+        'sample1': [['R1.1', 'R1.2']],
+        'sample2': [['R1.1'], ['R1.2']],
+        'sample3': [['R1.1'], ['R1.2', 'R2.1']],
+        'sample4': [['R3.1', '_HGNC:123']]
+    }
+
+    def test_versions_correctly_dropped(self):
+        """
+        Test that versions are correctly removed from test codes and
+        duplicate unversioned codes are removed
+        """
+        unversioned_manifest = utils.drop_test_code_version(self.manifest)
+
+        correct_manifest = {
+            'sample1': [['R1']],
+            'sample2': [['R1']],
+            'sample3': [['R1'], ['R2']],
+            'sample4': [['R3', '_HGNC:123']]
+        }
+
+        self.assertEqual(unversioned_manifest, correct_manifest)
+
+
+    def test_mosaic_codes_not_unversioned(self):
+        """
+        Test when test codes provided to mosaic_codes that the version
+        is not removed
+        """
+        unversioned_manifest = utils.drop_test_code_version(
+            manifest=self.manifest,
+            mosaic_codes=['R3.1']
+        )
+
+        correct_manifest = {
+            'sample1': [['R1']],
+            'sample2': [['R1']],
+            'sample3': [['R1'], ['R2']],
+            'sample4': [['R3.1', '_HGNC:123']]
+        }
+
+        self.assertEqual(unversioned_manifest, correct_manifest)
+
+
+    def test_exact_codes_not_unversioned(self):
+        """
+        Test when test codes provided to exact_codes that the version
+        is not removed
+        """
+        unversioned_manifest = utils.drop_test_code_version(
+            manifest=self.manifest,
+            exact_codes=['R2.1', 'R3.1']
+        )
+
+        correct_manifest = {
+            'sample1': [['R1']],
+            'sample2': [['R1']],
+            'sample3': [['R1'], ['R2.1']],
+            'sample4': [['R3.1', '_HGNC:123']]
+        }
+
+        self.assertEqual(unversioned_manifest, correct_manifest)
 
 
 class TestCheckManifestValidTestCodes():
