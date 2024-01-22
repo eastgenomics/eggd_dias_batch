@@ -313,17 +313,26 @@ def parse_genepanels(contents) -> pd.DataFrame:
     Parse genepanels file into nicely formatted DataFrame
 
     This will drop the HGNC ID column and keep the unique rows left (i.e.
-    one row per clinical indication / panel), and adds the test code as
-    a separate column.
+    one row per clinical indication / panel), split_genepanels_test_codes()
+    is then called to add columns for the test code, test code with version
+    if the base test code matches a unique indication / panel name
 
     Example resultant dataframe:
 
-    +-----------+-----------------------+---------------------------+
-    | test_code |      indication       |        panel_name         |
-    +-----------+-----------------------+---------------------------+
-    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
-    | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
-    +-----------+-----------------------+---------------------------+
+    +-----------+----------------------+----------------+- \
+    | test_code | test_code_no_version | base_code_uniq |  \
+    +-----------+----------------------+----------------+- \
+    | C1.1      | C1                   | True           |  \
+    | C2.1      | C2                   | False          |  \
+    | C2.2      | C2                   | False          |  \
+    +-----------+----------------------+----------------+- \
+            -----------------------+--------------------------+
+                indication       |         panel_name         |
+            -----------------------+--------------------------+
+            C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0  |
+            C2.1_INSR             | CUH_INSR_1.0              |
+            C2.2_INSR             | CUH_INSR_2.0              |
+            -----------------------+--------------------------+
 
     Parameters
     ----------
@@ -352,23 +361,35 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     Split out R/C codes from full CI name for easier matching
     against manifest
 
+    Will also generate a column of the test code without a version,
+    and a boolean column of if the base test code matches unambiguously
+    to one indication / panel and can be used without the version
+
     +-----------------------+--------------------------+
     |      indication      |        panel_name         |
     +-----------------------+--------------------------+
     | C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0 |
     | C2.1_INSR             | CUH_INSR_1.0             |
+    | C2.2_INSR             | CUH_INSR_2.0             |
     +-----------------------+--------------------------+
 
                                     |
                                     ▼
 
-    +-----------+-----------------------+---------------------------+
-    | test_code |      indication      |        panel_name          |
-    +-----------+-----------------------+---------------------------+
-    | C1.1      | C1.1_Inherited Stroke |  CUH_Inherited Stroke_1.0 |
-    | C2.1      | C2.1_INSR             |  CUH_INSR_1.0             |
-    +-----------+-----------------------+---------------------------+
-
+    +-----------+----------------------+----------------+- \
+    | test_code | test_code_no_version | base_code_uniq |  \
+    +-----------+----------------------+----------------+- \
+    | C1.1      | C1                   | True           |  \
+    | C2.1      | C2                   | False          |  \
+    | C2.2      | C2                   | False          |  \
+    +-----------+----------------------+----------------+- \
+            -----------------------+--------------------------+
+                indication       |         panel_name         |
+            -----------------------+--------------------------+
+            C1.1_Inherited Stroke | CUH_Inherited Stroke_1.0  |
+            C2.1_INSR             | CUH_INSR_1.0              |
+            C2.2_INSR             | CUH_INSR_2.0              |
+            -----------------------+--------------------------+
 
     Parameters
     ----------
@@ -388,9 +409,16 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
     genepanels['test_code'] = genepanels['indication'].apply(
         lambda x: x.split('_')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
     )
-    genepanels = genepanels[['test_code', 'indication', 'panel_name']]
 
-    # sense check test code only points to one unique indication
+    genepanels['test_code_no_version'] = genepanels['test_code'].apply(
+        lambda x: x.split('.')[0] if re.match(r'[RC][\d]+\.[\d]+', x) else x
+    )
+
+    genepanels = genepanels[[
+        'test_code', 'test_code_no_version', 'indication', 'panel_name'
+    ]]
+
+    # sense check full versioned test code only points to one unique indication
     for code in set(genepanels['test_code'].tolist()):
         code_rows = genepanels[genepanels['test_code'] == code]
         if len(set(code_rows['indication'].tolist())) > 1:
@@ -398,6 +426,20 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
                 f"Test code {code} linked to more than one indication in "
                 f"genepanels!\n\t{code_rows['indication'].tolist()}"
             )
+
+    # generate bool column to determine if test code with no version
+    # maps to one indication / column
+    genepanels['base_code_uniq'] = False
+
+    for base_code in set(genepanels['test_code_no_version'].tolist()):
+        code_rows = genepanels[genepanels['test_code_no_version'] == base_code]
+        # indications = len(set(code_rows['indication'].tolist()))
+        panels = len(set(code_rows['panel_name'].tolist()))
+
+        if panels == 1:
+            # base code matches one indication / panel => switch bool column
+            genepanels.loc[genepanels[
+                'test_code_no_version'] == base_code, 'base_code_uniq'] = True
 
     print(f"Genepanels file: \n{genepanels}")
 
@@ -697,19 +739,62 @@ def filter_manifest_samples_by_files(
     return manifest_with_files, manifest_no_match, manifest_no_files
 
 
-def drop_test_code_version(manifest, mosaic_codes=[], exact_codes=[]):
+def get_mosaic_samples(manifest, mosaic_codes) -> dict:
+    """
+    Get subset from manifest of samples booked in for any tests that
+    require mosaic calling and reports, these tests codes will be
+    specified in the assay config under the `mosaic_codes` key
+
+    Parameters
+    ----------
+    manifest : dict
+        mapping of sample name to list of lists of booked in tests
+    mosaic_codes : list
+        list of test codes for mosaic calling and reports
+
+    Returns
+    -------
+    dict
+        subset of manifest for mosaic testing
+    """
+    print("Checking manifest for samples requests for mosaic testing")
+    mosaic_manifest = defaultdict(lambda: defaultdict(list))
+
+    for sample, test_codes in manifest.items():
+        for test_list in test_codes['tests']:
+            mosaic_tests = []
+
+            for test in test_list:
+                if test in mosaic_codes:
+                    mosaic_tests.append(test)
+
+            if mosaic_tests:
+                mosaic_manifest[sample].append(mosaic_tests)
+
+    print(f"Found {len(mosaic_manifest.keys())} samples for mosaic testing:")
+    print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in mosaic_manifest.items()}))
+
+    return mosaic_manifest
+
+
+def drop_test_code_version_from_manifest(manifest, genepanels, exact_codes):
     """
     Removes the versions from the test codes and removes any duplicates
     to ensure when selecting from genepanels file that missing codes
     (i.e. CNV codes) don't raise an error where they are also booked for
-    SNV codes
+    SNV codes.
+
+    Versions from test codes will not be removed if the test code is
+    specified in the exact_codes list, or if the test code in genepanels
+    without a version does not unambiguously map to a single indication
+    / panel
 
     Parameters
     ----------
     manifest : dict
         dict mapping sampleID -> testCodes from parse_manifest()
-    mosaic_codes : list
-        list of mosaic codes to keep separate
+    genepanels : pd.DataFrame
+        DataFrame of genepanels file
     exact_codes : list
         list of codes to match exactly on and not drop versions from
 
@@ -719,25 +804,35 @@ def drop_test_code_version(manifest, mosaic_codes=[], exact_codes=[]):
             manifest with versions dropped from test code
     """
     print("Dropping versions from test codes in manifest")
-    minified_manifest = {}
+    minified_manifest = defaultdict(lambda: defaultdict(list))
 
     for sample, test_codes in manifest.items():
         minified_code = []
+        test_codes = test_codes['tests']
         for idx, test_list in enumerate(test_codes):
             minified_code.append([])
             for test in test_list:
-                if test not in exact_codes and test not in mosaic_codes:
+                genepanels_uniq = False
+                genepanels_test = genepanels[genepanels['test_code'] == test]
+
+                if not genepanels_test.empty:
+                    # if test code requested not in genepanels it will be
+                    # caught later in check_manifest_valid_test_codes()
+                    genepanels_uniq = genepanels_test['base_code_uniq'].iloc[0]
+
+                if test not in exact_codes and genepanels_uniq:
                     test = test.split('.')[0]
 
                 if test not in [code for codes in minified_code for code in codes]:
-                    # check we haven't added this test to any of the test lists
+                    # check we haven't already added this test to any of
+                    # the test lists for the current sample
                     minified_code[idx].append(test)
 
         minified_code = [codes for codes in minified_code if codes]
-        minified_manifest[sample] = minified_code
+        minified_manifest[sample]['tests'] = minified_code
 
     print('Manifest with test code versions dropped:')
-    prettier_print(minified_manifest)
+    # prettier_print(minified_manifest)
 
     return minified_manifest
 
@@ -931,8 +1026,8 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
 
     # add column to genepanels dataframe with versionless test code for
     # easier matching
-    genepanels['unversioned_test_code'] = genepanels[
-        'test_code'].str.split('.').str[0]
+    # genepanels['unversioned_test_code'] = genepanels[
+    #     'test_code'].str.split('.').str[0]
 
     manifest_with_panels = {}
 
@@ -955,7 +1050,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                 elif re.fullmatch(r'[RC][\d]+', test):
                     is_test_code = True
                     genepanels_row = genepanels[
-                        genepanels['unversioned_test_code'] == test
+                        genepanels['test_code_no_version'] == test
                     ]
 
                 if is_test_code:
@@ -963,7 +1058,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     # independent of having R1.1 vs R1.2 which should result
                     # in just one row
                     genepanels_row = genepanels_row.drop(
-                        ['test_code', 'unversioned_test_code'], axis=1
+                        ['test_code', 'test_code_no_version'], axis=1
                     ).drop_duplicates()
 
                     # SPOILER: in older genepanels it isn't always 1:1 as we
@@ -984,12 +1079,18 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                         f"Filtering genepanels for {test} returned empty df"
                     )
 
+                    # and not all(['SG' in x for x in genepanels_row['panel_name'].tolist()])
+
                     if len(genepanels_row.index) > 1:
                         # this should only happen with the messy _SG_panel_
                         # as described above, therefore first check that
                         # nothing else has got here
-                        assert '_SG_panel_' in genepanels_row.iloc[0].panel_name, (
-                            f'Multiple genepanels rows returned for {test}!\n'
+                        for _, row in genepanels_row.iterrows():
+                            print(row)
+                        assert all([
+                            '_SG_panel' in x for x in genepanels_row.panel_name.tolist()
+                        ]), (
+                            f'Multiple genepanels rows returned for {test}!'
                             f'{genepanels_row}'
                         )
 

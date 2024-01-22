@@ -1000,11 +1000,12 @@ class TestFilterManifestSamplesByFiles():
 
 class TestDropTestCodeVersion(unittest.TestCase):
     """
-    Tests for utils.drop_test_code_version()
+    Tests for utils.drop_test_code_version_from_manifest()
 
     Function removes the version suffix from the test codes in the manifest
     to allow for removing duplicate tests for a sample in the manifest
-    from having .1 and .2 of the same test.
+    from having .1 and .2 of the same test. If either `mosaic_codes` or
+    `exact_codes` specified these should be skipped from dropping the version
     """
     manifest = {
         'sample1': [['R1.1', 'R1.2']],
@@ -1018,7 +1019,10 @@ class TestDropTestCodeVersion(unittest.TestCase):
         Test that versions are correctly removed from test codes and
         duplicate unversioned codes are removed
         """
-        unversioned_manifest = utils.drop_test_code_version(self.manifest)
+        unversioned_manifest = utils.drop_test_code_version_from_manifest(
+            manifest=self.manifest,
+            exact_codes=[]
+        )
 
         correct_manifest = {
             'sample1': [['R1']],
@@ -1030,32 +1034,12 @@ class TestDropTestCodeVersion(unittest.TestCase):
         self.assertEqual(unversioned_manifest, correct_manifest)
 
 
-    def test_mosaic_codes_not_unversioned(self):
-        """
-        Test when test codes provided to mosaic_codes that the version
-        is not removed
-        """
-        unversioned_manifest = utils.drop_test_code_version(
-            manifest=self.manifest,
-            mosaic_codes=['R3.1']
-        )
-
-        correct_manifest = {
-            'sample1': [['R1']],
-            'sample2': [['R1']],
-            'sample3': [['R1'], ['R2']],
-            'sample4': [['R3.1', '_HGNC:123']]
-        }
-
-        self.assertEqual(unversioned_manifest, correct_manifest)
-
-
     def test_exact_codes_not_unversioned(self):
         """
         Test when test codes provided to exact_codes that the version
         is not removed
         """
-        unversioned_manifest = utils.drop_test_code_version(
+        unversioned_manifest = utils.drop_test_code_version_from_manifest(
             manifest=self.manifest,
             exact_codes=['R2.1', 'R3.1']
         )
@@ -1116,7 +1100,6 @@ class TestCheckManifestValidTestCodes():
                 manifest=manifest_copy, genepanels=self.genepanels
             )
 
-
     def test_error_raised_when_manifest_contains_invalid_test_code(self):
         """
         RuntimeError should be raised if an invalid test code is provided
@@ -1154,6 +1137,25 @@ class TestCheckManifestValidTestCodes():
 
         assert sample_test_codes == correct_test_codes, (
             'Test codes not correctly parsed when "Research Use" present'
+        )
+
+    def test_versionless_codes_valid(self):
+        """
+        Version suffixes from most test codes will be removed by
+        utils.drop_test_code_version_from_manifest() and will be in the manifest being
+        checked, test that these pass validation
+        """
+        manifest = {
+            'sample1': {
+                'tests': [['R101', 'R104']]
+            },
+            'sample2': {
+                'tests': [['R101'], ['R109.1']]
+            }
+        }
+
+        utils.check_manifest_valid_test_codes(
+            manifest=manifest, genepanels=self.genepanels
         )
 
 
@@ -1272,7 +1274,7 @@ class TestAddPanelsAndIndicationsToManifest():
         ):
             utils.add_panels_and_indications_to_manifest(
                 manifest=manifest_copy,
-                genepanels=self.genepanels
+                genepanels=deepcopy(self.genepanels)
             )
 
 
@@ -1289,8 +1291,8 @@ class TestAddPanelsAndIndicationsToManifest():
         the report and nobody has complained so far so ¯\_(ツ)_/¯)
         """
         manifest = utils.add_panels_and_indications_to_manifest(
-            manifest=self.manifest,
-            genepanels=self.genepanels
+            manifest=deepcopy(self.manifest),
+            genepanels=deepcopy(self.genepanels)
         )
 
         correct_manifest = {
@@ -1366,7 +1368,7 @@ class TestAddPanelsAndIndicationsToManifest():
 
         manifest = utils.add_panels_and_indications_to_manifest(
             manifest=manifest,
-            genepanels=self.genepanels
+            genepanels=deepcopy(self.genepanels)
         )
 
         correct_added = {
@@ -1396,8 +1398,49 @@ class TestAddPanelsAndIndicationsToManifest():
         ):
             utils.add_panels_and_indications_to_manifest(
                 manifest=manifest,
-                genepanels=self.genepanels
+                genepanels=deepcopy(self.genepanels)
             )
+
+
+    def test_versionless_code_correctly_matches(self):
+        """
+        Some test codes may have the version removed from the code in the
+        manifest after reading in, these should correctly match to a
+        unique clinical indication and panel name and generate a valid
+        manifest dict to use for launching jobs
+        """
+        # generate a manifest with a sample for every test code we have in
+        # the genepanels file (except for the 'single gene' panels, these
+        # are handled differently)
+        # genepanels = self.genepanels[
+        #     ~self.genepanels['panel_name'].str.contains('_SG_panel_')
+        # ]
+
+        uniq_test_codes = self.genepanels['test_code'].unique().tolist()
+
+        manifest = {}
+
+        for idx, code in enumerate(uniq_test_codes):
+            manifest[f'sample{idx}'] = {'tests': [[code]]}
+
+        manifest = utils.drop_test_code_version_from_manifest(
+            manifest=manifest,
+            genepanels=deepcopy(self.genepanels),
+            exact_codes=[]
+        )
+
+        # print(manifest)
+        # sys.exit()
+
+        manifest = utils.add_panels_and_indications_to_manifest(
+            manifest=manifest,
+            genepanels=deepcopy(self.genepanels)
+        )
+
+        # print(self.genepanels)
+        for sample, data in manifest.items():
+            print(sample, data)
+        sys.exit()
 
 
 class TestCheckAthenaVersion():

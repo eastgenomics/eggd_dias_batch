@@ -15,8 +15,9 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.utils import (
         add_panels_and_indications_to_manifest,
         check_manifest_valid_test_codes,
-        drop_test_code_version,
+        drop_test_code_version_from_manifest,
         fill_config_reference_inputs,
+        get_mosaic_samples,
         make_path,
         parse_manifest,
         parse_genepanels,
@@ -28,8 +29,9 @@ else:
     from .utils.utils import (
         add_panels_and_indications_to_manifest,
         check_manifest_valid_test_codes,
-        drop_test_code_version,
+        drop_test_code_version_from_manifest,
         fill_config_reference_inputs,
+        get_mosaic_samples,
         make_path,
         parse_manifest,
         parse_genepanels,
@@ -341,9 +343,16 @@ def main(
         print("Parsed manifest(s):")
         print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in manifest.items()}))
 
-        manifest = drop_test_code_version(
+        mosaic_manifest = get_mosaic_samples(
             manifest=manifest,
-            mosaic_codes=assay_config.get('mosaic_tests', []),
+            mosaic_codes=assay_config.get('mosaic_tests', [])
+        )
+
+        #TODO - handle the mosaic samples
+
+        manifest = drop_test_code_version_from_manifest(
+            manifest=manifest,
+            genepanels=genepanels,
             exact_codes=assay_config.get('match_exact_test_code', [])
         )
 
