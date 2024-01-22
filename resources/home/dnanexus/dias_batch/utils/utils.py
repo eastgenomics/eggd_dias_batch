@@ -15,6 +15,11 @@ from packaging.version import Version
 import pandas as pd
 
 
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
+
+
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 200)
 pd.set_option('max_colwidth', 1500)
@@ -806,11 +811,13 @@ def drop_test_code_version_from_manifest(manifest, genepanels, exact_codes):
     print("Dropping versions from test codes in manifest")
     minified_manifest = defaultdict(lambda: defaultdict(list))
 
-    for sample, test_codes in manifest.items():
+    for sample, values in manifest.items():
         minified_code = []
-        test_codes = test_codes['tests']
+        test_codes = values['tests']
+
         for idx, test_list in enumerate(test_codes):
             minified_code.append([])
+
             for test in test_list:
                 genepanels_uniq = False
                 genepanels_test = genepanels[genepanels['test_code'] == test]
@@ -1061,6 +1068,10 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                         ['test_code', 'test_code_no_version'], axis=1
                     ).drop_duplicates()
 
+                    assert not genepanels_row.empty, (
+                        f"Filtering genepanels for {test} returned empty df"
+                    )
+
                     # SPOILER: in older genepanels it isn't always 1:1 as we
                     # have 'single gene panels' (which aren't actually single
                     # genes as there's multiple but OH WELL). This is not a
@@ -1075,25 +1086,11 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     # which would result in:
                     # R371.1 -> HGNC:10483_SG_panel_1.0.0;HGNC:1397_SG_panel_1.0.0;HGNC:28423_SG_panel_1.0.0
 
-                    assert not genepanels_row.empty, (
-                        f"Filtering genepanels for {test} returned empty df"
-                    )
+                    sg_panels = all([
+                        '_SG_panel' in x for x in genepanels_row.panel_name.tolist()
+                    ])
 
-                    # and not all(['SG' in x for x in genepanels_row['panel_name'].tolist()])
-
-                    if len(genepanels_row.index) > 1:
-                        # this should only happen with the messy _SG_panel_
-                        # as described above, therefore first check that
-                        # nothing else has got here
-                        for _, row in genepanels_row.iterrows():
-                            print(row)
-                        assert all([
-                            '_SG_panel' in x for x in genepanels_row.panel_name.tolist()
-                        ]), (
-                            f'Multiple genepanels rows returned for {test}!'
-                            f'{genepanels_row}'
-                        )
-
+                    if len(genepanels_row.index) > 1 and sg_panels:
                         # munge the panel strings together to handle the above
                         print(
                             f'Test code {test} has >1 panel name assigned, '
@@ -1115,6 +1112,11 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                         panel_str = genepanels_row.iloc[0].panel_name
 
                     panels.append(panel_str)
+
+                    #TODO check as we might get more than one indication here
+                    # i.e. the base code matches more than one line of same
+                    # panel entry, this will just grab the first which might
+                    # be fine
                     indications.append(genepanels_row.iloc[0].indication)
 
                 elif re.fullmatch(r'_HGNC:[\d]+', test):

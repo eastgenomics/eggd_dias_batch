@@ -1004,15 +1004,19 @@ class TestDropTestCodeVersion(unittest.TestCase):
 
     Function removes the version suffix from the test codes in the manifest
     to allow for removing duplicate tests for a sample in the manifest
-    from having .1 and .2 of the same test. If either `mosaic_codes` or
-    `exact_codes` specified these should be skipped from dropping the version
+    from having .1 and .2 of the same test. If `exact_codes` specified or
+    these should be skipped from dropping the version
     """
     manifest = {
-        'sample1': [['R1.1', 'R1.2']],
-        'sample2': [['R1.1'], ['R1.2']],
-        'sample3': [['R1.1'], ['R1.2', 'R2.1']],
-        'sample4': [['R3.1', '_HGNC:123']]
+        'sample1': {'tests': [['R100.3', 'R104.3']]},
+        'sample2': {'tests': [['R107.1'], ['R109.3']]},
+        'sample3': {'tests': [['R412.1'], ['R112.1', 'R124.1']]},
+        'sample4': {'tests': [['R21.2', '_HGNC:123']]}
     }
+
+    with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
+        genepanels_data = file_handle.read().splitlines()
+        genepanels = utils.parse_genepanels(genepanels_data)
 
     def test_versions_correctly_dropped(self):
         """
@@ -1021,14 +1025,15 @@ class TestDropTestCodeVersion(unittest.TestCase):
         """
         unversioned_manifest = utils.drop_test_code_version_from_manifest(
             manifest=self.manifest,
+            genepanels=deepcopy(self.genepanels),
             exact_codes=[]
         )
 
         correct_manifest = {
-            'sample1': [['R1']],
-            'sample2': [['R1']],
-            'sample3': [['R1'], ['R2']],
-            'sample4': [['R3', '_HGNC:123']]
+            'sample1': {'tests': [['R100', 'R104.3']]},
+            'sample2': {'tests': [['R107'], ['R109']]},
+            'sample3': {'tests': [['R412'], ['R112', 'R124']]},
+            'sample4': {'tests': [['R21', '_HGNC:123']]}
         }
 
         self.assertEqual(unversioned_manifest, correct_manifest)
@@ -1041,14 +1046,15 @@ class TestDropTestCodeVersion(unittest.TestCase):
         """
         unversioned_manifest = utils.drop_test_code_version_from_manifest(
             manifest=self.manifest,
-            exact_codes=['R2.1', 'R3.1']
+            genepanels=deepcopy(self.genepanels),
+            exact_codes=['R100.3', 'R107.1']
         )
 
         correct_manifest = {
-            'sample1': [['R1']],
-            'sample2': [['R1']],
-            'sample3': [['R1'], ['R2.1']],
-            'sample4': [['R3.1', '_HGNC:123']]
+            'sample1': {'tests': [['R100.3', 'R104.3']]},
+            'sample2': {'tests': [['R107.1'], ['R109']]},
+            'sample3': {'tests': [['R412'], ['R112', 'R124']]},
+            'sample4': {'tests': [['R21', '_HGNC:123']]}
         }
 
         self.assertEqual(unversioned_manifest, correct_manifest)
@@ -1438,9 +1444,9 @@ class TestAddPanelsAndIndicationsToManifest():
         )
 
         # print(self.genepanels)
-        for sample, data in manifest.items():
-            print(sample, data)
-        sys.exit()
+        # for sample, data in manifest.items():
+        #     print(sample, data)
+        # sys.exit()
 
 
 class TestCheckAthenaVersion():
