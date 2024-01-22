@@ -15,11 +15,11 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.utils import (
         add_panels_and_indications_to_manifest,
         check_manifest_valid_test_codes,
+        drop_test_code_version,
         fill_config_reference_inputs,
         make_path,
         parse_manifest,
         parse_genepanels,
-        prettier_print,
         time_stamp,
         write_summary_report
     )
@@ -28,11 +28,11 @@ else:
     from .utils.utils import (
         add_panels_and_indications_to_manifest,
         check_manifest_valid_test_codes,
+        drop_test_code_version,
         fill_config_reference_inputs,
         make_path,
         parse_manifest,
         parse_genepanels,
-        prettier_print,
         time_stamp,
         write_summary_report
     )
@@ -340,6 +340,12 @@ def main(
 
         print("Parsed manifest(s):")
         print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in manifest.items()}))
+
+        manifest = drop_test_code_version(
+            manifest=manifest,
+            mosaic_codes=assay_config.get('mosaic_tests', []),
+            exact_codes=assay_config.get('match_exact_test_code', [])
+        )
 
         # filter manifest tests against genepanels to ensure what has been
         # requested are test codes or HGNC IDs we recognise

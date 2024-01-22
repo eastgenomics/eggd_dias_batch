@@ -697,6 +697,51 @@ def filter_manifest_samples_by_files(
     return manifest_with_files, manifest_no_match, manifest_no_files
 
 
+def drop_test_code_version(manifest, mosaic_codes, exact_codes):
+    """
+    Removes the versions from the test codes and removes any duplicates
+    to ensure when selecting from genepanels file that missing codes
+    (i.e. CNV codes) don't raise an error where they are also booked for
+    SNV codes
+
+    Parameters
+    ----------
+    manifest : dict
+        dict mapping sampleID -> testCodes from parse_manifest()
+    mosaic_codes : list
+        list of mosaic codes to keep separate
+    exact_codes : list
+        list of codes to match exactly on and not drop versions from
+
+    Returns
+    -------
+        dict
+            manifest with versions dropped from test code
+    """
+    print("Dropping versions from test codes in manifest")
+    minified_manifest = {}
+
+    for sample, test_codes in manifest.items():
+        minified_code = []
+        for idx, test_list in enumerate(test_codes):
+            minified_code.append([])
+            for test in test_list:
+                if test not in exact_codes and test not in mosaic_codes:
+                    test = test.split('.')[0]
+
+                if test not in [code for codes in minified_code for code in codes]:
+                    # check we haven't added this test to any of the test lists
+                    minified_code[idx].append(test)
+
+        minified_code = [codes for codes in minified_code if codes]
+        minified_manifest[sample] = minified_code
+
+    print('Manifest with test code versions dropped:')
+    prettier_print(minified_manifest)
+
+    return minified_manifest
+
+
 def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     """
     Parse through manifest dict of sampleID -> test codes to check
@@ -725,6 +770,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     valid = defaultdict(lambda: defaultdict(list))
 
     genepanels_test_codes = sorted(set(genepanels['test_code'].tolist()))
+    test_codes_no_versions = [x.split('.')[0] for x in genepanels_test_codes]
 
     print(f"Current valid test codes:\n\t{genepanels_test_codes}")
 
@@ -743,6 +789,10 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
 
             for test in test_list:
                 if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
+                    valid_tests.append(test)
+                elif test.split('.')[0] in test_codes_no_versions:
+                    # check out test is valid with no version (i.e. SNV exists
+                    # in genepanels but this is CNV code)
                     valid_tests.append(test)
                 elif test.lower().replace(' ', '') == 'researchuse':
                     # more Epic weirdness, chuck these out but don't break
@@ -879,6 +929,11 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     print("Manifest before")
     PPRINT(manifest)
 
+    # add column to genepanels dataframe with versionless test code for
+    # easier matching
+    genepanels['unversioned_test_code'] = genepanels[
+        'test_code'].str.split('.').str[0]
+
     manifest_with_panels = {}
 
     for sample, values in manifest.items():
@@ -891,9 +946,25 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
             panels = []
             indications = []
             for test in test_list:
+                is_test_code = False
+                genepanels_row = None
+
                 if re.fullmatch(r'[RC][\d]+\.[\d]+', test):
-                    # get genepanels row for current test prefix, should just
-                    # be one since we dropped HGNC ID column and duplicates
+                    is_test_code = True
+                    genepanels_row = genepanels[genepanels['test_code'] == test]
+                elif re.fullmatch(r'[RC][\d]+', test):
+                    is_test_code = True
+                    genepanels_row = genepanels[
+                        genepanels['unversioned_test_code'] == test
+                    ]
+
+                if is_test_code:
+                    # drop the test codes to ensure we keep unique rows
+                    # independent of having R1.1 vs R1.2 which should result
+                    # in just one row
+                    genepanels_row = genepanels_row.drop(
+                        ['test_code', 'unversioned_test_code'], axis=1
+                    ).drop_duplicates()
 
                     # SPOILER: in older genepanels it isn't always 1:1 as we
                     # have 'single gene panels' (which aren't actually single
@@ -909,13 +980,19 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     # which would result in:
                     # R371.1 -> HGNC:10483_SG_panel_1.0.0;HGNC:1397_SG_panel_1.0.0;HGNC:28423_SG_panel_1.0.0
 
-                    genepanels_row = genepanels[genepanels['test_code'] == test]
-
                     assert not genepanels_row.empty, (
                         f"Filtering genepanels for {test} returned empty df"
                     )
 
                     if len(genepanels_row.index) > 1:
+                        # this should only happen with the messy _SG_panel_
+                        # as described above, therefore first check that
+                        # nothing else has got here
+                        assert '_SG_panel_' in genepanels_row.iloc[0].panel_name, (
+                            f'Multiple genepanels rows returned for {test}!\n'
+                            f'{genepanels_row}'
+                        )
+
                         # munge the panel strings together to handle the above
                         print(
                             f'Test code {test} has >1 panel name assigned, '
