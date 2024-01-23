@@ -196,13 +196,15 @@ class DXManage():
         AssertionError
             Raised if no live copies of the given file could be found
         """
-        print(f"Searching all projects for: {file}")
+        print(f"\nSearching all projects for: {file}")
 
         # find projects where file exists and get DXFile objects for
         # each to check archivalState, list_projects() returns dict
         # where key is the project ID and value is permission level
-        projects = dxpy.DXFile(dxid=file).list_projects()
-        print(f"Found file in {len(projects)} project(s)")
+        file_obj = dxpy.DXFile(dxid=file)
+        details = file_obj.describe()
+        projects = file_obj.list_projects()
+        print(f"Found file {details['name']} in {len(projects)} project(s)")
 
         files = [
             dxpy.DXFile(dxid=file, project=id).describe()

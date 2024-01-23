@@ -817,18 +817,27 @@ def drop_test_code_version_from_manifest(manifest, genepanels, exact_codes):
             minified_code.append([])
 
             for test in test_list:
+                # check if the requested test code is in genepanels (without
+                # checking the version)
                 genepanels_uniq = False
-                genepanels_test = genepanels[genepanels['test_code'] == test]
+                genepanels_test = genepanels[
+                    genepanels['test_code_no_version'] == test.split('.')[0]]
 
                 if not genepanels_test.empty:
-                    # if test code requested not in genepanels it will be
-                    # caught later in check_manifest_valid_test_codes()
+                    # test without version exists, check if it has a unique
+                    # panel name across all versions
                     genepanels_uniq = genepanels_test['base_code_uniq'].iloc[0]
 
                 if test not in exact_codes and genepanels_uniq:
+                    # not specified to drop version or test has uniq
+                    # panel name => we can use without version
+                    print(f"Test code {test} dropping to base -> {test.split('.')[0]}")
                     test = test.split('.')[0]
 
-                if test not in [code for codes in minified_code for code in codes]:
+                current_codes = [
+                    code for codes in minified_code for code in codes
+                ]
+                if test not in current_codes:
                     # check we haven't already added this test to any of
                     # the test lists for the current sample
                     minified_code[idx].append(test)
@@ -1132,8 +1141,8 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
 
         manifest_with_panels[sample] = sample_tests
 
-    print("Manifest after")
-    prettier_print(manifest_with_panels)
+    print("Manifest after:")
+    print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in manifest_with_panels.items()}))
 
     return manifest_with_panels
 
