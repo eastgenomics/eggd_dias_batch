@@ -766,11 +766,10 @@ def get_mosaic_samples(manifest, mosaic_codes) -> dict:
 
     for sample, test_codes in manifest.items():
         for test_list in test_codes['tests']:
-            mosaic_tests = []
-
-            for test in test_list:
-                if test in mosaic_codes:
-                    mosaic_tests.append(test)
+            mosaic_tests = [
+                code for codes in test_list for code in codes
+                if code in mosaic_codes
+            ]
 
             if mosaic_tests:
                 mosaic_manifest[sample].append(mosaic_tests)
