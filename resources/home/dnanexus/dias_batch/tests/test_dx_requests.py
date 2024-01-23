@@ -407,11 +407,13 @@ class TestDXManageGetFileProjectContext():
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
+                'name': 'file1.txt',
                 'archivalState': 'live'
             },
             {
                 'project': 'project-yyy',
                 'id': 'file-xxx',
+                'name': 'file1.txt',
                 'archivalState': 'live'
 
             }
@@ -424,7 +426,8 @@ class TestDXManageGetFileProjectContext():
         # check we print what we expect
         stdout = capsys.readouterr().out
         expected_print = (
-            'Found file-xxx in 2 projects, using project-xxx as project context'
+            'Found file1.txt (file-xxx) in 2 projects, using project-xxx '
+            'as project context'
         )
 
         if expected_print not in stdout:

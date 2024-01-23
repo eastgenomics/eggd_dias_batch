@@ -201,10 +201,8 @@ class DXManage():
         # find projects where file exists and get DXFile objects for
         # each to check archivalState, list_projects() returns dict
         # where key is the project ID and value is permission level
-        file_obj = dxpy.DXFile(dxid=file)
-        details = file_obj.describe()
-        projects = file_obj.list_projects()
-        print(f"Found file {details['name']} in {len(projects)} project(s)")
+        projects = dxpy.DXFile(dxid=file).list_projects()
+        print(f"Found file in {len(projects)} project(s)")
 
         files = [
             dxpy.DXFile(dxid=file, project=id).describe()
@@ -221,8 +219,8 @@ class DXManage():
         assert files, f"No live files could be found for the ID: {file}"
 
         print(
-            f"Found {file} in {len(files)} projects, "
-            f"using {files[0]['project']} as project context"
+            f"Found {files[0]['name']} ({file}) in {len(files)} "
+            f"projects, using {files[0]['project']} as project context"
         )
 
         return files[0]
