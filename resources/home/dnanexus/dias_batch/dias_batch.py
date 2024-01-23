@@ -345,7 +345,7 @@ def main(
 
         mosaic_manifest = get_mosaic_samples(
             manifest=manifest,
-            mosaic_codes=assay_config.get('mosaic_tests', [])
+            mosaic_codes=assay_config.get('mosaic_codes', [])
         )
 
         #TODO - handle the mosaic samples

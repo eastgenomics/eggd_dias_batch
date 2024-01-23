@@ -214,6 +214,8 @@ The top level section should be structured as follows:
         "Epic": "^[\\d\\w]+-[\\d\\w]+",
         "Gemini": "^X[\\d]+"
     },
+    "mosaic_codes": [],
+    "match_exact_test_code": []
     ...
 ```
 - `assay` (`str`) : assay type the config is for, used  for finding highest version config file when `-iassay` is specified
@@ -221,6 +223,8 @@ The top level section should be structured as follows:
 - `{cnv_call_app|_report_workflow}_id` (`str`) : the IDs of CNV calling and reports workflows to use
 - `reference_files` (`dict`) : mapping of reference file name : DNAnexus file ID, reference file name _must_ be given as shown above, and DNAnexus file ID should be provided as `project-xxx:file-xxx`
 - `name_patterns` (`dict`) : mapping of the manifest source and a regex pattern to use for filtering sample names and files etc.
+- `mosaic_codes`: (`list`) : list of test codes for which to handle as having mosaic testing requested (NotYetImplemented)
+- `match_exact_test_code` (`list`) : list of test codes for which to always match with the full versioned test code against the genepanels file (the default behaviour is to try to match without the version where the panel name is the same between different versions to reduce the chance of missing test codes from Epic raising an error)
 
 The definitions of inputs for CNV calling and each reports workflow should be defined under the key `modes`, containing a mapping of all inputs and other inputs for controlling running of analyses.
 
