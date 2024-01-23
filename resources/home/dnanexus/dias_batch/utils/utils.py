@@ -433,12 +433,11 @@ def split_genepanels_test_codes(genepanels) -> pd.DataFrame:
             )
 
     # generate bool column to determine if test code with no version
-    # maps to one indication / column
+    # maps to one unique panel name
     genepanels['base_code_uniq'] = False
 
     for base_code in set(genepanels['test_code_no_version'].tolist()):
         code_rows = genepanels[genepanels['test_code_no_version'] == base_code]
-        # indications = len(set(code_rows['indication'].tolist()))
         panels = len(set(code_rows['panel_name'].tolist()))
 
         if panels == 1:
@@ -791,8 +790,7 @@ def drop_test_code_version_from_manifest(manifest, genepanels, exact_codes):
 
     Versions from test codes will not be removed if the test code is
     specified in the exact_codes list, or if the test code in genepanels
-    without a version does not unambiguously map to a single indication
-    / panel
+    without a version does not unambiguously map to a single panel
 
     Parameters
     ----------
@@ -839,7 +837,6 @@ def drop_test_code_version_from_manifest(manifest, genepanels, exact_codes):
         minified_manifest[sample]['tests'] = minified_code
 
     print('Manifest with test code versions dropped:')
-    # prettier_print(minified_manifest)
 
     return minified_manifest
 
@@ -1136,7 +1133,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
         manifest_with_panels[sample] = sample_tests
 
     print("Manifest after")
-    PPRINT(manifest_with_panels)
+    prettier_print(manifest_with_panels)
 
     return manifest_with_panels
 
