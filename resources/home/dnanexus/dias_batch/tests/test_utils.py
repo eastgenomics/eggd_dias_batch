@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import unittest
 from unittest.mock import patch
 
 import pandas as pd
@@ -1519,3 +1520,78 @@ class TestCheckExcludeSamples():
         assert 'All exclude sample names valid' in stdout, (
             'regex control pattern not correctly removed from checking'
         )
+
+
+class TestAddDynamicInputs(unittest.TestCase):
+    """
+    Test for utils.add_dynamic_inputs()
+
+    Function parses through input dict to replace 'INPUT-xxx' strings with
+    corresponding string inputs (such as panel strings and clinical
+    indication).
+
+    Currently implemented patterns to replace include:
+        - INPUT-clinical_indications
+        - INPUT-test_codes
+        - INPUT-panels
+        - INPUT-sample_name
+    """
+    def test_all_supported_placeholders_replaced(self):
+        """
+        Test that the supported placeholder text is correctly parsed in
+        """
+        config = {
+            "stage-xxx.indication": "INPUT-clinical_indications",
+            "stage-xxx.panel": "INPUT-panels",
+            "stage-yyy.test": "INPUT-test_codes",
+            "stage-yyy.name": "INPUT-sample_name",
+            "stage-yyy.limit": 1,
+            "stage-zzz.bed": {
+                "$dnanexus_link": {
+                        "project": "project-xxx",
+                        "id": "file-xxx"
+                    }
+            }
+        }
+
+        filled_config = utils.add_dynamic_inputs(
+            config=config,
+            clinical_indications='R1.1_foo_bar',
+            test_codes='R1.1',
+            panels='panel1',
+            sample_name='sample1'
+        )
+
+        correct_config = {
+            'stage-xxx.indication': 'R1.1_foo_bar',
+            'stage-xxx.panel': 'panel1',
+            'stage-yyy.test': 'R1.1',
+            'stage-yyy.name': 'sample1',
+            "stage-yyy.limit": 1,
+            "stage-zzz.bed": {
+                "$dnanexus_link": {
+                        "project": "project-xxx",
+                        "id": "file-xxx"
+                    }
+            }
+        }
+
+        self.assertEqual(filled_config, correct_config)
+
+    def test_invalid_placeholder_raises_assetion_error(self):
+        """
+        Test that when an invalid INPUT- placeholder in config that
+        we correctly raise an AssertionError
+        """
+        config = {
+            "stage-xxx.indication": "INPUT-blarg"
+        }
+
+        with pytest.raises(AssertionError):
+            utils.add_dynamic_inputs(
+                config=config,
+                clinical_indications='R1.1_foo_bar',
+                test_codes='R1.1',
+                panels='panel1',
+                sample_name='sample1'
+            )
