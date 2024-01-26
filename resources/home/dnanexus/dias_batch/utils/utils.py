@@ -11,6 +11,7 @@ from time import strftime, localtime
 from typing import Tuple
 
 import dxpy
+from flatten_dict import flatten, unflatten
 from packaging.version import Version
 import pandas as pd
 
@@ -1100,3 +1101,45 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
         )
     else:
         print("All exclude sample names valid")
+
+
+def add_dynamic_inputs(config, **kwargs) -> dict:
+    """
+    Adds the given value in place of the placeholder text from assay config
+
+    `kwargs` input are expected to be a mapping of the placeholder as
+    defined in the config without the INPUT- prefix and the input to
+    add in to the config
+
+    Parameters
+    ----------
+    config : dict
+        config with input placeholders to replace
+    kwargs : dict
+        mapping of placeholders to replace and replacement values
+
+    Returns
+    -------
+    dict
+        config with filled placeholders
+    """
+    mapping = {
+        'INPUT-clinical_indications': indications,
+        'INPUT-test_codes': codes,
+        'INPUT-panels': panels,
+        'INPUT-sample_name': name
+    }
+
+    config = flatten_dict(config)
+    filled_config = {}
+
+    for field, config_value in config.items():
+        if kwargs.get(config_value.replace('INPUT-', '')):
+            config_value = kwargs.get(config_value.replace('INPUT-', '')
+
+        filled_config[field] = config_value
+
+    # sense check we removed all placeholders
+    assert not any([x.startswith('INPUT-') for x in filled_config.values()])
+
+    return unflatten(filled_config)

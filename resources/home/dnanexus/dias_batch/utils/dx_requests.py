@@ -18,6 +18,7 @@ from packaging.version import Version
 import pandas as pd
 
 from .utils import (
+    add_dynamic_inputs,
     check_athena_version,
     check_exclude_samples,
     check_report_index,
@@ -1141,6 +1142,14 @@ class DXExecute():
 
                 sample_name_to_suffix[name] = suffix
                 name = f"{name}_{suffix}"
+
+                input = add_dynamic_inputs(
+                    config=input,
+                    clinical_indications=indications,
+                    test_codes=codes,
+                    panels=panels,
+                    sample_name=name
+                )
 
                 # CNV vs SNV stage IDs annoyingly all slight differ,
                 # add required other inputs to where they need to be
