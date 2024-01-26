@@ -1099,6 +1099,9 @@ def add_dynamic_inputs(config, **kwargs) -> dict:
         filled_config[field] = config_value
 
     # sense check we removed all placeholders
-    assert not any([x.startswith('INPUT-') for x in filled_config.values()])
+    assert not any([
+        x.startswith('INPUT-') if isinstance(x, str) else False
+        for x in filled_config.values()
+    ])
 
     return filled_config

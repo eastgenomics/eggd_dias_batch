@@ -19,7 +19,6 @@ import pandas as pd
 
 from .utils import (
     add_dynamic_inputs,
-    check_athena_version,
     check_exclude_samples,
     check_report_index,
     filter_manifest_samples_by_files,
