@@ -282,7 +282,7 @@ The definitions of inputs for CNV calling and each reports workflow should be de
 - `stage_instance_types` (`dict`; optional) : mapping of stage-name to instance type to use, this will override the app and workflow defaults
 - `inputs` (`dict`) : mapping of each stage input field to required input
     - inputs may be defined as regular integers / strings / booleans, `$dnanexus_link` file mappings or using `INPUT-` placeholders
-    - `INPUT-` placeholders are followed by a reference key from the `reference_files` mapping in the top level of the config file, and are parsed at run time into the inputs for the workflow (i.e. use of `"stage-cnv_generate_bed_vep.gene_panels": "INPUT-genepanels"` would result be replace by `project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562`, correctly formatted as a `$dnanexus_link` mapping)
+    - `INPUT-` placeholders may be defined in the config to pass variable inputs such as files and strings at runtime as workflow inputs. See the placeholder section below for details.
     - inputs for the following stages follow the same behaviour as the `bambais` input for the CNV calling app of being provided as a "folder" and "name" key for searching:
         - cnv_reports:
             - `stage-cnv_vep.vcf`
@@ -298,6 +298,18 @@ The definitions of inputs for CNV calling and each reports workflow should be de
             "name": "^[^\.]*(?!\.g)\.vcf(\.gz)?$"
         }
         ```
+
+    ### Placeholders
+    Placeholder strings may be defined in the config file for parsing in reference files and strings that are generated at run time. These are split between the reference files defined in the top level of the config (i.e. the genepanels file) or strings (such as the panel name).
+
+    For reference files, these are followed by a reference key from the `reference_files` mapping in the top level of the config file, and are parsed at run time into the inputs for the workflow (i.e. use of `"stage-cnv_generate_bed_vep.gene_panels": "INPUT-genepanels"` would result be replace by `project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562`, correctly formatted as a `$dnanexus_link` mapping)
+
+    Currently supported placeholder strings include:
+
+    - `INPUT-clinical_indications` : `';'` separated string of clinical indications
+    - `INPUT-panels` : `';'` separated string of panels
+    - `INPUT-test_codes` : `'&&'` separated string of test codes
+    - `INPUT-sample_name` : string of sample name from manifest
 
 ---
 
