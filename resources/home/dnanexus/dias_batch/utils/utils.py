@@ -1102,6 +1102,6 @@ def add_dynamic_inputs(config, **kwargs) -> dict:
     assert not any([
         x.startswith('INPUT-') if isinstance(x, str) else False
         for x in filled_config.values()
-    ])
+    ]), f"INPUT- placeholders left in config: {prettier_print(filled_config)}"
 
     return filled_config
