@@ -875,6 +875,7 @@ class DXExecute():
         vcf_files = []
         mosdepth_files = []
         excluded_intervals_bed_file = []
+        excluded_intervals_bed = None
 
         # gather errors to display in summary report
         errors = {}
@@ -1143,6 +1144,27 @@ class DXExecute():
                 sample_name_to_suffix[name] = suffix
                 name = f"{name}_{suffix}"
 
+                # build mosdepth files as a list of dx_links for athena
+                mosdepth_links = [
+                    {"$dnanexus_link": {
+                        "project": file['project'],
+                        "id": file['id']
+                    }}
+                    for file in sample_config.get('mosdepth', [])
+                ]
+
+                if mosdepth_links:
+                    # will only exist if this is for SNVs
+                    input["stage-rpt_athena.mosdepth_files"] = mosdepth_links
+
+                if excluded_intervals_bed:
+                    # will only exist if this is for CNVs
+                    input[
+                        "stage-cnv_annotate_excluded_regions.excluded_regions"
+                    ] = excluded_intervals_bed
+
+                # all combinations of placeholder text that can be in the
+                # config and values to replace with
                 input = add_dynamic_inputs(
                     config=input,
                     clinical_indications=indications,
@@ -1150,49 +1172,6 @@ class DXExecute():
                     panels=panels,
                     sample_name=name
                 )
-
-                # CNV vs SNV stage IDs annoyingly all slight differ,
-                # add required other inputs to where they need to be
-                if mode == 'CNV':
-                    input['stage-cnv_generate_bed_vep.panel'] = indications
-                    input['stage-cnv_generate_bed_vep.output_file_prefix'] = codes
-                    input['stage-cnv_generate_bed_excluded.panel'] = indications
-                    input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
-                    input['stage-cnv_generate_workbook.clinical_indication'] = indications
-                    input['stage-cnv_generate_workbook.output_prefix'] = name
-                    input['stage-cnv_generate_workbook.panel'] = panels
-
-                    # add run level excluded regions file to input
-                    input[
-                        'stage-cnv_annotate_excluded_regions.excluded_regions'
-                    ] = excluded_intervals_bed
-                else:
-                    # build mosdepth files as a list of dx_links for athena
-                    mosdepth_links = [
-                        {"$dnanexus_link": {
-                            "project": file['project'],
-                            "id": file['id']
-                        }}
-                        for file in sample_config['mosdepth']
-                    ]
-
-                    input['stage-rpt_athena.mosdepth_files'] = mosdepth_links
-                    input['stage-rpt_generate_bed_athena.panel'] = indications
-                    input['stage-rpt_generate_bed_athena.output_file_prefix'] = codes
-                    input['stage-rpt_generate_bed_vep.panel'] = indications
-                    input['stage-rpt_generate_bed_vep.output_file_prefix'] = codes
-                    input['stage-rpt_generate_workbook.clinical_indication'] = indications
-                    input['stage-rpt_generate_workbook.panel'] = panels
-                    input['stage-rpt_generate_workbook.output_prefix'] = name
-                    input['stage-rpt_athena.name'] = name
-
-                    # handle new input in eggd_athena v1.6.0 and still using
-                    # eggd_athena v1.4.0, can be removed once > v1.4.0 used
-                    input = check_athena_version(
-                        workflow=workflow_details,
-                        stage_inputs=input,
-                        indications=indications
-                    )
 
                 # now we can finally run the reports workflow
                 job_handle = dxpy.DXWorkflow(

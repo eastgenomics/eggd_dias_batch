@@ -11,7 +11,6 @@ from time import strftime, localtime
 from typing import Tuple
 
 import dxpy
-from flatten_dict import flatten, unflatten
 from packaging.version import Version
 import pandas as pd
 
@@ -962,39 +961,6 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     return manifest_with_panels
 
 
-def check_athena_version(workflow, stage_inputs, indications) -> dict:
-    """
-    Checks the version of eggd_athena being used in SNV reports workflow,
-    and if >=1.6.0 adds additional input of clinical indication string.
-
-    Parameters
-    ----------
-    workflow : dict
-        dxpy.describe() output of the workflow
-    stage_inputs : dict
-        inputs dictionary to add input to
-    indications : str
-        str of clinical indication to add as input to eggd_athena/1.6.0+
-
-    Returns
-    -------
-    dict
-        inputs dictionary with added input
-    """
-    athena_version = [
-        x['executable'] for x in workflow['stages']
-        if 'athena' in x['executable']
-    ]
-
-    if athena_version:
-        if Version(
-            re.search(r'[\d]\.[\d]\.[\d]', athena_version[0]).group()
-        ) >= Version('1.6.0'):
-            stage_inputs['stage-rpt_athena.indication'] = indications
-
-    return stage_inputs
-
-
 def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
     """
     Exclude samples specified to either -iexclude_samples or
@@ -1123,23 +1089,16 @@ def add_dynamic_inputs(config, **kwargs) -> dict:
     dict
         config with filled placeholders
     """
-    mapping = {
-        'INPUT-clinical_indications': indications,
-        'INPUT-test_codes': codes,
-        'INPUT-panels': panels,
-        'INPUT-sample_name': name
-    }
-
-    config = flatten_dict(config)
     filled_config = {}
 
     for field, config_value in config.items():
-        if kwargs.get(config_value.replace('INPUT-', '')):
-            config_value = kwargs.get(config_value.replace('INPUT-', '')
+        if isinstance(config_value, str):
+            if kwargs.get(config_value.replace('INPUT-', '')):
+                config_value = kwargs.get(config_value.replace('INPUT-', ''))
 
         filled_config[field] = config_value
 
     # sense check we removed all placeholders
     assert not any([x.startswith('INPUT-') for x in filled_config.values()])
 
-    return unflatten(filled_config)
+    return filled_config
