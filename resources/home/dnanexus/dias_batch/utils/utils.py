@@ -312,9 +312,9 @@ def parse_genepanels(contents) -> pd.DataFrame:
     """
     Parse genepanels file into nicely formatted DataFrame
 
-    This will drop the HGNC ID column and keep the unique rows left (i.e.
-    one row per clinical indication / panel), and adds the test code as
-    a separate column.
+    This will keep the unique rows from the first 2 columns (i.e. one
+    row per clinical indication / panel), and adds the test code as a
+    separate column.
 
     Example resultant dataframe:
 
@@ -335,11 +335,12 @@ def parse_genepanels(contents) -> pd.DataFrame:
     pd.DataFrame
         DataFrame of genepanels file
     """
+    # genepanels file may have 3 or 4 columns as it can also contain HGNC
+    # ID and PanelApp panel ID, just use the first 2 columns
     genepanels = pd.DataFrame(
-        [x.split('\t') for x in contents],
-        columns=['indication', 'panel_name', 'hgnc_id']
+        [x.split('\t')[:2] for x in contents],
+        columns=['indication', 'panel_name']
     )
-    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
     genepanels.drop_duplicates(keep='first', inplace=True)
     genepanels.reset_index(inplace=True)
     genepanels = split_genepanels_test_codes(genepanels)
