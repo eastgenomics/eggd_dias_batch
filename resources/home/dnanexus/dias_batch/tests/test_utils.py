@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import unittest
 from unittest.mock import patch
 
 import pandas as pd
@@ -1327,67 +1328,6 @@ class TestAddPanelsAndIndicationsToManifest():
             )
 
 
-class TestCheckAthenaVersion():
-    """
-    Tests for utils.check_athena_version()
-
-    Function checks from the workflow details if eggd_athena/1.6.0+ is
-    being used as this has an additional input, this allows for backwards
-    compatibility with dias_reports using eggd_athena <1.6.0
-
-    We will test that when the eggd_athena app of version 1.4.0 (current
-    in dias reports) is present the input is not added, and when 1.6.0+
-    it is added
-    """
-    def test_version_1_4_0(self):
-        """
-        Test when egdd_athena/1.4.0 is in workflow that the input is
-        not added to the input dict
-        """
-        workflow_details = {
-            "stages": [
-                {
-                    "executable": "eggd_athena/1.4.0"
-                }
-            ]
-        }
-
-        input = utils.check_athena_version(
-            workflow=workflow_details,
-            stage_inputs={},
-            indications='test_indication'
-        )
-
-        assert input == {}, "workflow inputs wrongly modified for athena 1.4.0"
-
-    def test_version_6_4_0(self):
-        """
-        Test when egdd_athena/1.6.0 is in workflow that the indication
-        input is added to the input dict
-        """
-        workflow_details = {
-            "stages": [
-                {
-                    "executable": "eggd_athena/1.6.0"
-                }
-            ]
-        }
-
-        expected_return = {
-            'stage-rpt_athena.indication': 'test_indication'
-        }
-
-        input = utils.check_athena_version(
-            workflow=workflow_details,
-            stage_inputs={},
-            indications='test_indication'
-        )
-
-        assert input == expected_return, (
-            "workflow inputs wrongly modified for athena 1.6.0"
-        )
-
-
 class TestCheckExcludeSamples():
     """
     Tests for utils.check_exclude_samples()
@@ -1580,3 +1520,78 @@ class TestCheckExcludeSamples():
         assert 'All exclude sample names valid' in stdout, (
             'regex control pattern not correctly removed from checking'
         )
+
+
+class TestAddDynamicInputs(unittest.TestCase):
+    """
+    Test for utils.add_dynamic_inputs()
+
+    Function parses through input dict to replace 'INPUT-xxx' strings with
+    corresponding string inputs (such as panel strings and clinical
+    indication).
+
+    Currently implemented patterns to replace include:
+        - INPUT-clinical_indications
+        - INPUT-test_codes
+        - INPUT-panels
+        - INPUT-sample_name
+    """
+    def test_all_supported_placeholders_replaced(self):
+        """
+        Test that the supported placeholder text is correctly parsed in
+        """
+        config = {
+            "stage-xxx.indication": "INPUT-clinical_indications",
+            "stage-xxx.panel": "INPUT-panels",
+            "stage-yyy.test": "INPUT-test_codes",
+            "stage-yyy.name": "INPUT-sample_name",
+            "stage-yyy.limit": 1,
+            "stage-zzz.bed": {
+                "$dnanexus_link": {
+                        "project": "project-xxx",
+                        "id": "file-xxx"
+                    }
+            }
+        }
+
+        filled_config = utils.add_dynamic_inputs(
+            config=config,
+            clinical_indications='R1.1_foo_bar',
+            test_codes='R1.1',
+            panels='panel1',
+            sample_name='sample1'
+        )
+
+        correct_config = {
+            'stage-xxx.indication': 'R1.1_foo_bar',
+            'stage-xxx.panel': 'panel1',
+            'stage-yyy.test': 'R1.1',
+            'stage-yyy.name': 'sample1',
+            "stage-yyy.limit": 1,
+            "stage-zzz.bed": {
+                "$dnanexus_link": {
+                        "project": "project-xxx",
+                        "id": "file-xxx"
+                    }
+            }
+        }
+
+        self.assertEqual(filled_config, correct_config)
+
+    def test_invalid_placeholder_raises_assetion_error(self):
+        """
+        Test that when an invalid INPUT- placeholder in config that
+        we correctly raise an AssertionError
+        """
+        config = {
+            "stage-xxx.indication": "INPUT-blarg"
+        }
+
+        with pytest.raises(AssertionError):
+            utils.add_dynamic_inputs(
+                config=config,
+                clinical_indications='R1.1_foo_bar',
+                test_codes='R1.1',
+                panels='panel1',
+                sample_name='sample1'
+            )

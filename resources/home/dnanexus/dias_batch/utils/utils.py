@@ -961,39 +961,6 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     return manifest_with_panels
 
 
-def check_athena_version(workflow, stage_inputs, indications) -> dict:
-    """
-    Checks the version of eggd_athena being used in SNV reports workflow,
-    and if >=1.6.0 adds additional input of clinical indication string.
-
-    Parameters
-    ----------
-    workflow : dict
-        dxpy.describe() output of the workflow
-    stage_inputs : dict
-        inputs dictionary to add input to
-    indications : str
-        str of clinical indication to add as input to eggd_athena/1.6.0+
-
-    Returns
-    -------
-    dict
-        inputs dictionary with added input
-    """
-    athena_version = [
-        x['executable'] for x in workflow['stages']
-        if 'athena' in x['executable']
-    ]
-
-    if athena_version:
-        if Version(
-            re.search(r'[\d]\.[\d]\.[\d]', athena_version[0]).group()
-        ) >= Version('1.6.0'):
-            stage_inputs['stage-rpt_athena.indication'] = indications
-
-    return stage_inputs
-
-
 def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
     """
     Exclude samples specified to either -iexclude_samples or
@@ -1100,3 +1067,41 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
         )
     else:
         print("All exclude sample names valid")
+
+
+def add_dynamic_inputs(config, **kwargs) -> dict:
+    """
+    Adds the given value in place of the placeholder text from assay config
+
+    `kwargs` input are expected to be a mapping of the placeholder as
+    defined in the config without the INPUT- prefix and the input to
+    add in to the config
+
+    Parameters
+    ----------
+    config : dict
+        config with input placeholders to replace
+    kwargs : dict
+        mapping of placeholders to replace and replacement values
+
+    Returns
+    -------
+    dict
+        config with filled placeholders
+    """
+    filled_config = {}
+
+    for field, config_value in config.items():
+        if isinstance(config_value, str):
+            if kwargs.get(config_value.replace('INPUT-', '')):
+                config_value = kwargs.get(config_value.replace('INPUT-', ''))
+
+        filled_config[field] = config_value
+
+    # sense check we removed all placeholders
+    assert not any([
+        x.startswith('INPUT-') if isinstance(x, str) else False
+        for x in filled_config.values()
+    ]), "INPUT- placeholders left in config"
+
+    return filled_config
