@@ -992,11 +992,12 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         returned_stage_folder = DXManage().format_output_folders(
             workflow=workflow_details,
             single_output='some_output_path',
-            time_stamp='010123_1303'
+            time_stamp='010123_1303',
+            name='workflow1_SNV'
         )
 
         correct_stage_folder = {
-            "stage1": "/some_output_path/workflow1/010123_1303/applet1-v1.2.3/"
+            "stage1": "/some_output_path/workflow1_SNV/010123_1303/applet1-v1.2.3/"
         }
 
         assert correct_stage_folder == returned_stage_folder, (
@@ -1026,7 +1027,8 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         returned_stage_folder = DXManage().format_output_folders(
             workflow=workflow_details,
             single_output='some_output_path',
-            time_stamp='010123_1303'
+            time_stamp='010123_1303',
+            name='workflow1'
         )
 
         assert correct_stage_folder == returned_stage_folder, (
