@@ -500,7 +500,6 @@ def main(
             # if input specified with project-xxx: this will be stored as
             # a dict with project and ID keys, else will just be a regular
             # $dnanexus_link dict
-            print(file)
             file = file['$dnanexus_link']
             if isinstance(file, dict):
                 file = file['id']
