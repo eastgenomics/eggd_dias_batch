@@ -541,7 +541,7 @@ class DXManage():
         sys.exit(0)
 
 
-    def format_output_folders(self, workflow, single_output, time_stamp) -> dict:
+    def format_output_folders(self, workflow, single_output, time_stamp, name) -> dict:
         """
         Generate dict of output folders for each stage of given workflow
         for passing to dxpy.DXWorkflow().run()
@@ -564,6 +564,8 @@ class DXManage():
             path to single output dir
         time_stamp : str
             time app launched to add to folder path
+        name : str
+            name and mode of reports workflow running
 
         Returns
         -------
@@ -581,9 +583,7 @@ class DXManage():
                 folder_name = stage['executable'].replace(
                     'app-', '', 1).replace('/', '-')
 
-            path = make_path(
-                single_output, workflow['name'], time_stamp, folder_name
-            )
+            path = make_path(single_output, name, time_stamp, folder_name)
 
             stage_folders[stage['id']] = path
 
@@ -1065,15 +1065,19 @@ class DXExecute():
 
         workflow_details = dxpy.describe(workflow_id)
 
+        workflow_name = (
+            f"{workflow_details['name']}_{mode}" if mode in ['SNV', 'mosaic']
+            else workflow_details['name']
+        )
+
         stage_folders = DXManage().format_output_folders(
             workflow=workflow_details,
             single_output=single_output_dir,
-            time_stamp=start
+            time_stamp=start,
+            name=workflow_name
         )
 
-        parent_folder = make_path(
-            single_output_dir, workflow_details['name'], start
-        )
+        parent_folder = make_path(single_output_dir, workflow_name, start)
 
         if not manifest:
             # empty manifest after filtering against files etc
