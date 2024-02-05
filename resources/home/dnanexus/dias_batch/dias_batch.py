@@ -497,7 +497,14 @@ def main(
     if manifest_files:
         manifest_names = []
         for file in job_details['runInput']['manifest_files']:
-            manifest_names.append(dxpy.describe(file['$dnanexus_link'])['name'])
+            # if input specified with project-xxx: this will be stored as
+            # a dict with project and ID keys, else will just be a regular
+            # $dnanexus_link dict
+            file = file['$dnanexus_link']
+            if isinstance(file, dict):
+                file = file['id']
+
+            manifest_names.append(dxpy.describe(file)['name'])
 
         job_details['runInput']['manifest_files'] = ', '.join(manifest_names)
 
