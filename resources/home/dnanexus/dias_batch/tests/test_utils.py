@@ -182,6 +182,11 @@ class TestWriteSummaryReport():
 
     excluded_samples = ['X111115', 'X111116']
 
+    # example list of files excluded from CNV calling
+    cnv_call_excluded_files = [
+        'X111115.bam', 'X111115.bam.bai', 'X111116.bam', 'X111116.bam.bai'
+    ]
+
     # example per mode errors returned from DXExecute.reports_workflow
     cnv_reports_errors = {
         "Samples in manifest with no VCF found (2)": ["X111117", "X111118"]
@@ -214,9 +219,10 @@ class TestWriteSummaryReport():
         job=job_details,
         app=app_details,
         assay_config=assay_config,
-        launched_jobs=launched_jobs,
         manifest=manifest,
+        launched_jobs=launched_jobs,
         excluded=excluded_samples,
+        cnv_call_excluded=cnv_call_excluded_files,
         snv_report_errors=snv_reports_errors,
         cnv_report_errors=cnv_reports_errors,
         cnv_report_summary=cnv_report_summary,
@@ -285,6 +291,25 @@ class TestWriteSummaryReport():
 
         assert excluded[0] == correct_excluded, (
             'Excluded samples incorrectly written'
+        )
+
+
+    def test_excluded_bam_files_from_cnv_calling(self):
+        """
+        Test that BAM files excluded from CNV calling are correctly written
+        """
+        excluded = [
+            x for x in self.summary_contents
+            if x.startswith('Files matched and excluded from CNV calling')
+        ]
+
+        correct_excluded = (
+            'Files matched and excluded from CNV calling (4): '
+            'X111115.bam, X111115.bam.bai, X111116.bam, X111116.bam.bai'
+        )
+
+        assert excluded[0] == correct_excluded, (
+            'Excluded BAM files incorrectly written'
         )
 
 
