@@ -629,8 +629,8 @@ class DXExecute():
         -------
         str
             job ID of launch cnv calling job
-        list
-            list of files excluded from CNV calling
+        list[str]
+            list of BAM file names excluded from CNV calling
 
         Raises
         ------
@@ -678,7 +678,7 @@ class DXExecute():
 
             # get the files we are excluding to log in the summary report
             excluded_files = [
-                file for file in files
+                file['describe']['name'] for file in files
                 if any([
                     re.match(x, file['describe']['name']) for x in exclude
                 ])
@@ -698,8 +698,7 @@ class DXExecute():
                 f"\n\t{printable_files}"
             )
 
-            printable_excluded = '\n\t'.join([
-                x['describe']['name'] for x in excluded_files])
+            printable_excluded = '\n\t'.join([x for x in excluded_files])
             print(
                 f"{len(excluded_files)} .bam/.bai files excluded:"
                 f"\n\t{printable_excluded}"
