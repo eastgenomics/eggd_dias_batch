@@ -1257,6 +1257,27 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             )
 
 
+    def test_excluded_files_returned_correct_format(self):
+        """
+        Test that the files excluded from CNV calling are returned as a
+        list of file name strings
+        """
+        _, excluded = DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=['sample2', 'sample3'],
+            start='',
+            wait=False,
+            unarchive=False
+        )
+
+        correct_exclude = [
+            'sample2.bam', 'sample2.bam.bai', 'sample3.bam', 'sample3.bam.bai'
+        ]
+
+        self.assertEqual(excluded, correct_exclude)
+
+
     def test_correct_error_raised_on_calling_failing(self):
         """
         If error raised during CNV calling whilst waiting to complete,

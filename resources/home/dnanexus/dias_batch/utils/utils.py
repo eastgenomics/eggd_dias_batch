@@ -146,7 +146,7 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
 
         if summary.get('cnv_call_excluded'):
             file_handle.write(
-                "Files matched and excluded from CNV calling "
+                "\nFiles matched and excluded from CNV calling "
                 f"({len(summary.get('cnv_call_excluded'))}): "
                 f"{', '.join(sorted(summary.get('cnv_call_excluded')))}"
             )
