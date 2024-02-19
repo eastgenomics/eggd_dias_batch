@@ -56,7 +56,7 @@
             "name": "split_tests",
             "label": "split tests",
             "class": "boolean",
-            "optional": true,
+            "default": true,
             "help": "controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one"
           },
           {
