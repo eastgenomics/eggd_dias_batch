@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import unittest
 from unittest.mock import patch
 
 import pandas as pd
@@ -181,6 +182,11 @@ class TestWriteSummaryReport():
 
     excluded_samples = ['X111115', 'X111116']
 
+    # example list of files excluded from CNV calling
+    cnv_call_excluded_files = [
+        'X111115.bam', 'X111115.bam.bai', 'X111116.bam', 'X111116.bam.bai'
+    ]
+
     # example per mode errors returned from DXExecute.reports_workflow
     cnv_reports_errors = {
         "Samples in manifest with no VCF found (2)": ["X111117", "X111118"]
@@ -213,9 +219,10 @@ class TestWriteSummaryReport():
         job=job_details,
         app=app_details,
         assay_config=assay_config,
-        launched_jobs=launched_jobs,
         manifest=manifest,
+        launched_jobs=launched_jobs,
         excluded=excluded_samples,
+        cnv_call_excluded=cnv_call_excluded_files,
         snv_report_errors=snv_reports_errors,
         cnv_report_errors=cnv_reports_errors,
         cnv_report_summary=cnv_report_summary,
@@ -284,6 +291,25 @@ class TestWriteSummaryReport():
 
         assert excluded[0] == correct_excluded, (
             'Excluded samples incorrectly written'
+        )
+
+
+    def test_excluded_bam_files_from_cnv_calling(self):
+        """
+        Test that BAM files excluded from CNV calling are correctly written
+        """
+        excluded = [
+            x for x in self.summary_contents
+            if x.startswith('Files matched and excluded from CNV calling')
+        ]
+
+        correct_excluded = (
+            'Files matched and excluded from CNV calling (4): '
+            'X111115.bam, X111115.bam.bai, X111116.bam, X111116.bam.bai'
+        )
+
+        assert excluded[0] == correct_excluded, (
+            'Excluded BAM files incorrectly written'
         )
 
 
@@ -1065,10 +1091,12 @@ class TestCheckManifestValidTestCodes():
         column, we want to skip these as they're not a valid test code and
         not raise an error
         """
-        # add in 'Research Use' as a test code to a manifest sample
+        # add in different forms of 'Research Use' as a test code to a
+        # manifest sample
         manifest_copy = deepcopy(self.manifest)
         manifest_copy['424487111-53214R00111']['tests'].append([
-            'Research Use'])
+            'Research Use', 'ResearchUse', 'researchUse', 'research use'
+        ])
 
         correct_test_codes = [['R208.1', 'R216.1']]
 
@@ -1325,67 +1353,6 @@ class TestAddPanelsAndIndicationsToManifest():
             )
 
 
-class TestCheckAthenaVersion():
-    """
-    Tests for utils.check_athena_version()
-
-    Function checks from the workflow details if eggd_athena/1.6.0+ is
-    being used as this has an additional input, this allows for backwards
-    compatibility with dias_reports using eggd_athena <1.6.0
-
-    We will test that when the eggd_athena app of version 1.4.0 (current
-    in dias reports) is present the input is not added, and when 1.6.0+
-    it is added
-    """
-    def test_version_1_4_0(self):
-        """
-        Test when egdd_athena/1.4.0 is in workflow that the input is
-        not added to the input dict
-        """
-        workflow_details = {
-            "stages": [
-                {
-                    "executable": "eggd_athena/1.4.0"
-                }
-            ]
-        }
-
-        input = utils.check_athena_version(
-            workflow=workflow_details,
-            stage_inputs={},
-            indications='test_indication'
-        )
-
-        assert input == {}, "workflow inputs wrongly modified for athena 1.4.0"
-
-    def test_version_6_4_0(self):
-        """
-        Test when egdd_athena/1.6.0 is in workflow that the indication
-        input is added to the input dict
-        """
-        workflow_details = {
-            "stages": [
-                {
-                    "executable": "eggd_athena/1.6.0"
-                }
-            ]
-        }
-
-        expected_return = {
-            'stage-rpt_athena.indication': 'test_indication'
-        }
-
-        input = utils.check_athena_version(
-            workflow=workflow_details,
-            stage_inputs={},
-            indications='test_indication'
-        )
-
-        assert input == expected_return, (
-            "workflow inputs wrongly modified for athena 1.6.0"
-        )
-
-
 class TestCheckExcludeSamples():
     """
     Tests for utils.check_exclude_samples()
@@ -1394,6 +1361,26 @@ class TestCheckExcludeSamples():
     list of BAM files (for CNV calling) or the manifest (CNV reports) to
     ensure all samples specified are valid for excluding
     """
+    def test_no_error_raised_when_valid_samples_provided_to_exclude(self):
+        """
+        Test that when samples provided to exclude are in the list of
+        sample files, no error is raised as expected
+        """
+        samples = [
+            'sample1.bam',
+            'sample2.bam',
+            'sample3.bam'
+        ]
+
+        exclude = ['sample1', 'sample2']
+
+        utils.check_exclude_samples(
+            samples=samples,
+            exclude=exclude,
+            mode='calling'
+        )
+
+
     def test_error_raised_when_no_bam_files(self):
         """
         Test when sample specified to exclude has no BAM files
@@ -1418,6 +1405,7 @@ class TestCheckExcludeSamples():
                 exclude=exclude,
                 mode='calling'
             )
+
 
     def test_error_raised_when_sample_not_in_manifest(self):
         """
@@ -1519,4 +1507,116 @@ class TestCheckExcludeSamples():
                 exclude=exclude,
                 mode='reports',
                 single_dir='project-xxx:/output/runX'
+            )
+
+
+    @patch('utils.utils.dxpy.find_data_objects')
+    def test_control_sample_pattern_not_checked_against_files(
+            self,
+            mock_find,
+            capsys
+        ):
+        """
+        Test when control sample pattern (from `-iexclude_controls`) is
+        in the list of exclude patterns that it is ignored when checking.
+
+        This is because controls may not be always on a run and it is a
+        fixed pattern, therefore it is not specified by the user directly.
+
+        Here we just want to test when it is the only pattern that it is
+        removed from the list to check, and therefore it will pass the check
+        """
+        samples = [
+            'sample1.bam',
+            'sample2.bam',
+            'sample3.bam'
+        ]
+
+        exclude = [r'^\w+-\w+Q\w+-']
+
+        utils.check_exclude_samples(
+            samples=samples,
+            exclude=exclude,
+            mode='calling'
+        )
+
+        stdout = capsys.readouterr().out
+
+        assert 'All exclude sample names valid' in stdout, (
+            'regex control pattern not correctly removed from checking'
+        )
+
+
+class TestAddDynamicInputs(unittest.TestCase):
+    """
+    Test for utils.add_dynamic_inputs()
+
+    Function parses through input dict to replace 'INPUT-xxx' strings with
+    corresponding string inputs (such as panel strings and clinical
+    indication).
+
+    Currently implemented patterns to replace include:
+        - INPUT-clinical_indications
+        - INPUT-test_codes
+        - INPUT-panels
+        - INPUT-sample_name
+    """
+    def test_all_supported_placeholders_replaced(self):
+        """
+        Test that the supported placeholder text is correctly parsed in
+        """
+        config = {
+            "stage-xxx.indication": "INPUT-clinical_indications",
+            "stage-xxx.panel": "INPUT-panels",
+            "stage-yyy.test": "INPUT-test_codes",
+            "stage-yyy.name": "INPUT-sample_name",
+            "stage-yyy.limit": 1,
+            "stage-zzz.bed": {
+                "$dnanexus_link": {
+                        "project": "project-xxx",
+                        "id": "file-xxx"
+                    }
+            }
+        }
+
+        filled_config = utils.add_dynamic_inputs(
+            config=config,
+            clinical_indications='R1.1_foo_bar',
+            test_codes='R1.1',
+            panels='panel1',
+            sample_name='sample1'
+        )
+
+        correct_config = {
+            'stage-xxx.indication': 'R1.1_foo_bar',
+            'stage-xxx.panel': 'panel1',
+            'stage-yyy.test': 'R1.1',
+            'stage-yyy.name': 'sample1',
+            "stage-yyy.limit": 1,
+            "stage-zzz.bed": {
+                "$dnanexus_link": {
+                        "project": "project-xxx",
+                        "id": "file-xxx"
+                    }
+            }
+        }
+
+        self.assertEqual(filled_config, correct_config)
+
+    def test_invalid_placeholder_raises_assetion_error(self):
+        """
+        Test that when an invalid INPUT- placeholder in config that
+        we correctly raise an AssertionError
+        """
+        config = {
+            "stage-xxx.indication": "INPUT-blarg"
+        }
+
+        with pytest.raises(AssertionError):
+            utils.add_dynamic_inputs(
+                config=config,
+                clinical_indications='R1.1_foo_bar',
+                test_codes='R1.1',
+                panels='panel1',
+                sample_name='sample1'
             )

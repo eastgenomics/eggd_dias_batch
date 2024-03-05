@@ -25,7 +25,8 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 - `-imanifest_subset` (`str`): comma separated string of Epic samples in manifest on which to ONLY run jobs (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`)). This option is to be used if an Epic batch had mistakes in the manifest, which have now been corrected. This will filter the updated batch so that reports jobs are only run for the corrected samples and not the whole batch.
 
 **Files**
-- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and will only be used when `-iartemis=true` specified_)
+- `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and should only be specified with `-iartemis=true`_)
+- `-imultiqc_report` (`file`): HTML MultiQC report (_this is an optional input file for eggd\_artemis and should only be specified with `-iartemis=true`, it will pass the file as input to suppress searching for a MultiQC job in the project_)
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search default `assay_config_dir` for highest version config file for the given `-assay` string
 - `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line. Epic samples should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`) Example formatting of exclude_samples_file`:
     ```
@@ -34,6 +35,7 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
     ```
 
 **Booleans**
+- `-iexclude_controls` (`bool`): controls if to automatically exclude control samples from CNV calling based on the regex pattern `'^\w+-\w+Q\w+-'` (default: `true`)
 - `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
 - `-iunarchive` (`bool`):  controls whether to automatically unarchive any required files that are archived. Default is to fail the app with a list of files required to unarchive. If set to true, all required files will start to be unarchived and the job will exit with a zero exit code and the job tagged to state no jobs were launched
 
@@ -280,9 +282,9 @@ The definitions of inputs for CNV calling and each reports workflow should be de
 - `stage_instance_types` (`dict`; optional) : mapping of stage-name to instance type to use, this will override the app and workflow defaults
 - `inputs` (`dict`) : mapping of each stage input field to required input
     - inputs may be defined as regular integers / strings / booleans, `$dnanexus_link` file mappings or using `INPUT-` placeholders
-    - `INPUT-` placeholders are followed by a reference key from the `reference_files` mapping in the top level of the config file, and are parsed at run time into the inputs for the workflow (i.e. use of `"stage-cnv_generate_bed_vep.gene_panels": "INPUT-genepanels"` would result be replace by `project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562`, correctly formatted as a `$dnanexus_link` mapping)
+    - `INPUT-` placeholders may be defined in the config to pass variable inputs such as files and strings at runtime as workflow inputs. See the placeholder section below for details.
     - inputs for the following stages follow the same behaviour as the `bambais` input for the CNV calling app of being provided as a "folder" and "name" key for searching:
-        - cnv_reports: 
+        - cnv_reports:
             - `stage-cnv_vep.vcf`
         - snv_reports and mosaic_reports
             - `stage-rpt_vep.vcf`
@@ -296,6 +298,18 @@ The definitions of inputs for CNV calling and each reports workflow should be de
             "name": "^[^\.]*(?!\.g)\.vcf(\.gz)?$"
         }
         ```
+
+    ### Placeholders
+    Placeholder strings may be defined in the config file for parsing in reference files and strings that are generated at run time. These are split between the reference files defined in the top level of the config (i.e. the genepanels file) or strings (such as the panel name).
+
+    For reference files, these are followed by a reference key from the `reference_files` mapping in the top level of the config file, and are parsed at run time into the inputs for the workflow (i.e. use of `"stage-cnv_generate_bed_vep.gene_panels": "INPUT-genepanels"` would result be replace by `project-Fkb6Gkj433GVVvj73J7x8KbV:file-GVx0vkQ433Gvq63k1Kj4Y562`, correctly formatted as a `$dnanexus_link` mapping)
+
+    Currently supported placeholder strings include:
+
+    - `INPUT-clinical_indications` : `';'` separated string of clinical indications
+    - `INPUT-panels` : `';'` separated string of panels
+    - `INPUT-test_codes` : `'&&'` separated string of test codes
+    - `INPUT-sample_name` : string of sample name from manifest
 
 ---
 

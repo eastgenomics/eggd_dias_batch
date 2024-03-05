@@ -2,6 +2,7 @@
 Functions related to querying and managing objects in DNAnexus, as well
 as running jobs.
 """
+from collections import defaultdict
 from copy import deepcopy
 import concurrent.futures
 from itertools import groupby
@@ -9,7 +10,6 @@ import json
 import os
 import re
 import sys
-from time import sleep
 from timeit import default_timer as timer
 from typing import List, Tuple
 
@@ -18,7 +18,7 @@ from packaging.version import Version
 import pandas as pd
 
 from .utils import (
-    check_athena_version,
+    add_dynamic_inputs,
     check_exclude_samples,
     check_report_index,
     filter_manifest_samples_by_files,
@@ -119,6 +119,7 @@ class DXManage():
         print(f"\nAssay config files found:\n\t{files_ids}")
 
         highest_config = {}
+        config_version_files = defaultdict(list)
 
         for file in files:
             if not file['describe']['archivalState'] == 'live':
@@ -137,6 +138,12 @@ class DXManage():
             if not config_data.get('assay') == assay:
                 continue
 
+            # build a log of files found for each version to ensure we
+            # only find one of each version to unambiguously get highest
+            config_version_files[config_data.get('version')].append(
+                (file['describe']['name'], file['id'])
+            )
+
             if Version(config_data.get('version')) > Version(highest_config.get('version', '0')):
                 config_data['dxid'] = file['id']
                 config_data['name'] = file['describe']['name']
@@ -145,6 +152,17 @@ class DXManage():
         assert highest_config, (
             f"No config file was found for {assay} from {path}"
         )
+
+        if len(config_version_files[highest_config['version']]) > 1:
+            files = '\n\t'.join([
+                f"{x[0]} ({x[1]})"
+                for x in config_version_files[highest_config['version']]
+            ])
+
+            raise RuntimeError(
+                f"Error: more than one file found for highest version of "
+                f"{assay} configs. Files found:\n\t{files}"
+            )
 
         print(
             f"Highest version config found for {assay} was "
@@ -335,7 +353,8 @@ class DXManage():
             f"project: {project}, file: {file_id}"
         )
 
-        return dxpy.DXFile(project=project, dxid=file_id).read().split('\n')
+        return dxpy.DXFile(
+            project=project, dxid=file_id).read().rstrip('\n').split('\n')
 
 
     def check_archival_state(self, files, unarchive, samples=None) -> None:
@@ -522,7 +541,7 @@ class DXManage():
         sys.exit(0)
 
 
-    def format_output_folders(self, workflow, single_output, time_stamp) -> dict:
+    def format_output_folders(self, workflow, single_output, time_stamp, name) -> dict:
         """
         Generate dict of output folders for each stage of given workflow
         for passing to dxpy.DXWorkflow().run()
@@ -545,6 +564,8 @@ class DXManage():
             path to single output dir
         time_stamp : str
             time app launched to add to folder path
+        name : str
+            name and mode of reports workflow running
 
         Returns
         -------
@@ -562,9 +583,7 @@ class DXManage():
                 folder_name = stage['executable'].replace(
                     'app-', '', 1).replace('/', '-')
 
-            path = make_path(
-                single_output, workflow['name'], time_stamp, folder_name
-            )
+            path = make_path(single_output, name, time_stamp, folder_name)
 
             stage_folders[stage['id']] = path
 
@@ -610,6 +629,8 @@ class DXExecute():
         -------
         str
             job ID of launch cnv calling job
+        list[str]
+            list of BAM file names excluded from CNV calling
 
         Raises
         ------
@@ -645,22 +666,29 @@ class DXExecute():
             f"\n\t{printable_files}"
         )
 
+        excluded_files = []
+
         if exclude:
             # filtering out sample files specified from -iexclude
-            samples = '\n\t'.join(exclude)
-            print(f"Samples specified to exclude from CNV calling:\n\t{samples}")
-
             check_exclude_samples(
                 samples=[x['describe']['name'] for x in files],
                 exclude=exclude,
                 mode='calling'
             )
 
+            # get the files we are excluding to log in the summary report
+            excluded_files = [
+                file['describe']['name'] for file in files
+                if any([
+                    re.match(x, file['describe']['name']) for x in exclude
+                ])
+            ]
+
             # get the files of samples we're not excluding
             files = [
                 file for file in files
                 if not any([
-                    file['describe']['name'].startswith(x) for x in exclude
+                    re.match(x, file['describe']['name']) for x in exclude
                 ])
             ]
 
@@ -668,6 +696,12 @@ class DXExecute():
             print(
                 f"{len(files)} .bam/.bai files after excluding:"
                 f"\n\t{printable_files}"
+            )
+
+            printable_excluded = '\n\t'.join([x for x in excluded_files])
+            print(
+                f"{len(excluded_files)} .bam/.bai files excluded:"
+                f"\n\t{printable_excluded}"
             )
 
         # check to ensure all bams are unarchived
@@ -712,7 +746,7 @@ class DXExecute():
         else:
             print(f'CNV calling launched: {job_id}\n')
 
-        return job_id
+        return job_id, excluded_files
 
 
     def reports_workflow(
@@ -839,6 +873,7 @@ class DXExecute():
         vcf_files = []
         mosdepth_files = []
         excluded_intervals_bed_file = []
+        excluded_intervals_bed = None
 
         # gather errors to display in summary report
         errors = {}
@@ -1029,15 +1064,19 @@ class DXExecute():
 
         workflow_details = dxpy.describe(workflow_id)
 
+        workflow_name = (
+            f"{workflow_details['name']}_{mode}" if mode in ['SNV', 'mosaic']
+            else workflow_details['name']
+        )
+
         stage_folders = DXManage().format_output_folders(
             workflow=workflow_details,
             single_output=single_output_dir,
-            time_stamp=start
+            time_stamp=start,
+            name=workflow_name
         )
 
-        parent_folder = make_path(
-            single_output_dir, workflow_details['name'], start
-        )
+        parent_folder = make_path(single_output_dir, workflow_name, start)
 
         if not manifest:
             # empty manifest after filtering against files etc
@@ -1107,48 +1146,34 @@ class DXExecute():
                 sample_name_to_suffix[name] = suffix
                 name = f"{name}_{suffix}"
 
-                # CNV vs SNV stage IDs annoyingly all slight differ,
-                # add required other inputs to where they need to be
-                if mode == 'CNV':
-                    input['stage-cnv_generate_bed_vep.panel'] = indications
-                    input['stage-cnv_generate_bed_vep.output_file_prefix'] = codes
-                    input['stage-cnv_generate_bed_excluded.panel'] = indications
-                    input['stage-cnv_generate_bed_excluded.output_file_prefix'] = codes
-                    input['stage-cnv_generate_workbook.clinical_indication'] = indications
-                    input['stage-cnv_generate_workbook.output_prefix'] = name
-                    input['stage-cnv_generate_workbook.panel'] = panels
+                # build mosdepth files as a list of dx_links for athena
+                mosdepth_links = [
+                    {"$dnanexus_link": {
+                        "project": file['project'],
+                        "id": file['id']
+                    }}
+                    for file in sample_config.get('mosdepth', [])
+                ]
 
-                    # add run level excluded regions file to input
+                if mosdepth_links:
+                    # will only exist if this is for SNVs
+                    input["stage-rpt_athena.mosdepth_files"] = mosdepth_links
+
+                if excluded_intervals_bed:
+                    # will only exist if this is for CNVs
                     input[
-                        'stage-cnv_annotate_excluded_regions.excluded_regions'
+                        "stage-cnv_annotate_excluded_regions.excluded_regions"
                     ] = excluded_intervals_bed
-                else:
-                    # build mosdepth files as a list of dx_links for athena
-                    mosdepth_links = [
-                        {"$dnanexus_link": {
-                            "project": file['project'],
-                            "id": file['id']
-                        }}
-                        for file in sample_config['mosdepth']
-                    ]
 
-                    input['stage-rpt_athena.mosdepth_files'] = mosdepth_links
-                    input['stage-rpt_generate_bed_athena.panel'] = indications
-                    input['stage-rpt_generate_bed_athena.output_file_prefix'] = codes
-                    input['stage-rpt_generate_bed_vep.panel'] = indications
-                    input['stage-rpt_generate_bed_vep.output_file_prefix'] = codes
-                    input['stage-rpt_generate_workbook.clinical_indication'] = indications
-                    input['stage-rpt_generate_workbook.panel'] = panels
-                    input['stage-rpt_generate_workbook.output_prefix'] = name
-                    input['stage-rpt_athena.name'] = name
-
-                    # handle new input in eggd_athena v1.6.0 and still using
-                    # eggd_athena v1.4.0, can be removed once > v1.4.0 used
-                    input = check_athena_version(
-                        workflow=workflow_details,
-                        stage_inputs=input,
-                        indications=indications
-                    )
+                # all combinations of placeholder text that can be in the
+                # config and values to replace with
+                input = add_dynamic_inputs(
+                    config=input,
+                    clinical_indications=indications,
+                    test_codes=codes,
+                    panels=panels,
+                    sample_name=name
+                )
 
                 # now we can finally run the reports workflow
                 job_handle = dxpy.DXWorkflow(
@@ -1196,7 +1221,8 @@ class DXExecute():
             capture_bed,
             snv_output=None,
             cnv_output=None,
-            url_duration=None
+            url_duration=None,
+            multiqc_report=None
         ) -> str:
         """
         Launch eggd_artemis to generate xlsx file of download links
@@ -1221,30 +1247,31 @@ class DXExecute():
             output path of CNV reports (if run), by default None
         url_duration : str (optional)
             expiry time in seconds for artemis urls, by default None
+        multiqc_report : str (optional)
+            file ID of MultiQC report to specify as input
 
         Returns
         -------
         str
             job ID of launched job
         """
-        details = dxpy.DXApp(app_id).describe()
+        print("Launching eggd_artemis")
+        details = dxpy.describe(app_id)
         path = make_path(single_output_dir, details['name'], start)
 
-        if url_duration:
-            app_input = {
-                "snv_path": snv_output,
-                "cnv_path": cnv_output,
-                "qc_status": qc_xlsx,
-                "bed_file": capture_bed,
-                "url_duration": url_duration
-            }
-        else:
-            app_input = {
-                "snv_path": snv_output,
-                "cnv_path": cnv_output,
-                "qc_status": qc_xlsx,
-                "bed_file": capture_bed,
-            }
+        app_input = {
+            "snv_path": snv_output,
+            "cnv_path": cnv_output,
+            "qc_status": qc_xlsx,
+            "bed_file": capture_bed,
+            "url_duration": url_duration
+        }
+
+        if details.get('version') >= '1.4.0' and multiqc_report:
+            app_input["multiqc_report"] = multiqc_report
+
+        print("Inputs for eggd_artemis:")
+        prettier_print(app_input)
 
         job = dxpy.DXApp(dxid=app_id).run(
             app_input=app_input,

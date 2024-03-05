@@ -2,11 +2,6 @@
 The majority of functions in dx_requests.py relate to interacting with
 DNAnexus via dxpy API calls to either manage data (in DXManage) or for
 launching jobs (in DXExecute).
-
-Functions not covered by unit tests:
-    - Everything in DXExecute - all functions relate to launching jobs,
-        going to test these manually by running the app (probably, we shall
-        see if I get the motivation to try patch things well to test them)
 """
 from copy import deepcopy
 import os
@@ -277,6 +272,66 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         assert expected_warning in stdout, (
             "Warning not printed for archived file"
         )
+
+
+    def test_multiple_files_raises_error(self):
+        """
+        Test that when more than one file found for same config version
+        that a RuntimeError is raised since we can't unambiguously tell
+        which file to use
+        """
+        # set output of find to be minimal describe call output with
+        # required keys for iterating over, here we need a dict per
+        # `mock_read` return values that we want to test with
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-xxx',
+                'describe' : {
+                    'name': 'config1.json',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-yyy',
+                'describe' : {
+                    'name': 'config2.json',
+                    'archivalState': 'live'
+                }
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-zzz',
+                'describe' : {
+                    'name': 'config3.json',
+                    'archivalState': 'live'
+                }
+            }
+        ]
+
+        # patch the DXFile object that read() gets called on
+        self.mock_file.return_value = dxpy.DXFile
+
+        # patch the output from DXFile.read() to simulate looping over
+        # the return of reading multiple configs with 2 of the same version
+        self.mock_loads.side_effect = [
+            {'assay': 'test', 'version': '1.0.0'},
+            {'assay': 'test', 'version': '1.1.0'},
+            {'assay': 'test', 'version': '1.1.0'},
+        ]
+
+        expected_error = (
+            "Error: more than one file found for highest version of test "
+            "configs. Files found:\\n\\tconfig2.json \(file-yyy\)\\n\\t"
+            "config3.json \(file-zzz\)"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            DXManage().get_assay_config(
+                path='project-xxx:/test_path',
+                assay='test'
+            )
 
 
 class TestDXManageGetFileProjectContext():
@@ -591,6 +646,20 @@ class TestDXManageReadDXfile():
             match=r'DXFile not in an expected format: invalid_str'
         ):
             DXManage().read_dxfile(file='invalid_str')
+
+
+    @patch('utils.dx_requests.dxpy.DXFile')
+    def test_trailing_blank_line_removed(self, mock_file):
+        """
+        If the file has a blank line at the end this would result in
+        the file being read into a list with an empty string at the
+        end => test that we correctly remove this
+        """
+        mock_file.return_value.read.return_value = 'line1\nline2\nline3\n'
+
+        contents = DXManage().read_dxfile(file='project-xxx:file-xxx')
+
+        assert contents == ['line1', 'line2', 'line3']
 
 
 class TestDXManageCheckArchivalState():
@@ -923,11 +992,12 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         returned_stage_folder = DXManage().format_output_folders(
             workflow=workflow_details,
             single_output='some_output_path',
-            time_stamp='010123_1303'
+            time_stamp='010123_1303',
+            name='workflow1_SNV'
         )
 
         correct_stage_folder = {
-            "stage1": "/some_output_path/workflow1/010123_1303/applet1-v1.2.3/"
+            "stage1": "/some_output_path/workflow1_SNV/010123_1303/applet1-v1.2.3/"
         }
 
         assert correct_stage_folder == returned_stage_folder, (
@@ -957,7 +1027,8 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         returned_stage_folder = DXManage().format_output_folders(
             workflow=workflow_details,
             single_output='some_output_path',
-            time_stamp='010123_1303'
+            time_stamp='010123_1303',
+            name='workflow1'
         )
 
         assert correct_stage_folder == returned_stage_folder, (
@@ -1186,6 +1257,27 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             )
 
 
+    def test_excluded_files_returned_correct_format(self):
+        """
+        Test that the files excluded from CNV calling are returned as a
+        list of file name strings
+        """
+        _, excluded = DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=['sample2', 'sample3'],
+            start='',
+            wait=False,
+            unarchive=False
+        )
+
+        correct_exclude = [
+            'sample2.bam', 'sample2.bam.bai', 'sample3.bam', 'sample3.bam.bai'
+        ]
+
+        self.assertEqual(excluded, correct_exclude)
+
+
     def test_correct_error_raised_on_calling_failing(self):
         """
         If error raised during CNV calling whilst waiting to complete,
@@ -1325,7 +1417,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.workflow_patch = mock.patch('utils.dx_requests.dxpy.DXWorkflow')
         self.describe_patch = mock.patch('utils.dx_requests.dxpy.describe')
         self.timer_patch = mock.patch('utils.dx_requests.timer')
-        self.athena_patch = mock.patch('utils.dx_requests.check_athena_version')
 
 
         self.mock_find = self.find_patch.start()
@@ -1338,7 +1429,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_workflow = self.workflow_patch.start()
         self.mock_describe = self.describe_patch.start()
         self.mock_timer = self.timer_patch.start()
-        self.mock_athena = self.athena_patch.start()
 
 
         # Below are some generalised expected returns for each of the
@@ -1435,7 +1525,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_workflow.stop()
         self.mock_describe.stop()
         self.mock_timer.stop()
-        self.mock_athena.stop()
 
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
@@ -1946,7 +2035,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         )
 
 
-class TestDXExecuteArtemis():
+class TestDXExecuteArtemis(unittest.TestCase):
     """
     Test for DXExecute.artemis
 
@@ -1957,7 +2046,7 @@ class TestDXExecuteArtemis():
     """
 
     @patch('utils.dx_requests.make_path')
-    @patch('utils.dx_requests.dxpy.DXApp.describe')
+    @patch('utils.dx_requests.dxpy.describe')
     @patch('utils.dx_requests.dxpy.DXApp')
     def test_called(
         self,
@@ -1974,6 +2063,11 @@ class TestDXExecuteArtemis():
         job_obj._dxid = 'job-QaTZ9qEwkEsovKLs14DSdNqb'
         mock_app.return_value.run.return_value = job_obj
 
+        mock_describe.return_value = {
+            'name': 'eggd_artemis',
+            'version': '1.3.0'
+        }
+
         job = DXExecute().artemis(
             single_output_dir='/output_path/',
             app_id='app-xxx',
@@ -1989,6 +2083,42 @@ class TestDXExecuteArtemis():
         assert job == 'job-QaTZ9qEwkEsovKLs14DSdNqb', (
             'Job ID returned from running Artemis incorrect'
         )
+
+    @patch('utils.dx_requests.make_path')
+    @patch('utils.dx_requests.dxpy.describe')
+    @patch('utils.dx_requests.dxpy.DXApp')
+    def test_multiqc_report_added(
+        self,
+        mock_app,
+        mock_describe,
+        mock_path
+    ):
+        """
+        Test that when eggd_artemis >=1.4.0 that multiqc_report is
+        specified as an input when running the app
+        """
+        # mock app describe output to be 1.4.0 => add multiqc_report
+        mock_describe.return_value = {
+            'name': 'eggd_artemis',
+            'version': '1.4.0'
+        }
+
+        DXExecute().artemis(
+            single_output_dir='/output_path/',
+            app_id='app-xxx',
+            dependent_jobs=[],
+            start='230922_1012',
+            qc_xlsx='file-xxx',
+            capture_bed='file-xxx',
+            snv_output=None,
+            cnv_output=None,
+            url_duration=None,
+            multiqc_report='file-xxx'
+        )
+
+        run_input = mock_app.return_value.run.call_args.kwargs
+
+        self.assertEqual(run_input['app_input']['multiqc_report'], 'file-xxx')
 
 
 class TestDXExecuteTerminate(unittest.TestCase):

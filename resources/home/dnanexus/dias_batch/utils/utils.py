@@ -144,6 +144,13 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
                 f"{', '.join(sorted(summary.get('excluded')))}"
             )
 
+        if summary.get('cnv_call_excluded'):
+            file_handle.write(
+                "\nFiles matched and excluded from CNV calling "
+                f"({len(summary.get('cnv_call_excluded'))}): "
+                f"{', '.join(sorted(summary.get('cnv_call_excluded')))}"
+            )
+
         launched_jobs = '\n\t'.join([
             f"{k} : {len(v)} jobs" if len(v) > 1
             else f"{k} : {len(v)} job"
@@ -232,8 +239,7 @@ def fill_config_reference_inputs(config) -> dict:
     RuntimeError
         Raised when provided reference in assay config has no file-[\d\w]+ ID
     """
-    print("\n \nFilling config file with reference files, before:")
-    prettier_print(config)
+    print("\n \nFilling config file with reference files...")
 
     print("Reference files to add:")
     prettier_print(config['reference_files'])
@@ -306,9 +312,9 @@ def parse_genepanels(contents) -> pd.DataFrame:
     """
     Parse genepanels file into nicely formatted DataFrame
 
-    This will drop the HGNC ID column and keep the unique rows left (i.e.
-    one row per clinical indication / panel), and adds the test code as
-    a separate column.
+    This will keep the unique rows from the first 2 columns (i.e. one
+    row per clinical indication / panel), and adds the test code as a
+    separate column.
 
     Example resultant dataframe:
 
@@ -329,11 +335,12 @@ def parse_genepanels(contents) -> pd.DataFrame:
     pd.DataFrame
         DataFrame of genepanels file
     """
+    # genepanels file may have 3 or 4 columns as it can also contain HGNC
+    # ID and PanelApp panel ID, just use the first 2 columns
     genepanels = pd.DataFrame(
-        [x.split('\t') for x in contents],
-        columns=['indication', 'panel_name', 'hgnc_id']
+        [x.split('\t')[:2] for x in contents],
+        columns=['indication', 'panel_name']
     )
-    genepanels.drop(columns=['hgnc_id'], inplace=True)  # chuck away HGNC ID
     genepanels.drop_duplicates(keep='first', inplace=True)
     genepanels.reset_index(inplace=True)
     genepanels = split_genepanels_test_codes(genepanels)
@@ -738,10 +745,10 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
             for test in test_list:
                 if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
                     valid_tests.append(test)
-                elif test == 'Research Use':
+                elif test.lower().replace(' ', '') == 'researchuse':
                     # more Epic weirdness, chuck these out but don't break
                     print(
-                        f"WARNING: {sample} booked for 'Research Use' test, "
+                        f"WARNING: {sample} booked for '{test}' test, "
                         f"skipping this test code and continuing..."
                     )
                 else:
@@ -955,39 +962,6 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     return manifest_with_panels
 
 
-def check_athena_version(workflow, stage_inputs, indications) -> dict:
-    """
-    Checks the version of eggd_athena being used in SNV reports workflow,
-    and if >=1.6.0 adds additional input of clinical indication string.
-
-    Parameters
-    ----------
-    workflow : dict
-        dxpy.describe() output of the workflow
-    stage_inputs : dict
-        inputs dictionary to add input to
-    indications : str
-        str of clinical indication to add as input to eggd_athena/1.6.0+
-
-    Returns
-    -------
-    dict
-        inputs dictionary with added input
-    """
-    athena_version = [
-        x['executable'] for x in workflow['stages']
-        if 'athena' in x['executable']
-    ]
-
-    if athena_version:
-        if Version(
-            re.search(r'[\d]\.[\d]\.[\d]', athena_version[0]).group()
-        ) >= Version('1.6.0'):
-            stage_inputs['stage-rpt_athena.indication'] = indications
-
-    return stage_inputs
-
-
 def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
     """
     Exclude samples specified to either -iexclude_samples or
@@ -1017,9 +991,13 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
         Raised when one or more exclude_samples not present in sample list
     """
     print("Checking provided exclude sample names are valid...")
+    print(f"Samples specified to exclude:\n{prettier_print(exclude)}")
+
+    # check that provided exclude names/patterns match to at least one
     exclude_not_present = [
         name for name in exclude
-        if not any([sample.startswith(name) for sample in samples])
+        if not any([re.match(name, sample) for sample in samples])
+        and not name == r'^\w+-\w+Q\w+-'
     ]
 
     if exclude_not_present:
@@ -1090,3 +1068,41 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
         )
     else:
         print("All exclude sample names valid")
+
+
+def add_dynamic_inputs(config, **kwargs) -> dict:
+    """
+    Adds the given value in place of the placeholder text from assay config
+
+    `kwargs` input are expected to be a mapping of the placeholder as
+    defined in the config without the INPUT- prefix and the input to
+    add in to the config
+
+    Parameters
+    ----------
+    config : dict
+        config with input placeholders to replace
+    kwargs : dict
+        mapping of placeholders to replace and replacement values
+
+    Returns
+    -------
+    dict
+        config with filled placeholders
+    """
+    filled_config = {}
+
+    for field, config_value in config.items():
+        if isinstance(config_value, str):
+            if kwargs.get(config_value.replace('INPUT-', '')):
+                config_value = kwargs.get(config_value.replace('INPUT-', ''))
+
+        filled_config[field] = config_value
+
+    # sense check we removed all placeholders
+    assert not any([
+        x.startswith('INPUT-') if isinstance(x, str) else False
+        for x in filled_config.values()
+    ]), "INPUT- placeholders left in config"
+
+    return filled_config

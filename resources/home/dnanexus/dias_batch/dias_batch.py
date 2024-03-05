@@ -82,9 +82,16 @@ class CheckInputs():
 
     def check_assay(self):
         """Check assay string passed is valid"""
-        if self.inputs['assay'] not in ['CEN', 'TWE']:
+        if self.inputs['assay'] and self.inputs['assay'] not in ['CEN', 'TWE']:
             self.errors.append(
                 f"Invalid assay passed: {self.inputs['assay']}"
+            )
+
+    def check_assay_string_or_assay_config_specified(self):
+        """Check for either the assay string and / or assay config file"""
+        if not self.inputs['assay'] and not self.inputs['assay_config_file']:
+            self.errors.append(
+                'Neither assay or assay_config_file specified'
             )
 
     def check_assay_config_dir(self):
@@ -252,8 +259,9 @@ def main(
     assay_config_dir=None,
     manifest_files=None,
     split_tests=False,
-    exclude_samples=None,
+    exclude_samples=[],
     exclude_samples_file=None,
+    exclude_controls=None,
     manifest_subset=None,
     single_output_dir=None,
     cnv_call_job_id=None,
@@ -263,6 +271,7 @@ def main(
     mosaic_reports=False,
     artemis=False,
     qc_file=None,
+    multiqc_report=None,
     testing=False,
     sample_limit=None,
     unarchive=None
@@ -299,6 +308,10 @@ def main(
     if exclude_samples_file:
         exclude_samples = DXManage().read_dxfile(exclude_samples_file)
 
+    if exclude_controls:
+        # pattern to default to excluding Epic control samples
+        exclude_samples.append(r'^\w+-\w+Q\w+-')
+
     # parse and format genepanels file
     genepanels_data = DXManage().read_dxfile(
         file=assay_config.get('reference_files', {}).get('genepanels'),
@@ -312,7 +325,8 @@ def main(
         manifest = {}
         manifest_source = {}
 
-        for file in manifest_files:
+        for idx, file in enumerate(manifest_files, 1):
+            print(f"Parsing file {idx}/{len(manifest_files)}")
             manifest_data = DXManage().read_dxfile(file)
             manifest_data, source = parse_manifest(
                 contents=manifest_data,
@@ -324,8 +338,8 @@ def main(
             manifest = {**manifest, **manifest_data}
             manifest_source = {**manifest_source, **source}
 
-        print("Parsed manifest(s)")
-        prettier_print(manifest)
+        print("Parsed manifest(s):")
+        print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in manifest.items()}))
 
         # filter manifest tests against genepanels to ensure what has been
         # requested are test codes or HGNC IDs we recognise
@@ -348,7 +362,8 @@ def main(
 
     launched_jobs = {}
     cnv_report_errors = snv_report_errors = mosaic_report_errors = \
-        cnv_report_summary = snv_report_summary = mosaic_report_summary = None
+        cnv_call_excluded_files = cnv_report_summary = snv_report_summary = \
+        mosaic_report_summary = None
 
     # set downstream jobs to be dependent on parent batch job, wonderfully
     # hacky way to not actually start any downstream jobs in testing mode and
@@ -363,7 +378,7 @@ def main(
         # until CNV calling completes
         wait = True if cnv_reports else False
 
-        cnv_call_job_id = DXExecute().cnv_calling(
+        cnv_call_job_id, cnv_call_excluded_files = DXExecute().cnv_calling(
             config=assay_config,
             single_output_dir=single_output_dir,
             exclude=exclude_samples,
@@ -442,29 +457,21 @@ def main(
         ]
 
         if snv_path or cnv_path:
-            if 'url_duration' in assay_config['modes']['artemis']['inputs']:
-                artemis_job = DXExecute().artemis(
-                    single_output_dir=single_output_dir,
-                    app_id=assay_config.get('artemis_app_id'),
-                    dependent_jobs=dependent_jobs,
-                    start=start_time,
-                    qc_xlsx=qc_file,
-                    snv_output=snv_path,
-                    cnv_output=cnv_path,
-                    capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
-                    url_duration=assay_config['modes']['artemis']['inputs']['url_duration']
-                )
-            else:
-                artemis_job = DXExecute().artemis(
-                    single_output_dir=single_output_dir,
-                    app_id=assay_config.get('artemis_app_id'),
-                    dependent_jobs=dependent_jobs,
-                    start=start_time,
-                    qc_xlsx=qc_file,
-                    snv_output=snv_path,
-                    cnv_output=cnv_path,
-                    capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed']
-                )
+            url_duration = assay_config[
+                'modes']['artemis']['inputs'].get('url_duration', None)
+
+            artemis_job = DXExecute().artemis(
+                single_output_dir=single_output_dir,
+                app_id=assay_config.get('artemis_app_id'),
+                dependent_jobs=dependent_jobs,
+                start=start_time,
+                qc_xlsx=qc_file,
+                snv_output=snv_path,
+                cnv_output=cnv_path,
+                capture_bed=assay_config['modes']['artemis']['inputs']['capture_bed'],
+                url_duration=url_duration,
+                multiqc_report=multiqc_report
+            )
 
             launched_jobs['artemis'] = [artemis_job]
         else:
@@ -490,7 +497,14 @@ def main(
     if manifest_files:
         manifest_names = []
         for file in job_details['runInput']['manifest_files']:
-            manifest_names.append(dxpy.describe(file['$dnanexus_link'])['name'])
+            # if input specified with project-xxx: this will be stored as
+            # a dict with project and ID keys, else will just be a regular
+            # $dnanexus_link dict
+            file = file['$dnanexus_link']
+            if isinstance(file, dict):
+                file = file['id']
+
+            manifest_names.append(dxpy.describe(file)['name'])
 
         job_details['runInput']['manifest_files'] = ', '.join(manifest_names)
 
@@ -502,6 +516,7 @@ def main(
         manifest=manifest,
         launched_jobs=launched_jobs,
         excluded=exclude_samples,
+        cnv_call_excluded=cnv_call_excluded_files,
         snv_report_errors=snv_report_errors,
         cnv_report_errors=cnv_report_errors,
         mosaic_report_errors=mosaic_report_errors,

@@ -1,7 +1,7 @@
 {
     "name": "eggd_dias_batch",
     "title": "eggd_dias_batch",
-    "version": "3.0.1",
+    "version": "3.1.0",
     "summary": "Launches downstream analyses for Dias",
     "dxapi": "1.0.0",
     "inputSpec": [
@@ -9,7 +9,7 @@
             "name": "assay",
             "label": "assay",
             "class": "string",
-            "optional": false,
+            "optional": true,
             "help": "string of assay to run analysis for (CEN or TWE)",
             "group": ""
           },
@@ -46,10 +46,17 @@
             "help": "QC .xlsx file. optional input to eggd_artemis"
           },
           {
+            "name": "multiqc_report",
+            "label": "MultiQC report",
+            "class": "file",
+            "optional": true,
+            "help": "MultiQC report, optional input to eggd_artemis"
+          },
+          {
             "name": "split_tests",
             "label": "split tests",
             "class": "boolean",
-            "optional": true,
+            "default": true,
             "help": "controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one"
           },
           {
@@ -65,6 +72,14 @@
             "class": "file",
             "optional": true,
             "help": "file of samples to exclude from CNV calling / CNV reports, one sample name per line (`InstrumentID-SpecimenID` for Epic samples, X number for Gemini samples)"
+          },
+          {
+            "name": "exclude_controls",
+            "label": "exclude controls",
+            "class": "boolean",
+            "default": true,
+            "optional": true,
+            "help": "controls if to automatically exclude Epic control samples"
           },
           {
             "name": "manifest_subset",
