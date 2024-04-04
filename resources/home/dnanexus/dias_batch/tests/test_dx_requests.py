@@ -662,7 +662,7 @@ class TestDXManageReadDXfile():
         assert contents == ['line1', 'line2', 'line3']
 
 
-class TestDXManageCheckArchivalState():
+class TestDXManageCheckArchivalState(unittest.TestCase):
     """
     Tests for DXManage.check_archival_state()
 
@@ -713,19 +713,26 @@ class TestDXManageCheckArchivalState():
         }
     ]
 
-    def test_all_live(self, capsys):
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_all_live(self):
         """
         Test no error is raised when all provided files are live
         """
         DXManage().check_archival_state(
-            files=self.files,
+            sample_files=self.files,
             unarchive=False
         )
 
         # since we don't explicitly return anything when there are no
         # archived files, check stdout for expected string printed
         # to ensure the function passed through all checks to the end
-        stdout = capsys.readouterr().out
+        stdout = self.capsys.readouterr().out
 
         assert 'No required files in archived state' in stdout, (
             'Expected print for all live files not in captured stdout'
@@ -742,12 +749,12 @@ class TestDXManageCheckArchivalState():
             match='Files required for analysis archived'
         ):
             DXManage().check_archival_state(
-            files=self.files_w_archive,
+            sample_files=self.files_w_archive,
             unarchive=False
         )
 
 
-    def test_archived_files_filtered_out_when_not_in_sample_list(self, capsys):
+    def test_archived_files_filtered_out_when_not_in_sample_list(self):
         """
         Test when a list of sample names is provided that any files for other
         samples are filtered out, we will test this by adding an archived file
@@ -755,14 +762,14 @@ class TestDXManageCheckArchivalState():
         """
         # provide list of sample names to filter by
         DXManage().check_archival_state(
-            files=self.files_w_archive,
+            sample_files=self.files_w_archive,
             unarchive=False,
             samples=['sample1', 'sample2', 'sample3', 'sample4']
         )
 
         # since we don't explicitly return anything for all being live check
         # stdout for expected string printed to ensure we got where we expect
-        stdout = capsys.readouterr().out
+        stdout = self.capsys.readouterr().out
 
         assert 'No required files in archived state' in stdout, (
             'Expected print for all live files not in captured stdout'
@@ -781,9 +788,67 @@ class TestDXManageCheckArchivalState():
             # provide list of sample names to filter by, sample5 has
             # archived file and unarchive=False => should raise error
             DXManage().check_archival_state(
-                files=self.files_w_archive,
+                sample_files=self.files_w_archive,
                 unarchive=False,
                 samples=['sample5']
+            )
+
+
+    def test_archived_non_sample_file_kept_when_sample_list_given(self):
+        """
+        Can pass a list of sample files plus non-sample file(s) (i.e.
+        intervals bed file from CNV calling), when the samples param is
+        also specified (i.e. list of sample names), ensure we don't wrongly
+        remove the non sample files
+        """
+        non_sample_archived_file = [
+                {
+                'id': 'file-zzz',
+                'describe': {
+                    'name': 'some_other_run_level_file.bed',
+                    'archivalState': 'archived'
+                }
+            }
+        ]
+
+        # test archived non sample file correctly raises error when
+        # provided with sample files and samples list
+        expected_error = "Files required for analysis archived"
+        with self.subTest():
+            with pytest.raises(RuntimeError, match=expected_error):
+                DXManage().check_archival_state(
+                    sample_files=self.files_w_archive,
+                    non_sample_files=non_sample_archived_file,
+                    unarchive=False,
+                    samples=['sample5']
+                )
+
+            # actually test the bed file is flagged
+            archived_bed_stdout = (
+                "some_other_run_level_file.bed (file-zzz) - archived"
+            )
+
+            assert  archived_bed_stdout in self.capsys.readouterr().out, (
+                'Archived bed not correctly identified as archived'
+            )
+
+        # test archived non sample file correctly raises error when
+        # NOT provided with other files
+        expected_error = "Files required for analysis archived"
+        with self.subTest():
+            with pytest.raises(RuntimeError, match=expected_error):
+                DXManage().check_archival_state(
+                    non_sample_files=non_sample_archived_file,
+                    unarchive=False
+                )
+
+            # actually test the bed file is flagged
+            archived_bed_stdout = (
+                "some_other_run_level_file.bed (file-zzz) - archived"
+            )
+
+            assert  archived_bed_stdout in self.capsys.readouterr().out, (
+                'Archived bed not correctly identified as archived'
             )
 
 
@@ -821,7 +886,7 @@ class TestDXManageCheckArchivalState():
             match='non-live files not in a state that can be unarchived'
         ):
             DXManage().check_archival_state(
-                files=files,
+                sample_files=files,
                 unarchive=True
             )
 
@@ -833,7 +898,7 @@ class TestDXManageCheckArchivalState():
         we call the function to start unarchiving
         """
         DXManage().check_archival_state(
-            files=self.files_w_archive,
+            sample_files=self.files_w_archive,
             unarchive=True
         )
 

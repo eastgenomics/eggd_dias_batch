@@ -357,7 +357,13 @@ class DXManage():
             project=project, dxid=file_id).read().rstrip('\n').split('\n')
 
 
-    def check_archival_state(self, files, unarchive, samples=None) -> None:
+    def check_archival_state(
+            self,
+            sample_files=[],
+            non_sample_files=[],
+            unarchive=False,
+            samples=None
+        ) -> None:
         """
         Check archival state of n files, to be used before attempting
         to launch jobs to ensure nothing fails due to archived files.
@@ -374,8 +380,12 @@ class DXManage():
 
         Parameters
         ---------
-        files : list
-            list of DXFile objects to check state of
+        sample_files : list
+            list of DXFile objects to check state of that belong to
+            individual samples (will be filtered by samples parameter)
+        non_sample_files : list
+            list of DXFile objects to check state of that will not be
+            filtered by the samples parameter
         unarchive : bool
             if to automatically unarchive files
         samples : list
@@ -389,12 +399,17 @@ class DXManage():
         RuntimeError
             Raised when required files are archived and -iunarchive=False
         """
-        print(f"\n \nChecking archival state of {len(files)} files...")
+        # non_sample_files = [] if not non_sample_files else non_sample_files
+        print(
+            f"\n \nChecking archival state of "
+            f"{len(sample_files) + len(non_sample_files)} files..."
+        )
 
-        # find files not in a live state, and filter these down by samples
-        # given that we're going to launch jobs for
+        # find sample files not in a live state, and filter these down
+        # by samples given that we're going to launch jobs for
         not_live = [
-            x for x in files if x['describe']['archivalState'] != 'live'
+            x for x in sample_files
+            if x['describe']['archivalState'] != 'live'
         ]
 
         if samples and not_live:
@@ -411,6 +426,12 @@ class DXManage():
                     not_live_filtered.append(dx_file)
 
             not_live = not_live_filtered
+
+        # add in any non sample files that are not in live state
+        not_live.extend([
+            x for x in non_sample_files
+            if x['describe']['archivalState'] != 'live'
+        ])
 
         if not not_live:
             # nothing archived that we need :dancing_penguin:
@@ -435,7 +456,7 @@ class DXManage():
         ])
 
         print(
-            f"\n \nWARNING: {len(not_live)} sample files to use for analysis "
+            f"\n \nWARNING: {len(not_live)} files to use for analysis "
             f"are not in a live state:\n\t{not_live_printable}\n \n"
         )
 
@@ -705,7 +726,10 @@ class DXExecute():
             )
 
         # check to ensure all bams are unarchived
-        DXManage().check_archival_state(files, unarchive=unarchive)
+        DXManage().check_archival_state(
+            sample_files=files,
+            unarchive=unarchive
+        )
 
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['inputs']['bambais'] = files
@@ -1057,7 +1081,8 @@ class DXExecute():
 
         # check to ensure all vcfs (and mosdepth files for SNVs) are unarchived
         DXManage().check_archival_state(
-            files=vcf_files + mosdepth_files + excluded_intervals_bed_file,
+            sample_files=vcf_files + mosdepth_files,
+            non_sample_files=excluded_intervals_bed_file,
             samples=manifest.keys(),
             unarchive=unarchive
         )
