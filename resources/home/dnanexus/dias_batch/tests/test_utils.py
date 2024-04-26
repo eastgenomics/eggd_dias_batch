@@ -399,27 +399,7 @@ class TestWriteSummaryReport(unittest.TestCase):
         )
 
         assert expected_text in '\n'.join(self.summary_contents)
-
-# '\nTotal number of samples in provided manifest(s): 6\nTotal number of samples processed from manifest(s): 4\nSamples from manifest(s) not processed (2): X111115, X111116'
-# '\nTotal number of samples in provided manifest(s): 6\nTotal number of samples processed from manifest(s): 4\nSamples from manifest(s) not processed (2): X111116, X111115\nSamples specified to exclude from CNV calling and CNV reports (2): X111115, X111116
-
-    #         file_handle.write(
-    #             "\nTotal number of samples in provided manifest(s): "
-    #             f"{len(summary.get('provided_manifest_samples'))}\n"
-    #         )
-    #         file_handle.write(
-    #             f"\nTotal number of samples processed from manifest: "
-    #             f"{len(manifest.keys())}"
-    #         )
-    #         file_handle.write(
-    #             f"Samples excluded from manifest and not processed "
-    #             f"({len(summary.get('provided_manifest_samples'))}): "
-    #             f"{', '.join(set(manifest.keys()) - set(summary.get('provided_manifest_samples')))}"
-    #         )
-
-    # provided_manifest_samples = [
-    #     'X111111', 'X111112', 'X111113', 'X111114', 'X111115', 'X111116'
-    # ]
+         f"({len(summary.get('provided_manifest_samples'))}): "
 
 class TestMakePath():
     """
