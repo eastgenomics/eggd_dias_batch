@@ -749,9 +749,9 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
             match='Files required for analysis archived'
         ):
             DXManage().check_archival_state(
-            sample_files=self.files_w_archive,
-            unarchive=False
-        )
+                sample_files=self.files_w_archive,
+                unarchive=False
+            )
 
 
     def test_archived_files_filtered_out_when_not_in_sample_list(self):
@@ -802,7 +802,7 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
         remove the non sample files
         """
         non_sample_archived_file = [
-                {
+            {
                 'id': 'file-zzz',
                 'describe': {
                     'name': 'some_other_run_level_file.bed',
@@ -828,7 +828,7 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
                 "some_other_run_level_file.bed (file-zzz) - archived"
             )
 
-            assert  archived_bed_stdout in self.capsys.readouterr().out, (
+            assert archived_bed_stdout in self.capsys.readouterr().out, (
                 'Archived bed not correctly identified as archived'
             )
 
@@ -847,7 +847,7 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
                 "some_other_run_level_file.bed (file-zzz) - archived"
             )
 
-            assert  archived_bed_stdout in self.capsys.readouterr().out, (
+            assert archived_bed_stdout in self.capsys.readouterr().out, (
                 'Archived bed not correctly identified as archived'
             )
 
