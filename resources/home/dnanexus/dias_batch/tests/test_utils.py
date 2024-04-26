@@ -398,8 +398,10 @@ class TestWriteSummaryReport(unittest.TestCase):
             "\nSamples from manifest(s) not processed (2): X111115, X111116"
         )
 
-        assert expected_text in '\n'.join(self.summary_contents)
-         f"({len(summary.get('provided_manifest_samples'))}): "
+        assert expected_text in '\n'.join(self.summary_contents), (
+            'Manifest details incorrect in summary text'
+        )
+
 
 class TestMakePath():
     """
