@@ -119,7 +119,7 @@ class TestCheckReportIndex():
         )
 
 
-class TestWriteSummaryReport():
+class TestWriteSummaryReport(unittest.TestCase):
     """
     Tests for utils.write_summary_report()
 
@@ -180,6 +180,10 @@ class TestWriteSummaryReport():
         'X111114': {'tests': [['R134.1']]}
     }
 
+    provided_manifest_samples = [
+        'X111111', 'X111112', 'X111113', 'X111114', 'X111115', 'X111116'
+    ]
+
     excluded_samples = ['X111115', 'X111116']
 
     # example list of files excluded from CNV calling
@@ -220,6 +224,7 @@ class TestWriteSummaryReport():
         app=app_details,
         assay_config=assay_config,
         manifest=manifest,
+        provided_manifest_samples=provided_manifest_samples,
         launched_jobs=launched_jobs,
         excluded=excluded_samples,
         cnv_call_excluded=cnv_call_excluded_files,
@@ -244,7 +249,8 @@ class TestWriteSummaryReport():
         # job inputs written between lines 'Job inputs:' and
         # 'Total number of samples in manifest: 4'
         start = self.summary_contents.index('Job inputs:')
-        end = self.summary_contents.index('Total number of samples in manifest: 4')
+        end = self.summary_contents.index(
+            'Total number of samples in provided manifest(s): 6')
 
         written_inputs = self.summary_contents[start + 1: end]
         written_inputs = sorted([
@@ -267,10 +273,10 @@ class TestWriteSummaryReport():
         """
         samples = [
             x for x in self.summary_contents
-            if x.startswith('Total number of samples in manifest')
+            if x.startswith('Total number of samples in provided manifest(s):')
         ]
 
-        assert int(samples[0][-1]) == 4, (
+        assert int(samples[0][-1]) == 6, (
             'Total no. samples wrongly parsed from manifest'
         )
 
@@ -378,6 +384,42 @@ class TestWriteSummaryReport():
             "Summary table incorrectly written to report"
         )
 
+
+    def test_manifest_sample_lines_correctly_written(self):
+        """
+        Test that the lines we write to the summary for the samples
+        originally in the provided manifest, the samples we ran jobs for
+        and the samples removed (i.e. where they had Research Use test
+        codes) are correctly written
+        """
+        expected_text = (
+            "\nTotal number of samples in provided manifest(s): 6"
+            "\nTotal number of samples processed from manifest(s): 4"
+            "\nSamples from manifest(s) not processed (2): X111115, X111116"
+        )
+
+        assert expected_text in '\n'.join(self.summary_contents)
+
+# '\nTotal number of samples in provided manifest(s): 6\nTotal number of samples processed from manifest(s): 4\nSamples from manifest(s) not processed (2): X111115, X111116'
+# '\nTotal number of samples in provided manifest(s): 6\nTotal number of samples processed from manifest(s): 4\nSamples from manifest(s) not processed (2): X111116, X111115\nSamples specified to exclude from CNV calling and CNV reports (2): X111115, X111116
+
+    #         file_handle.write(
+    #             "\nTotal number of samples in provided manifest(s): "
+    #             f"{len(summary.get('provided_manifest_samples'))}\n"
+    #         )
+    #         file_handle.write(
+    #             f"\nTotal number of samples processed from manifest: "
+    #             f"{len(manifest.keys())}"
+    #         )
+    #         file_handle.write(
+    #             f"Samples excluded from manifest and not processed "
+    #             f"({len(summary.get('provided_manifest_samples'))}): "
+    #             f"{', '.join(set(manifest.keys()) - set(summary.get('provided_manifest_samples')))}"
+    #         )
+
+    # provided_manifest_samples = [
+    #     'X111111', 'X111112', 'X111113', 'X111114', 'X111115', 'X111116'
+    # ]
 
 class TestMakePath():
     """

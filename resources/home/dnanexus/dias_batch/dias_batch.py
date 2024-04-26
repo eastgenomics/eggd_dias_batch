@@ -341,6 +341,9 @@ def main(
         print("Parsed manifest(s):")
         print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in manifest.items()}))
 
+        # record what we had provided before excluding anything
+        provided_manifest_samples = manifest.keys()
+
         # filter manifest tests against genepanels to ensure what has been
         # requested are test codes or HGNC IDs we recognise
         manifest = check_manifest_valid_test_codes(
@@ -514,6 +517,7 @@ def main(
         app=app_details,
         assay_config=assay_config,
         manifest=manifest,
+        provided_manifest_samples=provided_manifest_samples,
         launched_jobs=launched_jobs,
         excluded=exclude_samples,
         cnv_call_excluded=cnv_call_excluded_files,
