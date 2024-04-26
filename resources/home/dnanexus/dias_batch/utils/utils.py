@@ -149,7 +149,7 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
             file_handle.write(
                 f"\nSamples from manifest(s) not processed "
                 f"({len(not_processed)}): "
-                f"{', '.join(not_processed) if not_processed else 'None'}"
+                f"{', '.join(not_processed) if not_processed else 'None'}\n"
             )
 
         if summary.get('excluded'):
