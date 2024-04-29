@@ -1062,9 +1062,15 @@ class TestCheckManifestValidTestCodes():
         """
         # drop test codes for a manifest sample
         manifest_copy = deepcopy(self.manifest)
+        manifest_copy['324338111-43206R00111']['tests'] = []
         manifest_copy['424487111-53214R00111']['tests'] = [[]]
 
-        with pytest.raises(RuntimeError, match=r"No tests booked for sample"):
+        expected_error = re.escape(
+            "'324338111-43206R00111': ['No tests booked for sample'], "
+            "'424487111-53214R00111': ['No tests booked for sample']"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
             utils.check_manifest_valid_test_codes(
                 manifest=manifest_copy, genepanels=self.genepanels
             )

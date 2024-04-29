@@ -732,7 +732,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
 
-        if test_codes['tests'] == [[]]:
+        if [x for x in test_codes['tests'] if x] == []:
             # sample has no booked tests => chuck it in the error bucket
             invalid[sample].append('No tests booked for sample')
             continue
