@@ -806,6 +806,55 @@ class TestParseManifest:
             utils.parse_manifest(data)
 
 
+    def test_epic_invalid_sample_id_skipped_when_subset_specified(self):
+        """
+        Where both ReanalysisID and SampleID are not valid, this would
+        normally raise a RuntimeError (as tested in test_epic_missing_
+        sample_id_caught()). If the subset param is specified these
+        should be skipped and only checked if any of the samples
+        specified to subset do not exist in the resultant manifest
+        """
+        data = deepcopy(self.epic_data)
+
+        # remove the specimen ID for the first sample to make it invalid
+        # row 2 => first row of sample data w/ normal specimen - instrument ID
+        data[2] = ';'.join([
+            '' if idx == 2 else x for idx, x in enumerate(data[2].split(';'))
+        ])
+
+        utils.parse_manifest(
+            data, subset='224289111-33202R00111,324338111-43206R00111'
+        )
+
+
+    def test_epic_invalid_sample_id_skipped_and_subset_checked(self):
+        """
+        As testing above in test_epic_invalid_sample_id_skipped_when_
+        subset_specified() - but now we want to test where the invalid
+        sample in the manifest that is skipped is specified in the
+        subset and we catch this and raise a RuntimeError
+        """
+        data = deepcopy(self.epic_data)
+
+        # remove the specimen ID for the first sample to make it invalid
+        # row 2 => first row of sample data w/ normal specimen - instrument ID
+        data[2] = ';'.join([
+            '' if idx == 2 else x for idx, x in enumerate(data[2].split(';'))
+        ])
+
+        expected_error = re.escape(
+            "Sample names provided to -isubset not in manifest: "
+            "['123245111-23146R00111']"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            # 123245111-23146R00111 provided to subset is missing the
+            # specimenID as removed above - make sure we catch this
+            utils.parse_manifest(
+                data, subset='224289111-33202R00111,123245111-23146R00111'
+            )
+
+
     def test_invalid_manifest(self):
         """
         Manifest file passed is checked if every row contains '\t' =>

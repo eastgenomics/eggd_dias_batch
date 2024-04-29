@@ -555,6 +555,18 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
             elif re.match(r"[\d\w]+-[\d\w]+", row.SampleID):
                 data[row.SampleID]['tests'].append(test_codes)
                 manifest_source[row.SampleID] = {'manifest_source': 'Epic'}
+            elif subset:
+                # sampleID and reanalysisID don't seem valid, continue
+                # anyway if we're subsetting and assume that the user
+                # knows what they're doing, if the samples specified to
+                # --subset don't exist in the manifest this will still
+                # raise a RuntimeError below
+                print(
+                    f"Row {idx + 1} of manifest does not seem to contain all "
+                    "required identifiers, --subset specified so will skip "
+                    f"this row:\n\t{row.tolist()}"
+                )
+                continue
             else:
                 # something funky with this sample naming
                 raise RuntimeError(
