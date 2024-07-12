@@ -17,6 +17,8 @@ import dxpy
 from packaging.version import Version
 import pandas as pd
 
+from .defaults import default_mode_file_patterns
+
 from .utils import (
     add_dynamic_inputs,
     check_exclude_samples,
@@ -227,7 +229,7 @@ class DXManage():
 
 
     def find_files(
-        self, path, subdir='', limit=None, pattern=None) -> List[dxpy.DXObject]:
+        self, path='/', subdir='', limit=None, pattern=None) -> List[dxpy.DXObject]:
         """
         Search given path in DNAnexus, optionally filter down by a sub
         directory and / or with a file name regex pattern. Default
@@ -355,6 +357,98 @@ class DXManage():
 
         return dxpy.DXFile(
             project=project, dxid=file_id).read().rstrip('\n').split('\n')
+
+
+    def check_all_files_archival_state(
+        self,
+        patterns,
+        samples,
+        modes,
+        unarchive
+        ) -> list:
+        """
+        Checks for all specified file patterns and samples for each
+        running mode to ensure they are unarchived before attempting
+        to launch any jobs
+
+        Parameters
+        ----------
+        patterns : dict
+            mapping of running mode to file patterns to check for
+        samples : list
+            list of samples to filter returned files by
+        modes: dict
+            mapping of running modes to booleans if they are being run
+        unarchive : bool
+            if to automatically unarchive files, will be passed through
+            to self.check_archival_state
+
+        Returns
+        -------
+        list
+            _description_
+        """
+        print("\nChecking archival states for all selected running modes")
+
+        sample_files_to_check = []
+        run_files_to_check = []
+
+        if not patterns:
+            # file patterns to check per running mode not defined in config,
+            # use current patterns correct as of 12/07/2024 as default
+            # TODO - remove this once it is added to both CEN and TWE configs
+            print(
+                "No mode file patterns defined in assay config, using "
+                "default values from utils.defaults"
+            )
+            patterns = default_mode_file_patterns
+
+        for mode, _ in modes.items():
+            if not mode:
+                continue
+
+            mode_sample_patterns = patterns.get(mode, {}).get('sample')
+            mode_run_patterns = patterns.get(mode, {}).get('run')
+
+            if mode_sample_patterns:
+                # generate regex pattern per sample for each file pattern,
+                # then join it as one big chongus pattern for a single query
+                # because its not our API server load to worry about
+                sample_patterns = '|'.join([
+                    [f"{x}.*{y}" for x in samples for y in mode_sample_patterns]
+                ])
+                print(
+                    f"Searching per sample files for {mode} with "
+                    f"{len(mode_sample_patterns)} patterns for {len(samples)} "
+                    "samples"
+                )
+                print(sample_patterns)
+
+                sample_files_to_check.extend(self.find_files(
+                    pattern=sample_patterns
+                ))
+
+            if mode_run_patterns:
+                print(
+                    f"Searching per run files for {mode} with "
+                    f"{len(mode_run_patterns)} patterns"
+                )
+                run_files_to_check.extend(self.find_files(
+                    pattern='|'.join(mode_run_patterns)
+                ))
+
+        print(
+            f"Found {len(sample_files_to_check)} sample files and "
+            f"{len(run_files_to_check)} run level files to check"
+        )
+
+        self.check_archival_state(
+            sample_files=sample_files_to_check,
+            non_sample_files=run_files_to_check,
+            unarchive=unarchive
+        )
+
+        exit()
 
 
     def check_archival_state(
@@ -612,6 +706,26 @@ class DXManage():
         prettier_print(stage_folders)
 
         return stage_folders
+
+
+    def remove_job_tags(self) -> None:
+        """
+        Checks for presence of job tags relating to unarchiving on
+        launching, any of these present suggests the job has been cloned
+        and therefore not relating to the current job
+        """
+        job = dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID'))
+        current_tags = job.describe(fields={'tags': True}).get('tags')
+
+        unarchive_tags = [
+            tag for tag in current_tags if re.match(
+                r'Unarchiving of [\d]+ requested, no jobs launched', tag
+            )
+        ]
+
+        if unarchive_tags:
+            print("Removing old archive tag(s)  from job")
+            job.remove_tags(unarchive_tags)
 
 
 class DXExecute():
