@@ -384,42 +384,6 @@ def main(
 
     # check up front if any files for any of the selected running modes
     # are in an archived state which would cause jobs to fail to launch
-    # mode_file_patterns = assay_config.get('mode_file_patterns')
-
-
-        # mode_file_patterns = {
-        #     'cnv_reports': {
-        #         'sample': [
-        #             '_segments.vcf$'
-        #         ],
-        #         'run': [
-        #             '_excluded_intervals.bed$'
-        #         ]
-        #     },
-        #     'snv_reports': {
-        #         'sample': [
-        #             '_markdup_recalibrated_Haplotyper.vcf.gz$',
-        #             'per-base.bed.gz$',
-        #             'reference_build.txt$'
-        #         ],
-        #         'run': []
-        #     },
-        #     'mosaic_reports': {
-        #         'sample': [
-        #             '_markdup_recalibrated_tnhaplotyper2.vcf.gz',
-        #             'per-base.bed.gz$',
-        #             'reference_build.txt$'
-        #         ],
-        #         'run': []
-        #     },
-        #     'artemis': {
-        #         'bam$',
-        #         'bam.bai$',
-        #         '_copy_ratios.gcnv.bed$',
-        #         '_copy_ratios.gcnv.bed.tbi$'
-        #     }
-        # }
-
     DXManage().check_all_files_archival_state(
         patterns=assay_config.get('mode_file_patterns'),
         samples=manifest.keys(),

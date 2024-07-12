@@ -390,9 +390,6 @@ class DXManage():
         """
         print("\nChecking archival states for all selected running modes")
 
-        sample_files_to_check = []
-        run_files_to_check = []
-
         if not patterns:
             # file patterns to check per running mode not defined in config,
             # use current patterns correct as of 12/07/2024 as default
@@ -401,21 +398,34 @@ class DXManage():
                 "No mode file patterns defined in assay config, using "
                 "default values from utils.defaults"
             )
-            patterns = default_mode_file_patterns
+            patterns = dict(default_mode_file_patterns)
+
+        for x, y in patterns.items():
+            print(x, y)
+
+        print('all samples: ', samples)
+
+        sample_files_to_check = []
+        run_files_to_check = []
 
         for mode, _ in modes.items():
+            print(mode)
             if not mode:
                 continue
 
+
             mode_sample_patterns = patterns.get(mode, {}).get('sample')
             mode_run_patterns = patterns.get(mode, {}).get('run')
+
+            print(mode_sample_patterns)
+            print(mode_run_patterns)
 
             if mode_sample_patterns:
                 # generate regex pattern per sample for each file pattern,
                 # then join it as one big chongus pattern for a single query
                 # because its not our API server load to worry about
                 sample_patterns = '|'.join([
-                    [f"{x}.*{y}" for x in samples for y in mode_sample_patterns]
+                    f"{x}.*{y}" for x in samples for y in mode_sample_patterns
                 ])
                 print(
                     f"Searching per sample files for {mode} with "
@@ -442,11 +452,12 @@ class DXManage():
             f"{len(run_files_to_check)} run level files to check"
         )
 
-        self.check_archival_state(
-            sample_files=sample_files_to_check,
-            non_sample_files=run_files_to_check,
-            unarchive=unarchive
-        )
+        if sample_files_to_check or run_files_to_check:
+            self.check_archival_state(
+                sample_files=sample_files_to_check,
+                non_sample_files=run_files_to_check,
+                unarchive=unarchive
+            )
 
         exit()
 
