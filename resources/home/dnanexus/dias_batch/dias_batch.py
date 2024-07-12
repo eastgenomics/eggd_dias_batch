@@ -71,6 +71,7 @@ class CheckInputs():
         self.check_exclude_str_and_file()
         self.check_exclude_samples_file_id()
         self.check_qc_file()
+        self.strip_string_inputs()
 
         if self.errors:
             errors = '; '.join(x for x in self.errors)
@@ -250,6 +251,24 @@ class CheckInputs():
                     "rerun and provide this as -iexclude_samples_file="
                     f"{self.inputs.get('exclude_samples')}"
                 )
+
+    def strip_string_inputs(self):
+        """
+        Strip string type inputs to ensure no leading or trailing
+        whitespace are retained
+        """
+        string_inputs = [
+            'assay',
+            'assay_config_dir',
+            'exclude_samples',
+            'manifest_subset',
+            'single_output_dir',
+            'cnv_call_job_id'
+        ]
+
+        for string in string_inputs:
+            if self.inputs.get(string) and isinstance(self.inputs.get(string), str):
+                self.inputs[string] = self.inputs[string].strip()
 
 
 @dxpy.entry_point('main')
