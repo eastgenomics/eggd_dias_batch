@@ -258,6 +258,37 @@ class TestCheckInputs():
             "Error not raised when non .xlsx file provided to check_qc_file()"
         )
 
+    def test_string_inputs_with_whitespace_stripped(self, mocker):
+        """
+        Test that string inputs are correctly stripped
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        check = CheckInputs()
+
+        check.inputs = {
+            'assay': 'CEN ',
+            'assay_config_dir': ' some_dir',
+            'exclude_samples': ' sample1 ',
+            'manifest_subset': ' ',
+            'single_output_dir': '/output/foo/bar',
+            'cnv_call_job_id': 'job-xxx '
+        }
+
+        check.strip_string_inputs()
+
+        expected_inputs = {
+            'assay': 'CEN',
+            'assay_config_dir': 'some_dir',
+            'exclude_samples': 'sample1',
+            'manifest_subset': '',
+            'single_output_dir': '/output/foo/bar',
+            'cnv_call_job_id': 'job-xxx'
+        }
+
+        assert check.inputs == expected_inputs, (
+            'String inputs not correctly stripped'
+        )
+
 
 class TestMain():
     """
