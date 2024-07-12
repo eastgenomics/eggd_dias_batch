@@ -251,7 +251,9 @@ class DXManage():
         list
             list of files found
         """
-        path = path.rstrip('/')
+        if path != '/':
+            path = path.rstrip('/')
+
         if subdir:
             subdir = subdir.strip('/')
 
