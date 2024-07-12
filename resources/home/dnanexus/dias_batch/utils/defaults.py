@@ -24,9 +24,11 @@ default_mode_file_patterns = {
         'run': []
     },
     'artemis': {
-        'bam$',
-        'bam.bai$',
-        '_copy_ratios.gcnv.bed$',
-        '_copy_ratios.gcnv.bed.tbi$'
+        'sample':[
+            'bam$',
+            'bam.bai$',
+            '_copy_ratios.gcnv.bed$',
+            '_copy_ratios.gcnv.bed.tbi$'
+        ]
     }
 }
