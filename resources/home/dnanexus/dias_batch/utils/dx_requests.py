@@ -367,7 +367,7 @@ class DXManage():
         path,
         modes,
         unarchive
-        ) -> list:
+        ):
         """
         Checks for all specified file patterns and samples for each
         running mode to ensure they are unarchived before attempting
@@ -386,13 +386,9 @@ class DXManage():
         unarchive : bool
             if to automatically unarchive files, will be passed through
             to self.check_archival_state
-
-        Returns
-        -------
-        list
-            _description_
         """
-        print("\nChecking archival states for all selected running modes")
+        print("\nChecking archival states for selected running modes:")
+        prettier_print(modes)
 
         if not patterns:
             # file patterns to check per running mode not defined in config,
@@ -412,6 +408,7 @@ class DXManage():
 
         for mode, selected in modes.items():
             if not selected:
+                print(f'Running mode {mode} not selected, skipping file check')
                 continue
 
             mode_sample_patterns = patterns.get(mode, {}).get('sample')
