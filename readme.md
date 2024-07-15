@@ -314,6 +314,8 @@ The definitions of inputs for CNV calling and each reports workflow should be de
     - `INPUT-test_codes` : `'&&'` separated string of test codes
     - `INPUT-sample_name` : string of sample name from manifest
 
+    These are added to the config via [`utils.add_dynamic_inputs`](https://github.com/eastgenomics/eggd_dias_batch/blob/b63a04e2d421a246017e984efcc2a9eef85fbeaf/resources/home/dnanexus/dias_batch/utils/utils.py#L1073) from kwargs generated at run time specified [here](https://github.com/eastgenomics/eggd_dias_batch/blob/b63a04e2d421a246017e984efcc2a9eef85fbeaf/resources/home/dnanexus/dias_batch/utils/dx_requests.py#L1170).
+
 ---
 
 ## What does this app output
