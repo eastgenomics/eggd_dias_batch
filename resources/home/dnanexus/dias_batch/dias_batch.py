@@ -382,6 +382,21 @@ def main(
             for sample in manifest
         }
 
+    # check up front if any files for any of the selected running modes
+    # are in an archived state which would cause jobs to fail to launch
+    DXManage().check_all_files_archival_state(
+        patterns=assay_config.get('mode_file_patterns'),
+        samples=manifest.keys(),
+        path=single_output_dir,
+        unarchive=unarchive,
+        modes={
+            'cnv_reports': cnv_reports,
+            'snv_reports': snv_reports,
+            'mosaic_reports': mosaic_reports,
+            'artemis': artemis
+        }
+    )
+
     launched_jobs = {}
     cnv_report_errors = snv_report_errors = mosaic_report_errors = \
         cnv_call_excluded_files = cnv_report_summary = snv_report_summary = \

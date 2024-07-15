@@ -17,6 +17,8 @@ import dxpy
 from packaging.version import Version
 import pandas as pd
 
+from .defaults import default_mode_file_patterns
+
 from .utils import (
     add_dynamic_inputs,
     check_exclude_samples,
@@ -250,6 +252,7 @@ class DXManage():
             list of files found
         """
         path = path.rstrip('/')
+
         if subdir:
             subdir = subdir.strip('/')
 
@@ -355,6 +358,101 @@ class DXManage():
 
         return dxpy.DXFile(
             project=project, dxid=file_id).read().rstrip('\n').split('\n')
+
+
+    def check_all_files_archival_state(
+        self,
+        patterns,
+        samples,
+        path,
+        modes,
+        unarchive
+        ):
+        """
+        Checks for all specified file patterns and samples for each
+        running mode to ensure they are unarchived before attempting
+        to launch any jobs
+
+        Parameters
+        ----------
+        patterns : dict
+            mapping of running mode to file patterns to check for
+        samples : list
+            list of samples to filter returned files by
+        path : str
+            path to search for files
+        modes: dict
+            mapping of running modes to booleans if they are being run
+        unarchive : bool
+            if to automatically unarchive files, will be passed through
+            to self.check_archival_state
+        """
+        print("\nChecking archival states for selected running modes:")
+        prettier_print(modes)
+
+        if not patterns:
+            # file patterns to check per running mode not defined in config,
+            # use current patterns correct as of 12/07/2024 as default
+            # TODO - remove this once it is added to both CEN and TWE configs
+            print(
+                "No mode file patterns defined in assay config, using "
+                "default values from utils.defaults"
+            )
+            patterns = dict(default_mode_file_patterns)
+
+        print("Currently defined patterns:")
+        prettier_print(patterns)
+
+        sample_files_to_check = []
+        run_files_to_check = []
+
+        for mode, selected in modes.items():
+            if not selected:
+                print(f'Running mode {mode} not selected, skipping file check')
+                continue
+
+            mode_sample_patterns = patterns.get(mode, {}).get('sample')
+            mode_run_patterns = patterns.get(mode, {}).get('run')
+
+            if mode_sample_patterns:
+                # generate regex pattern per sample for each file pattern,
+                # then join it as one big chongus pattern for a single query
+                # because its not our API server load to worry about
+                sample_patterns = '|'.join([
+                    f"{x}.*{y}" for x in samples for y in mode_sample_patterns
+                ])
+                print(
+                    f"Searching per sample files for {mode} with "
+                    f"{len(mode_sample_patterns)} patterns for {len(samples)} "
+                    "samples"
+                )
+
+                sample_files_to_check.extend(self.find_files(
+                    path=path,
+                    pattern=sample_patterns
+                ))
+
+            if mode_run_patterns:
+                print(
+                    f"Searching per run files for {mode} with "
+                    f"{len(mode_run_patterns)} patterns"
+                )
+                run_files_to_check.extend(self.find_files(
+                    path=path,
+                    pattern='|'.join(mode_run_patterns)
+                ))
+
+        print(
+            f"Found {len(sample_files_to_check)} sample files and "
+            f"{len(run_files_to_check)} run level files to check status of"
+        )
+
+        if sample_files_to_check or run_files_to_check:
+            self.check_archival_state(
+                sample_files=sample_files_to_check,
+                non_sample_files=run_files_to_check,
+                unarchive=unarchive
+            )
 
 
     def check_archival_state(
