@@ -1,2 +1,2 @@
 [run]
-omit = tests/*
+omit = resources/home/dnanexus/dias_batch/tests/*
