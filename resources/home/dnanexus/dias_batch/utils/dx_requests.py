@@ -715,26 +715,6 @@ class DXManage():
         return stage_folders
 
 
-    def remove_job_tags(self) -> None:
-        """
-        Checks for presence of job tags relating to unarchiving on
-        launching, any of these present suggests the job has been cloned
-        and therefore not relating to the current job
-        """
-        job = dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID'))
-        current_tags = job.describe(fields={'tags': True}).get('tags')
-
-        unarchive_tags = [
-            tag for tag in current_tags if re.match(
-                r'Unarchiving of [\d]+ requested, no jobs launched', tag
-            )
-        ]
-
-        if unarchive_tags:
-            print("Removing old archive tag(s)  from job")
-            job.remove_tags(unarchive_tags)
-
-
 class DXExecute():
     """
     Methods for handling execution of apps / workflows
