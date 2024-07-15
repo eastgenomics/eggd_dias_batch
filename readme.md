@@ -59,6 +59,8 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 
 The app takes as a minimum input a path to Dias single output, an assay config, and at least one of the above listed running modes. The default behaviour is to pass an assay string specified to run for (with `-iassay`), which will search DNAnexus for the highest version config file in `-iassay_config_dir`  (default: `001_Reference:/dynamic_files/dias_batch_configs/`)  and use this for analysis. Alternatively, an assay config file may be specified to use instead with `-iassay_config_file`. If running a reports workflow a manifest file must also be specified.
 
+Before any jobs are launched, a check of the archival state of all required files is first made. This will use the file pattern mappings either defined in `utils.defaults` or from the assay config file (if specified) to search for the per sample and per run files required, any will raise an error on any archived files if `unarchive=True` is not set.
+
 The general behaviour of each mode is as follows:
 
 ### CNV calling
@@ -221,6 +223,7 @@ The top level section should be structured as follows:
 - `{cnv_call_app|_report_workflow}_id` (`str`) : the IDs of CNV calling and reports workflows to use
 - `reference_files` (`dict`) : mapping of reference file name : DNAnexus file ID, reference file name _must_ be given as shown above, and DNAnexus file ID should be provided as `project-xxx:file-xxx`
 - `name_patterns` (`dict`) : mapping of the manifest source and a regex pattern to use for filtering sample names and files etc.
+- `mode_file_patterns` (`dict` | optional): mapping for each running mode to sample and run file patterns for which to search and check the archival state of before launching any jobs. Defaults are defined in `utils.defaults`, and a mapping of the same structure may be added to the assay config file to override the defaults.
 
 The definitions of inputs for CNV calling and each reports workflow should be defined under the key `modes`, containing a mapping of all inputs and other inputs for controlling running of analyses.
 
