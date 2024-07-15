@@ -1,0 +1,2 @@
+[run]
+omit = resources/home/dnanexus/dias_batch/tests/*
