@@ -387,6 +387,7 @@ def main(
     DXManage().check_all_files_archival_state(
         patterns=assay_config.get('mode_file_patterns'),
         samples=manifest.keys(),
+        path=single_output_dir,
         unarchive=unarchive,
         modes={
             'cnv_reports': cnv_reports,

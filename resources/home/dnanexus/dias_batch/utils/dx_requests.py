@@ -229,7 +229,7 @@ class DXManage():
 
 
     def find_files(
-        self, path='/', subdir='', limit=None, pattern=None) -> List[dxpy.DXObject]:
+        self, path, subdir='', limit=None, pattern=None) -> List[dxpy.DXObject]:
         """
         Search given path in DNAnexus, optionally filter down by a sub
         directory and / or with a file name regex pattern. Default
@@ -251,8 +251,7 @@ class DXManage():
         list
             list of files found
         """
-        if path != '/':
-            path = path.rstrip('/')
+        path = path.rstrip('/')
 
         if subdir:
             subdir = subdir.strip('/')
@@ -365,6 +364,7 @@ class DXManage():
         self,
         patterns,
         samples,
+        path,
         modes,
         unarchive
         ) -> list:
@@ -379,6 +379,8 @@ class DXManage():
             mapping of running mode to file patterns to check for
         samples : list
             list of samples to filter returned files by
+        path : str
+            path to search for files
         modes: dict
             mapping of running modes to booleans if they are being run
         unarchive : bool
@@ -429,6 +431,7 @@ class DXManage():
                 )
 
                 sample_files_to_check.extend(self.find_files(
+                    path=path,
                     pattern=sample_patterns
                 ))
 
@@ -438,6 +441,7 @@ class DXManage():
                     f"{len(mode_run_patterns)} patterns"
                 )
                 run_files_to_check.extend(self.find_files(
+                    path=path,
                     pattern='|'.join(mode_run_patterns)
                 ))
 
