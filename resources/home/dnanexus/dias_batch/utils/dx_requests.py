@@ -457,8 +457,6 @@ class DXManage():
                 unarchive=unarchive
             )
 
-        exit()
-
 
     def check_archival_state(
             self,
