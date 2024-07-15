@@ -402,25 +402,18 @@ class DXManage():
             )
             patterns = dict(default_mode_file_patterns)
 
-        for x, y in patterns.items():
-            print(x, y)
-
-        print('all samples: ', samples)
+        print("Currently defined patterns:")
+        prettier_print(patterns)
 
         sample_files_to_check = []
         run_files_to_check = []
 
-        for mode, _ in modes.items():
-            print(mode)
-            if not mode:
+        for mode, selected in modes.items():
+            if not selected:
                 continue
-
 
             mode_sample_patterns = patterns.get(mode, {}).get('sample')
             mode_run_patterns = patterns.get(mode, {}).get('run')
-
-            print(mode_sample_patterns)
-            print(mode_run_patterns)
 
             if mode_sample_patterns:
                 # generate regex pattern per sample for each file pattern,
@@ -434,7 +427,6 @@ class DXManage():
                     f"{len(mode_sample_patterns)} patterns for {len(samples)} "
                     "samples"
                 )
-                print(sample_patterns)
 
                 sample_files_to_check.extend(self.find_files(
                     pattern=sample_patterns
@@ -451,7 +443,7 @@ class DXManage():
 
         print(
             f"Found {len(sample_files_to_check)} sample files and "
-            f"{len(run_files_to_check)} run level files to check"
+            f"{len(run_files_to_check)} run level files to check status of"
         )
 
         if sample_files_to_check or run_files_to_check:
