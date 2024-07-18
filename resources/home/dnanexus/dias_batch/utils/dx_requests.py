@@ -366,7 +366,8 @@ class DXManage():
         samples,
         path,
         modes,
-        unarchive
+        unarchive,
+        unarchive_only=False
         ):
         """
         Checks for all specified file patterns and samples for each
@@ -386,6 +387,9 @@ class DXManage():
         unarchive : bool
             if to automatically unarchive files, will be passed through
             to self.check_archival_state
+        unarchive_only : bool
+            if to only check file archival status and exit without
+            returning to launch any jobs
         """
         print("\nChecking archival states for selected running modes:")
         prettier_print(modes)
@@ -453,6 +457,21 @@ class DXManage():
                 non_sample_files=run_files_to_check,
                 unarchive=unarchive
             )
+
+        if unarchive_only:
+            # unarchive only set and no files in an archived state otherwise
+            # dx_requests.DXManage.check_archival_state will have either
+            # raised a RuntimeError on archived files or an exit with
+            # zero exit code on no archived files found => just exit here
+            # and add a helpful tag to the job
+            dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
+                ["unarchive_only set - no jobs launched"]
+            )
+            print(
+                "-iunarchive_only set and no files in archived state "
+                "- exiting now"
+            )
+            exit(0)
 
 
     def check_archival_state(

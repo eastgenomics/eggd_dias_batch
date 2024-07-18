@@ -293,7 +293,8 @@ def main(
     multiqc_report=None,
     testing=False,
     sample_limit=None,
-    unarchive=None
+    unarchive=None,
+    unarchive_only=None
 ):
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
@@ -389,6 +390,7 @@ def main(
         samples=manifest.keys(),
         path=single_output_dir,
         unarchive=unarchive,
+        unarchive_only=unarchive_only,
         modes={
             'cnv_reports': cnv_reports,
             'snv_reports': snv_reports,
