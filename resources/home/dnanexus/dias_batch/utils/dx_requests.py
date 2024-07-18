@@ -459,7 +459,7 @@ class DXManage():
             )
 
         if unarchive_only:
-            # unarchive only set and no files in an archived state otherwise
+            # unarchive_only set and no files in an archived state otherwise
             # dx_requests.DXManage.check_archival_state will have either
             # raised a RuntimeError on archived files or an exit with
             # zero exit code on no archived files found => just exit here
