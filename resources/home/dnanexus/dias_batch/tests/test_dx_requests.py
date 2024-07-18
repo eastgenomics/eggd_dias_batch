@@ -686,8 +686,8 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
         patterns from utils.defaults is used.
 
         We will use calls to dx_requests.find_files as a proxy for the
-        config patterns being used, as we expected 5 calls for the 4
-        running modes to be made (4x per sample and 1x per run patterns).
+        config patterns being used, as we expected 6 calls for the 4
+        running modes to be made (4x per sample and 2x per run patterns).
         """
         DXManage().check_all_files_archival_state(
             patterns=None,
@@ -702,7 +702,7 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
             }
         )
 
-        assert mock_find.call_count == 5, (
+        assert mock_find.call_count == 6, (
             'incorrect number of calls to dx_requests.find_files'
         )
 
@@ -736,7 +736,7 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
             assert expected_stdout in self.capsys.readouterr().out
 
         with self.subTest('incorrect calls made to dx_requests.find_files'):
-            assert mock_find.call_count == 3
+            assert mock_find.call_count == 4
 
 
     def test_correct_patterns_provided_for_each_mode(
@@ -778,14 +778,15 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'sample_2.*_markdup_recalibrated_tnhaplotyper2.vcf.gz|'
                 'sample_2.*per-base.bed.gz$|sample_2.*reference_build.txt$'
             ),
-            'artemis': (
+            'artemis_sample': (
                 'sample_1.*bam$|sample_1.*bam.bai$|'
                 'sample_1.*_copy_ratios.gcnv.bed$|'
                 'sample_1.*_copy_ratios.gcnv.bed.tbi$|'
                 'sample_2.*bam$|sample_2.*bam.bai$|'
                 'sample_2.*_copy_ratios.gcnv.bed$|'
                 'sample_2.*_copy_ratios.gcnv.bed.tbi$'
-            )
+            ),
+            'artemis_run': '-multiqc.html'
         }
 
         called_patterns = [x[1]['pattern'] for x in mock_find.call_args_list]
@@ -834,7 +835,8 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'sample2_bam.bai$',
                 'sample2_copy_ratios.gcnv.bed$',
                 'sample2_copy_ratios.gcnv.bed.tbi$'
-            ]
+            ],
+            ['002_myRun-multiqc.html']
         ]
 
         DXManage().check_all_files_archival_state(
@@ -876,14 +878,17 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'sample2_copy_ratios.gcnv.bed.tbi$'
         ]
 
-        expected_run_files = ['myRun_excluded_intervals.bed']
+        expected_run_files = [
+            '002_myRun-multiqc.html',
+            'myRun_excluded_intervals.bed'
+        ]
 
         with self.subTest('wrong sample files passed to check archival state'):
             assert sorted(mock_archive.call_args[1]['sample_files']) == \
                 sorted(expected_sample_files)
 
         with self.subTest('wrong run files passed to check archival state'):
-            assert mock_archive.call_args[1]['non_sample_files'] == \
+            assert sorted(mock_archive.call_args[1]['non_sample_files']) == \
                 expected_run_files
 
 
@@ -930,7 +935,6 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
 
             # should be passed through as True
             assert mock_archive.call_args[1]['unarchive'] == True
-
 
 
 class TestDXManageCheckArchivalState(unittest.TestCase):
