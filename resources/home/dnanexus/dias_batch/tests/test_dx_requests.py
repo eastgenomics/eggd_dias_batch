@@ -931,6 +931,39 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
             # should be passed through as True
             assert mock_archive.call_args[1]['unarchive'] == True
 
+    @patch('utils.dx_requests.exit')
+    @patch('utils.dx_requests.dxpy.DXJob')
+    def test_unarchive_only_correctly_tags_job_and_exits(
+        self, mock_job, mock_exit, mock_archive, mock_find
+    ):
+        """
+        Test that when we specify unarchive_only and there are no files
+        to unarchive (which would exit from dx_requests.DXManage.check_
+        file_archival_status) that we exit here with a zero exit code
+        """
+        DXManage().check_all_files_archival_state(
+            patterns=None,
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            unarchive=False,
+            unarchive_only=True,
+            modes={
+                'cnv_reports': True,
+                'snv_reports': True,
+                'mosaic_reports': True,
+                'artemis': True
+            }
+        )
+
+        with self.subTest('stdout not correct'):
+            expected_stdout = (
+                '-iunarchive_only set and no files in archived state '
+                '- exiting now'
+            )
+            assert expected_stdout in self.capsys.readouterr().out
+
+        with self.subTest('DXJob.add_tags not called'):
+            assert mock_job.return_value.add_tags.call_count == 1
 
 
 class TestDXManageCheckArchivalState(unittest.TestCase):
@@ -1176,6 +1209,7 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
         assert mock_unarchive.called, (
             'DXManage.unarchive_files not called for unarchive=True'
         )
+
 
 
 class TestDXManageUnarchiveFiles(unittest.TestCase):
