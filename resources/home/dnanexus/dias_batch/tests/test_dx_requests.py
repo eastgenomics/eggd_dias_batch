@@ -2362,6 +2362,60 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         )
 
 
+    def test_single_gene_reports_name_have_no_colon(self):
+        """
+        Test that when a single gene report is made that the filename
+        does not contain a colon and is replaced with an underscore as
+        this breaks file downloads
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'describe': {
+                    'name': 'sample.vcf'
+                }
+            }],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X1234.per-base.bed.gz'
+                    }
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X5678.per-base.bed.gz'
+                    }
+                }
+            ]
+        ]
+
+        # minimal manifest with parsed in indications and panels, make
+        # first sample have single gene test
+        filled_manifest = deepcopy(self.mock_filter_manifest.return_value)
+        filled_manifest[0]["X1234"]["tests"] = [["_HGNC:1234"]]
+
+        self.mock_filter_manifest.return_value = filled_manifest
+        self.mock_index.return_value = 1
+
+        _, _, summary = DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=filled_manifest[0],
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns']
+        )
+
+        assert summary['SNV']['X1234'] == 'X1234_HGNC_1234_SNV_1', (
+            'naming of single gene test incorrect'
+        )
+
+
     def test_sample_limit_works(self):
         """
         Test when sample limit is set that it works as expected

@@ -1271,8 +1271,9 @@ class DXExecute():
                 # set prefix for naming output report with integer suffix
                 name = (
                     f"{vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list)}_{mode}".replace('__', '_')
-                )
+                    f"{'_'.join(test_list)}_{mode}"
+                ).replace(':', '_').replace('__', '_')
+
                 suffix = check_report_index(name=name, reports=xlsx_reports)
 
                 if sample_name_to_suffix.get(name):
