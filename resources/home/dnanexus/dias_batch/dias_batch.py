@@ -62,6 +62,7 @@ class CheckInputs():
         self.check_assay()
         self.check_assay_config_dir()
         self.check_mode_set()
+        self.check_unarchive_set()
         self.check_single_output_dir()
         self.check_cnv_call_and_cnv_call_job_id_mutually_exclusive()
         self.check_cnv_calling_for_cnv_reports()
@@ -166,6 +167,18 @@ class CheckInputs():
             self.errors.append(
                 'Reports argument specified with no manifest file'
             )
+
+    def check_unarchive_set(self):
+        """
+        Checks that if unarchive_only specified that unarchive will
+        default to also being specified
+        """
+        if self.inputs.get('unarchive_only') and not self.inputs.get('unarchive'):
+            print(
+                "-iunarchive_only specified but -unarchive not specified, "
+                "setting unarchive to True"
+            )
+            self.inputs['unarchive'] = True
 
     def check_cnv_call_and_cnv_call_job_id_mutually_exclusive(self):
         """
@@ -300,6 +313,9 @@ def main(
 
     # assign single out dir in case of missing / output prefix to path
     single_output_dir = check.inputs['single_output_dir']
+
+    # ensure unarchive is set from CheckInputs.check_unarchive_set
+    unarchive = check.inputs['unarchive']
 
     # time of running for naming output folders
     start_time = time_stamp()
