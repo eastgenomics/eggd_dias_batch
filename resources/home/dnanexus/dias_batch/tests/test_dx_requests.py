@@ -780,11 +780,11 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
             ),
             'artemis_sample': (
                 'sample_1.*bam$|sample_1.*bam.bai$|'
-                'sample_1.*_copy_ratios.gcnv.bed$|'
-                'sample_1.*_copy_ratios.gcnv.bed.tbi$|'
+                'sample_1.*_copy_ratios.gcnv.bed.gz$|'
+                'sample_1.*_copy_ratios.gcnv.bed.gz.tbi$|'
                 'sample_2.*bam$|sample_2.*bam.bai$|'
-                'sample_2.*_copy_ratios.gcnv.bed$|'
-                'sample_2.*_copy_ratios.gcnv.bed.tbi$'
+                'sample_2.*_copy_ratios.gcnv.bed.gz$|'
+                'sample_2.*_copy_ratios.gcnv.bed.gz.tbi$'
             ),
             'artemis_run': '-multiqc.html'
         }
