@@ -19,7 +19,6 @@ if os.path.exists('/home/dnanexus'):
         make_path,
         parse_manifest,
         parse_genepanels,
-        prettier_print,
         time_stamp,
         write_summary_report
     )
@@ -32,7 +31,6 @@ else:
         make_path,
         parse_manifest,
         parse_genepanels,
-        prettier_print,
         time_stamp,
         write_summary_report
     )
