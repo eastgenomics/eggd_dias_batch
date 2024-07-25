@@ -516,7 +516,6 @@ class DXManage():
         RuntimeError
             Raised when required files are archived and -iunarchive=False
         """
-        # non_sample_files = [] if not non_sample_files else non_sample_files
         print(
             f"\n \nChecking archival state of "
             f"{len(sample_files) + len(non_sample_files)} files..."
@@ -573,8 +572,9 @@ class DXManage():
         ])
 
         print(
-            f"\n \nWARNING: {len(not_live)} files to use for analysis "
-            f"are not in a live state:\n\t{not_live_printable}\n \n"
+            f"\n \nWARNING: {len(not_live)}/"
+            f"{len(sample_files) + len(non_sample_files)} files to use for "
+            f"analysis are not in a live state:\n\t{not_live_printable}\n \n"
         )
 
         print(f"{len(unarchiving)} files are currently in state 'unarchiving'")
