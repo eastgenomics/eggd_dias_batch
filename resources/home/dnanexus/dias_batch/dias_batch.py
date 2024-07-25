@@ -175,7 +175,7 @@ class CheckInputs():
         """
         if self.inputs.get('unarchive_only') and not self.inputs.get('unarchive'):
             print(
-                "-iunarchive_only specified but -unarchive not specified, "
+                "-iunarchive_only specified but -iunarchive not specified, "
                 "setting unarchive to True"
             )
             self.inputs['unarchive'] = True
