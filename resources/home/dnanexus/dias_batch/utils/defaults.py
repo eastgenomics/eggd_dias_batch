@@ -27,8 +27,8 @@ default_mode_file_patterns = {
         'sample':[
             'bam$',
             'bam.bai$',
-            '_copy_ratios.gcnv.bed$',
-            '_copy_ratios.gcnv.bed.tbi$'
+            '_copy_ratios.gcnv.bed.gz$',
+            '_copy_ratios.gcnv.bed.gz.tbi$'
         ],
         'run': [
             '-multiqc.html'
