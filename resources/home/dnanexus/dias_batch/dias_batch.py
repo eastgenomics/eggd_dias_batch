@@ -59,6 +59,7 @@ class CheckInputs():
 
         self.inputs = inputs
         self.errors = []
+        self.strip_string_inputs()
         self.check_assay()
         self.check_assay_config_dir()
         self.check_mode_set()
@@ -70,7 +71,6 @@ class CheckInputs():
         self.check_exclude_str_and_file()
         self.check_exclude_samples_file_id()
         self.check_qc_file()
-        self.strip_string_inputs()
 
         if self.errors:
             errors = '; '.join(x for x in self.errors)
