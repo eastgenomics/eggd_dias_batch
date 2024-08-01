@@ -17,6 +17,8 @@ import dxpy
 from packaging.version import Version
 import pandas as pd
 
+from .defaults import default_mode_file_patterns
+
 from .utils import (
     add_dynamic_inputs,
     check_exclude_samples,
@@ -250,6 +252,7 @@ class DXManage():
             list of files found
         """
         path = path.rstrip('/')
+
         if subdir:
             subdir = subdir.strip('/')
 
@@ -357,7 +360,127 @@ class DXManage():
             project=project, dxid=file_id).read().rstrip('\n').split('\n')
 
 
-    def check_archival_state(self, files, unarchive, samples=None) -> None:
+    def check_all_files_archival_state(
+        self,
+        patterns,
+        samples,
+        path,
+        modes,
+        unarchive,
+        unarchive_only=False
+        ):
+        """
+        Checks for all specified file patterns and samples for each
+        running mode to ensure they are unarchived before attempting
+        to launch any jobs
+
+        Parameters
+        ----------
+        patterns : dict
+            mapping of running mode to file patterns to check for
+        samples : list
+            list of samples to filter returned files by
+        path : str
+            path to search for files
+        modes: dict
+            mapping of running modes to booleans if they are being run
+        unarchive : bool
+            if to automatically unarchive files, will be passed through
+            to self.check_archival_state
+        unarchive_only : bool
+            if to only check file archival status and exit without
+            returning to launch any jobs
+        """
+        print("\nChecking archival states for selected running modes:")
+        prettier_print(modes)
+
+        if not patterns:
+            # file patterns to check per running mode not defined in config,
+            # use current patterns correct as of 12/07/2024 as default
+            # TODO - remove this once it is added to both CEN and TWE configs
+            print(
+                "No mode file patterns defined in assay config, using "
+                "default values from utils.defaults"
+            )
+            patterns = dict(default_mode_file_patterns)
+
+        print("Currently defined patterns:")
+        prettier_print(patterns)
+
+        sample_files_to_check = []
+        run_files_to_check = []
+
+        for mode, selected in modes.items():
+            if not selected:
+                print(f'Running mode {mode} not selected, skipping file check')
+                continue
+
+            mode_sample_patterns = patterns.get(mode, {}).get('sample')
+            mode_run_patterns = patterns.get(mode, {}).get('run')
+
+            if mode_sample_patterns:
+                # generate regex pattern per sample for each file pattern,
+                # then join it as one big chongus pattern for a single query
+                # because its not our API server load to worry about
+                sample_patterns = '|'.join([
+                    f"{x}.*{y}" for x in samples for y in mode_sample_patterns
+                ])
+                print(
+                    f"Searching per sample files for {mode} with "
+                    f"{len(mode_sample_patterns)} patterns for {len(samples)} "
+                    "samples"
+                )
+
+                sample_files_to_check.extend(self.find_files(
+                    path=path,
+                    pattern=sample_patterns
+                ))
+
+            if mode_run_patterns:
+                print(
+                    f"Searching per run files for {mode} with "
+                    f"{len(mode_run_patterns)} patterns"
+                )
+                run_files_to_check.extend(self.find_files(
+                    path=path,
+                    pattern='|'.join(mode_run_patterns)
+                ))
+
+        print(
+            f"Found {len(sample_files_to_check)} sample files and "
+            f"{len(run_files_to_check)} run level files to check status of"
+        )
+
+        if sample_files_to_check or run_files_to_check:
+            self.check_archival_state(
+                sample_files=sample_files_to_check,
+                non_sample_files=run_files_to_check,
+                unarchive=unarchive
+            )
+
+        if unarchive_only:
+            # unarchive_only set and no files in an archived state otherwise
+            # dx_requests.DXManage.check_archival_state will have either
+            # raised a RuntimeError on archived files or an exit with
+            # zero exit code on no archived files found => just exit here
+            # and add a helpful tag to the job
+            dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
+                ["unarchive_only set - no jobs launched"]
+            )
+            print(
+                "-iunarchive_only set and no files in archived state "
+                "- exiting now"
+            )
+            exit(0)
+
+
+    def check_archival_state(
+            self,
+            sample_files=[],
+            non_sample_files=[],
+            unarchive=False,
+            samples=None
+        ) -> None:
         """
         Check archival state of n files, to be used before attempting
         to launch jobs to ensure nothing fails due to archived files.
@@ -374,8 +497,12 @@ class DXManage():
 
         Parameters
         ---------
-        files : list
-            list of DXFile objects to check state of
+        sample_files : list
+            list of DXFile objects to check state of that belong to
+            individual samples (will be filtered by samples parameter)
+        non_sample_files : list
+            list of DXFile objects to check state of that will not be
+            filtered by the samples parameter
         unarchive : bool
             if to automatically unarchive files
         samples : list
@@ -389,12 +516,16 @@ class DXManage():
         RuntimeError
             Raised when required files are archived and -iunarchive=False
         """
-        print(f"\n \nChecking archival state of {len(files)} files...")
+        print(
+            f"\n \nChecking archival state of "
+            f"{len(sample_files) + len(non_sample_files)} files..."
+        )
 
-        # find files not in a live state, and filter these down by samples
-        # given that we're going to launch jobs for
+        # find sample files not in a live state, and filter these down
+        # by samples given that we're going to launch jobs for
         not_live = [
-            x for x in files if x['describe']['archivalState'] != 'live'
+            x for x in sample_files
+            if x['describe']['archivalState'] != 'live'
         ]
 
         if samples and not_live:
@@ -411,6 +542,12 @@ class DXManage():
                     not_live_filtered.append(dx_file)
 
             not_live = not_live_filtered
+
+        # add in any non sample files that are not in live state
+        not_live.extend([
+            x for x in non_sample_files
+            if x['describe']['archivalState'] != 'live'
+        ])
 
         if not not_live:
             # nothing archived that we need :dancing_penguin:
@@ -435,8 +572,9 @@ class DXManage():
         ])
 
         print(
-            f"\n \nWARNING: {len(not_live)} sample files to use for analysis "
-            f"are not in a live state:\n\t{not_live_printable}\n \n"
+            f"\n \nWARNING: {len(not_live)}/"
+            f"{len(sample_files) + len(non_sample_files)} files to use for "
+            f"analysis are not in a live state:\n\t{not_live_printable}\n \n"
         )
 
         print(f"{len(unarchiving)} files are currently in state 'unarchiving'")
@@ -705,7 +843,10 @@ class DXExecute():
             )
 
         # check to ensure all bams are unarchived
-        DXManage().check_archival_state(files, unarchive=unarchive)
+        DXManage().check_archival_state(
+            sample_files=files,
+            unarchive=unarchive
+        )
 
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['inputs']['bambais'] = files
@@ -1057,7 +1198,8 @@ class DXExecute():
 
         # check to ensure all vcfs (and mosdepth files for SNVs) are unarchived
         DXManage().check_archival_state(
-            files=vcf_files + mosdepth_files + excluded_intervals_bed_file,
+            sample_files=vcf_files + mosdepth_files,
+            non_sample_files=excluded_intervals_bed_file,
             samples=manifest.keys(),
             unarchive=unarchive
         )
@@ -1129,8 +1271,9 @@ class DXExecute():
                 # set prefix for naming output report with integer suffix
                 name = (
                     f"{vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list)}_{mode}".replace('__', '_')
-                )
+                    f"{'_'.join(test_list)}_{mode}"
+                ).replace(':', '_').replace('__', '_')
+
                 suffix = check_report_index(name=name, reports=xlsx_reports)
 
                 if sample_name_to_suffix.get(name):

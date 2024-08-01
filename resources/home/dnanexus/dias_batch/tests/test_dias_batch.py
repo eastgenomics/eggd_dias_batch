@@ -4,6 +4,7 @@ Tests for CheckInputs() that are run at the beginning of dias batch
 import os
 import sys
 from unittest.mock import patch
+import unittest
 
 
 sys.path.append(os.path.abspath(
@@ -128,6 +129,39 @@ class TestCheckInputs():
         assert check.errors == ['No mode specified to run in'], (
             'Error not raised for no running mode set'
         )
+
+    def test_check_unarchive_behaviour_as_expected(self, mocker):
+        """
+        Check behaviour for if unarchive_only is set that unarchive also
+        defaults to being set to True
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        mocker.return_value = None
+
+        with unittest.TestCase().subTest('unarchive_only set to True'):
+            # Test when unarchive_only set to True we force unarchive
+            # to True also
+            check = CheckInputs()
+            check.inputs = {
+                'unarchive_only': True,
+                'unarchive': False
+            }
+            check.check_unarchive_set()
+
+            assert check.inputs['unarchive'] == True
+
+        with unittest.TestCase().subTest('unarchive_only set to False'):
+            # Test when unarchive_only set to False we do not force
+            # unarchive to True also
+            check = CheckInputs()
+            check.inputs = {
+                'unarchive_only': False,
+                'unarchive': False
+            }
+            check.check_unarchive_set()
+
+            assert check.inputs['unarchive'] == False
+
 
     def test_error_raised_for_no_manifest_with_reports_mode(self, mocker):
         """
@@ -256,6 +290,37 @@ class TestCheckInputs():
 
         assert check.errors == correct_error, (
             "Error not raised when non .xlsx file provided to check_qc_file()"
+        )
+
+    def test_string_inputs_with_whitespace_stripped(self, mocker):
+        """
+        Test that string inputs are correctly stripped
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        check = CheckInputs()
+
+        check.inputs = {
+            'assay': 'CEN ',
+            'assay_config_dir': ' some_dir',
+            'exclude_samples': ' sample1 ',
+            'manifest_subset': ' ',
+            'single_output_dir': '/output/foo/bar',
+            'cnv_call_job_id': 'job-xxx '
+        }
+
+        check.strip_string_inputs()
+
+        expected_inputs = {
+            'assay': 'CEN',
+            'assay_config_dir': 'some_dir',
+            'exclude_samples': 'sample1',
+            'manifest_subset': '',
+            'single_output_dir': '/output/foo/bar',
+            'cnv_call_job_id': 'job-xxx'
+        }
+
+        assert check.inputs == expected_inputs, (
+            'String inputs not correctly stripped'
         )
 
 

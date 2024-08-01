@@ -19,7 +19,6 @@ if os.path.exists('/home/dnanexus'):
         make_path,
         parse_manifest,
         parse_genepanels,
-        prettier_print,
         time_stamp,
         write_summary_report
     )
@@ -32,7 +31,6 @@ else:
         make_path,
         parse_manifest,
         parse_genepanels,
-        prettier_print,
         time_stamp,
         write_summary_report
     )
@@ -61,9 +59,11 @@ class CheckInputs():
 
         self.inputs = inputs
         self.errors = []
+        self.strip_string_inputs()
         self.check_assay()
         self.check_assay_config_dir()
         self.check_mode_set()
+        self.check_unarchive_set()
         self.check_single_output_dir()
         self.check_cnv_call_and_cnv_call_job_id_mutually_exclusive()
         self.check_cnv_calling_for_cnv_reports()
@@ -168,6 +168,18 @@ class CheckInputs():
                 'Reports argument specified with no manifest file'
             )
 
+    def check_unarchive_set(self):
+        """
+        Checks that if unarchive_only specified that unarchive will
+        default to also being specified
+        """
+        if self.inputs.get('unarchive_only') and not self.inputs.get('unarchive'):
+            print(
+                "-iunarchive_only specified but -iunarchive not specified, "
+                "setting unarchive to True"
+            )
+            self.inputs['unarchive'] = True
+
     def check_cnv_call_and_cnv_call_job_id_mutually_exclusive(self):
         """
         Check that both cnv_call and cnv_call_job_id have not been
@@ -251,6 +263,24 @@ class CheckInputs():
                     f"{self.inputs.get('exclude_samples')}"
                 )
 
+    def strip_string_inputs(self):
+        """
+        Strip string type inputs to ensure no leading or trailing
+        whitespace are retained
+        """
+        string_inputs = [
+            'assay',
+            'assay_config_dir',
+            'exclude_samples',
+            'manifest_subset',
+            'single_output_dir',
+            'cnv_call_job_id'
+        ]
+
+        for string in string_inputs:
+            if self.inputs.get(string) and isinstance(self.inputs.get(string), str):
+                self.inputs[string] = self.inputs[string].strip()
+
 
 @dxpy.entry_point('main')
 def main(
@@ -274,7 +304,8 @@ def main(
     multiqc_report=None,
     testing=False,
     sample_limit=None,
-    unarchive=None
+    unarchive=None,
+    unarchive_only=None
 ):
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
@@ -282,6 +313,9 @@ def main(
 
     # assign single out dir in case of missing / output prefix to path
     single_output_dir = check.inputs['single_output_dir']
+
+    # ensure unarchive is set from CheckInputs.check_unarchive_set
+    unarchive = check.inputs['unarchive']
 
     # time of running for naming output folders
     start_time = time_stamp()
@@ -341,6 +375,9 @@ def main(
         print("Parsed manifest(s):")
         print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in manifest.items()}))
 
+        # record what we had provided before excluding anything
+        provided_manifest_samples = manifest.keys()
+
         # filter manifest tests against genepanels to ensure what has been
         # requested are test codes or HGNC IDs we recognise
         manifest = check_manifest_valid_test_codes(
@@ -359,6 +396,22 @@ def main(
             sample: {**manifest[sample], **manifest_source[sample]}
             for sample in manifest
         }
+
+    # check up front if any files for any of the selected running modes
+    # are in an archived state which would cause jobs to fail to launch
+    DXManage().check_all_files_archival_state(
+        patterns=assay_config.get('mode_file_patterns'),
+        samples=manifest.keys(),
+        path=single_output_dir,
+        unarchive=unarchive,
+        unarchive_only=unarchive_only,
+        modes={
+            'cnv_reports': cnv_reports,
+            'snv_reports': snv_reports,
+            'mosaic_reports': mosaic_reports,
+            'artemis': artemis
+        }
+    )
 
     launched_jobs = {}
     cnv_report_errors = snv_report_errors = mosaic_report_errors = \
@@ -514,6 +567,7 @@ def main(
         app=app_details,
         assay_config=assay_config,
         manifest=manifest,
+        provided_manifest_samples=provided_manifest_samples,
         launched_jobs=launched_jobs,
         excluded=exclude_samples,
         cnv_call_excluded=cnv_call_excluded_files,

@@ -134,7 +134,22 @@ def write_summary_report(output, job, app, manifest=None, **summary) -> None:
                 f"\nManifest(s) parsed: {job['runInput']['manifest_files']}\n"
             )
             file_handle.write(
-                f"\nTotal number of samples in manifest: {len(manifest.keys())}\n"
+                "\nTotal number of samples in provided manifest(s): "
+                f"{len(summary.get('provided_manifest_samples'))}"
+            )
+            file_handle.write(
+                f"\nTotal number of samples processed from manifest(s): "
+                f"{len(manifest.keys())}"
+            )
+
+            not_processed = sorted(
+                set(summary.get('provided_manifest_samples')) -
+                set(manifest.keys())
+            )
+            file_handle.write(
+                f"\nSamples from manifest(s) not processed "
+                f"({len(not_processed)}): "
+                f"{', '.join(not_processed) if not_processed else 'None'}\n"
             )
 
         if summary.get('excluded'):
@@ -555,6 +570,18 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
             elif re.match(r"[\d\w]+-[\d\w]+", row.SampleID):
                 data[row.SampleID]['tests'].append(test_codes)
                 manifest_source[row.SampleID] = {'manifest_source': 'Epic'}
+            elif subset:
+                # sampleID and reanalysisID don't seem valid, continue
+                # anyway if we're subsetting and assume that the user
+                # knows what they're doing, if the samples specified to
+                # --subset don't exist in the manifest this will still
+                # raise a RuntimeError below
+                print(
+                    f"Row {idx + 1} of manifest does not seem to contain all "
+                    "required identifiers, --subset specified so will skip "
+                    f"this row:\n\t{row.tolist()}"
+                )
+                continue
             else:
                 # something funky with this sample naming
                 raise RuntimeError(
@@ -732,7 +759,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
 
-        if test_codes['tests'] == [[]]:
+        if [x for x in test_codes['tests'] if x] == []:
             # sample has no booked tests => chuck it in the error bucket
             invalid[sample].append('No tests booked for sample')
             continue

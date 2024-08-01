@@ -38,6 +38,8 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 - `-iexclude_controls` (`bool`): controls if to automatically exclude control samples from CNV calling based on the regex pattern `'^\w+-\w+Q\w+-'` (default: `true`)
 - `-isplit_tests` (`bool`): controls if to split multiple panels / genes in a manifest to individual reports instead of being combined into one
 - `-iunarchive` (`bool`):  controls whether to automatically unarchive any required files that are archived. Default is to fail the app with a list of files required to unarchive. If set to true, all required files will start to be unarchived and the job will exit with a zero exit code and the job tagged to state no jobs were launched
+- `-iunarchive_only` (`bool`): controls if to only run the app to check for archived files and unarchive (i.e no launching of jobs), if all files are found in an unarchived state the app will exit with a zero exit code.
+  - n.b. in this mode, `unarchive` defaults to True and unarchiving will always be run
 
 
 #### Running modes
@@ -58,6 +60,8 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 ## How does this app work?
 
 The app takes as a minimum input a path to Dias single output, an assay config, and at least one of the above listed running modes. The default behaviour is to pass an assay string specified to run for (with `-iassay`), which will search DNAnexus for the highest version config file in `-iassay_config_dir`  (default: `001_Reference:/dynamic_files/dias_batch_configs/`)  and use this for analysis. Alternatively, an assay config file may be specified to use instead with `-iassay_config_file`. If running a reports workflow a manifest file must also be specified.
+
+Before any jobs are launched, a check of the archival state of all required files is first made. This will use the file pattern mappings either defined in `utils.defaults` or from the assay config file (if specified) to search for the per sample and per run files required, any will raise an error on any archived files if `unarchive=True` is not set.
 
 The general behaviour of each mode is as follows:
 
@@ -221,6 +225,7 @@ The top level section should be structured as follows:
 - `{cnv_call_app|_report_workflow}_id` (`str`) : the IDs of CNV calling and reports workflows to use
 - `reference_files` (`dict`) : mapping of reference file name : DNAnexus file ID, reference file name _must_ be given as shown above, and DNAnexus file ID should be provided as `project-xxx:file-xxx`
 - `name_patterns` (`dict`) : mapping of the manifest source and a regex pattern to use for filtering sample names and files etc.
+- `mode_file_patterns` (`dict` | optional): mapping for each running mode to sample and run file patterns for which to search and check the archival state of before launching any jobs. Defaults are defined in `utils.defaults`, and a mapping of the same structure may be added to the assay config file to override the defaults.
 
 The definitions of inputs for CNV calling and each reports workflow should be defined under the key `modes`, containing a mapping of all inputs and other inputs for controlling running of analyses.
 
@@ -310,6 +315,8 @@ The definitions of inputs for CNV calling and each reports workflow should be de
     - `INPUT-panels` : `';'` separated string of panels
     - `INPUT-test_codes` : `'&&'` separated string of test codes
     - `INPUT-sample_name` : string of sample name from manifest
+
+    These are added to the config via [`utils.add_dynamic_inputs`](https://github.com/eastgenomics/eggd_dias_batch/blob/b63a04e2d421a246017e984efcc2a9eef85fbeaf/resources/home/dnanexus/dias_batch/utils/utils.py#L1073) from kwargs generated at run time specified [here](https://github.com/eastgenomics/eggd_dias_batch/blob/b63a04e2d421a246017e984efcc2a9eef85fbeaf/resources/home/dnanexus/dias_batch/utils/dx_requests.py#L1170).
 
 ---
 

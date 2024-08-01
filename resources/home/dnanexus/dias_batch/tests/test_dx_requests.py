@@ -662,7 +662,315 @@ class TestDXManageReadDXfile():
         assert contents == ['line1', 'line2', 'line3']
 
 
-class TestDXManageCheckArchivalState():
+@patch('utils.dx_requests.DXManage.find_files')
+@patch('utils.dx_requests.DXManage.check_archival_state')
+class TestCheckAllFilesArchivalState(unittest.TestCase):
+    """
+    Tests for dx_requests.check_all_files_archival_state
+
+    Function takes patterns per running mode of required file types to
+    check archival state of, and queries the given path for all files
+    and then checks the archival state.
+    """
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_default_patterns_used_if_no_default_provided(
+        self, mock_archive, mock_find
+    ):
+        """
+        Test if no pattern is provided from the config that the default
+        patterns from utils.defaults is used.
+
+        We will use calls to dx_requests.find_files as a proxy for the
+        config patterns being used, as we expected 6 calls for the 4
+        running modes to be made (4x per sample and 2x per run patterns).
+        """
+        DXManage().check_all_files_archival_state(
+            patterns=None,
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            unarchive=False,
+            modes={
+                'cnv_reports': True,
+                'snv_reports': True,
+                'mosaic_reports': True,
+                'artemis': True
+            }
+        )
+
+        assert mock_find.call_count == 6, (
+            'incorrect number of calls to dx_requests.find_files'
+        )
+
+
+    def test_running_mode_check_skipped_if_not_selected(
+        self, mock_archive, mock_find
+    ):
+        """
+        Test if when a running mode has not been selected (i.e. not
+        running CNV reports) that the checks for these file types are
+        not run.
+        """
+        DXManage().check_all_files_archival_state(
+            patterns=None,
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            unarchive=False,
+            modes={
+                'cnv_reports': False,
+                'snv_reports': True,
+                'mosaic_reports': True,
+                'artemis': True
+            }
+        )
+
+        with self.subTest('expected message not in stdout'):
+            expected_stdout = (
+                "Running mode cnv_reports not selected, skipping file check"
+            )
+
+            assert expected_stdout in self.capsys.readouterr().out
+
+        with self.subTest('incorrect calls made to dx_requests.find_files'):
+            assert mock_find.call_count == 4
+
+
+    def test_correct_patterns_provided_for_each_mode(
+        self, mock_archive, mock_find
+    ):
+        """
+        Test that for each running mode the correct patterns are provided
+        when doing the searching
+        """
+        DXManage().check_all_files_archival_state(
+            patterns=None,
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            unarchive=False,
+            modes={
+                'cnv_reports': True,
+                'snv_reports': True,
+                'mosaic_reports': True,
+                'artemis': True
+            }
+        )
+
+        # define what patterns we expect the function to provide to
+        # each call to dx_requests.find_files for each running mode
+        expected_called_patterns = {
+            'cnv_reports_sample': (
+                    'sample_1.*_segments.vcf$|sample_2.*_segments.vcf$'
+            ),
+            'cnv_reports_run': '_excluded_intervals.bed$',
+            'snv_reports': (
+                'sample_1.*_markdup_recalibrated_Haplotyper.vcf.gz$|'
+                'sample_1.*per-base.bed.gz$|sample_1.*reference_build.txt$|'
+                'sample_2.*_markdup_recalibrated_Haplotyper.vcf.gz$|'
+                'sample_2.*per-base.bed.gz$|sample_2.*reference_build.txt$'
+                ),
+            'mosaic_reports': (
+                'sample_1.*_markdup_recalibrated_tnhaplotyper2.vcf.gz|'
+                'sample_1.*per-base.bed.gz$|sample_1.*reference_build.txt$|'
+                'sample_2.*_markdup_recalibrated_tnhaplotyper2.vcf.gz|'
+                'sample_2.*per-base.bed.gz$|sample_2.*reference_build.txt$'
+            ),
+            'artemis_sample': (
+                'sample_1.*bam$|sample_1.*bam.bai$|'
+                'sample_1.*_copy_ratios.gcnv.bed.gz$|'
+                'sample_1.*_copy_ratios.gcnv.bed.gz.tbi$|'
+                'sample_2.*bam$|sample_2.*bam.bai$|'
+                'sample_2.*_copy_ratios.gcnv.bed.gz$|'
+                'sample_2.*_copy_ratios.gcnv.bed.gz.tbi$'
+            ),
+            'artemis_run': '-multiqc.html'
+        }
+
+        called_patterns = [x[1]['pattern'] for x in mock_find.call_args_list]
+
+        assert sorted(expected_called_patterns.values()) == sorted(called_patterns), (
+            'incorrect patterns provided to dx_requests.find_files'
+        )
+
+
+    def test_call_to_check_archival_state_correct(
+        self, mock_archive, mock_find
+    ):
+        """
+        Test that when we've found files for samples for each running mode,
+        that these are all correctly passed to
+        dx_requests.check_archival_state to actually check if they're archived
+        """
+        # define what files each call to dx_requests.find_files should
+        # return, will be called twice for CNV reports (per sample then
+        # per run), then once for each other mode
+        mock_find.side_effect = [
+            ['sample1_segments.vcf', 'sample2_segments.vcf'],
+            ['myRun_excluded_intervals.bed'],
+            [
+                'sample1_markdup_recalibrated_Haplotyper.vcf.gz',
+                'sample2_markdup_recalibrated_Haplotyper.vcf.gz',
+                'sample1_per-base.bed.gz',
+                'sample2_reference_build.txt',
+                'sample1_per-base.bed.gz',
+                'sample2_reference_build.txt'
+            ],
+            [
+                'sample1_markdup_recalibrated_tnhaplotyper2.vcf.gz',
+                'sample2_markdup_recalibrated_tnhaplotyper2.vcf.gz',
+                'sample1_per-base.bed.gz',
+                'sample2_reference_build.txt',
+                'sample1_per-base.bed.gz',
+                'sample2_reference_build.txt'
+            ],
+            [
+                'sample1_bam$',
+                'sample1_bam.bai$',
+                'sample1_copy_ratios.gcnv.bed$',
+                'sample1_copy_ratios.gcnv.bed.tbi$',
+                'sample2_bam$',
+                'sample2_bam.bai$',
+                'sample2_copy_ratios.gcnv.bed$',
+                'sample2_copy_ratios.gcnv.bed.tbi$'
+            ],
+            ['002_myRun-multiqc.html']
+        ]
+
+        DXManage().check_all_files_archival_state(
+            patterns=None,
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            unarchive=False,
+            modes={
+                'cnv_reports': True,
+                'snv_reports': True,
+                'mosaic_reports': True,
+                'artemis': True
+            }
+        )
+
+        # we expect to pass a single level list of all above files to
+        # dx_requests.check_archival_state
+        expected_sample_files = [
+                'sample1_segments.vcf', 'sample2_segments.vcf',
+                'sample1_markdup_recalibrated_Haplotyper.vcf.gz',
+                'sample2_markdup_recalibrated_Haplotyper.vcf.gz',
+                'sample1_per-base.bed.gz',
+                'sample2_reference_build.txt',
+                'sample1_per-base.bed.gz',
+                'sample2_reference_build.txt',
+                'sample1_markdup_recalibrated_tnhaplotyper2.vcf.gz',
+                'sample2_markdup_recalibrated_tnhaplotyper2.vcf.gz',
+                'sample1_per-base.bed.gz',
+                'sample2_reference_build.txt',
+                'sample1_per-base.bed.gz',
+                'sample2_reference_build.txt',
+                'sample1_bam$',
+                'sample1_bam.bai$',
+                'sample1_copy_ratios.gcnv.bed$',
+                'sample1_copy_ratios.gcnv.bed.tbi$',
+                'sample2_bam$',
+                'sample2_bam.bai$',
+                'sample2_copy_ratios.gcnv.bed$',
+                'sample2_copy_ratios.gcnv.bed.tbi$'
+        ]
+
+        expected_run_files = [
+            '002_myRun-multiqc.html',
+            'myRun_excluded_intervals.bed'
+        ]
+
+        with self.subTest('wrong sample files passed to check archival state'):
+            assert sorted(mock_archive.call_args[1]['sample_files']) == \
+                sorted(expected_sample_files)
+
+        with self.subTest('wrong run files passed to check archival state'):
+            assert sorted(mock_archive.call_args[1]['non_sample_files']) == \
+                expected_run_files
+
+
+    def test_unarchive_passed_to_check_archival_state(
+        self, mock_archive, mock_find
+    ):
+        """
+        Test that the unarchive param passed to check_all_files_archival_
+        state is passed through to dx_requests.check_archival_state
+        """
+        # set some return value so check_archival_state will get called
+        mock_find.return_value = ['foo']
+
+        with self.subTest('check unarchive False'):
+            DXManage().check_all_files_archival_state(
+                patterns=None,
+                samples=['sample_1', 'sample_2'],
+                path='project-xxx:/',
+                unarchive=False,
+                modes={
+                    'cnv_reports': True,
+                    'snv_reports': True,
+                    'mosaic_reports': True,
+                    'artemis': True
+                }
+            )
+
+            # should be passed through as False
+            assert mock_archive.call_args[1]['unarchive'] == False
+
+        with self.subTest('check unarchive False'):
+            DXManage().check_all_files_archival_state(
+                patterns=None,
+                samples=['sample_1', 'sample_2'],
+                path='project-xxx:/',
+                unarchive=True,
+                modes={
+                    'cnv_reports': True,
+                    'snv_reports': True,
+                    'mosaic_reports': True,
+                    'artemis': True
+                }
+            )
+
+            # should be passed through as True
+            assert mock_archive.call_args[1]['unarchive'] == True
+
+    @patch('utils.dx_requests.exit')
+    @patch('utils.dx_requests.dxpy.DXJob')
+    def test_unarchive_only_correctly_tags_job_and_exits(
+        self, mock_job, mock_exit, mock_archive, mock_find
+    ):
+        """
+        Test that when we specify unarchive_only and there are no files
+        to unarchive (which would exit from dx_requests.DXManage.check_
+        file_archival_status) that we exit here with a zero exit code
+        """
+        DXManage().check_all_files_archival_state(
+            patterns=None,
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            unarchive=False,
+            unarchive_only=True,
+            modes={
+                'cnv_reports': True,
+                'snv_reports': True,
+                'mosaic_reports': True,
+                'artemis': True
+            }
+        )
+
+        with self.subTest('stdout not correct'):
+            expected_stdout = (
+                '-iunarchive_only set and no files in archived state '
+                '- exiting now'
+            )
+            assert expected_stdout in self.capsys.readouterr().out
+
+        with self.subTest('DXJob.add_tags not called'):
+            assert mock_job.return_value.add_tags.call_count == 1
+
+class TestDXManageCheckArchivalState(unittest.TestCase):
     """
     Tests for DXManage.check_archival_state()
 
@@ -713,19 +1021,26 @@ class TestDXManageCheckArchivalState():
         }
     ]
 
-    def test_all_live(self, capsys):
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_all_live(self):
         """
         Test no error is raised when all provided files are live
         """
         DXManage().check_archival_state(
-            files=self.files,
+            sample_files=self.files,
             unarchive=False
         )
 
         # since we don't explicitly return anything when there are no
         # archived files, check stdout for expected string printed
         # to ensure the function passed through all checks to the end
-        stdout = capsys.readouterr().out
+        stdout = self.capsys.readouterr().out
 
         assert 'No required files in archived state' in stdout, (
             'Expected print for all live files not in captured stdout'
@@ -742,12 +1057,12 @@ class TestDXManageCheckArchivalState():
             match='Files required for analysis archived'
         ):
             DXManage().check_archival_state(
-            files=self.files_w_archive,
-            unarchive=False
-        )
+                sample_files=self.files_w_archive,
+                unarchive=False
+            )
 
 
-    def test_archived_files_filtered_out_when_not_in_sample_list(self, capsys):
+    def test_archived_files_filtered_out_when_not_in_sample_list(self):
         """
         Test when a list of sample names is provided that any files for other
         samples are filtered out, we will test this by adding an archived file
@@ -755,14 +1070,14 @@ class TestDXManageCheckArchivalState():
         """
         # provide list of sample names to filter by
         DXManage().check_archival_state(
-            files=self.files_w_archive,
+            sample_files=self.files_w_archive,
             unarchive=False,
             samples=['sample1', 'sample2', 'sample3', 'sample4']
         )
 
         # since we don't explicitly return anything for all being live check
         # stdout for expected string printed to ensure we got where we expect
-        stdout = capsys.readouterr().out
+        stdout = self.capsys.readouterr().out
 
         assert 'No required files in archived state' in stdout, (
             'Expected print for all live files not in captured stdout'
@@ -781,9 +1096,67 @@ class TestDXManageCheckArchivalState():
             # provide list of sample names to filter by, sample5 has
             # archived file and unarchive=False => should raise error
             DXManage().check_archival_state(
-                files=self.files_w_archive,
+                sample_files=self.files_w_archive,
                 unarchive=False,
                 samples=['sample5']
+            )
+
+
+    def test_archived_non_sample_file_kept_when_sample_list_given(self):
+        """
+        Can pass a list of sample files plus non-sample file(s) (i.e.
+        intervals bed file from CNV calling), when the samples param is
+        also specified (i.e. list of sample names), ensure we don't wrongly
+        remove the non sample files
+        """
+        non_sample_archived_file = [
+            {
+                'id': 'file-zzz',
+                'describe': {
+                    'name': 'some_other_run_level_file.bed',
+                    'archivalState': 'archived'
+                }
+            }
+        ]
+
+        # test archived non sample file correctly raises error when
+        # provided with sample files and samples list
+        expected_error = "Files required for analysis archived"
+        with self.subTest():
+            with pytest.raises(RuntimeError, match=expected_error):
+                DXManage().check_archival_state(
+                    sample_files=self.files_w_archive,
+                    non_sample_files=non_sample_archived_file,
+                    unarchive=False,
+                    samples=['sample5']
+                )
+
+            # actually test the bed file is flagged
+            archived_bed_stdout = (
+                "some_other_run_level_file.bed (file-zzz) - archived"
+            )
+
+            assert archived_bed_stdout in self.capsys.readouterr().out, (
+                'Archived bed not correctly identified as archived'
+            )
+
+        # test archived non sample file correctly raises error when
+        # NOT provided with other files
+        expected_error = "Files required for analysis archived"
+        with self.subTest():
+            with pytest.raises(RuntimeError, match=expected_error):
+                DXManage().check_archival_state(
+                    non_sample_files=non_sample_archived_file,
+                    unarchive=False
+                )
+
+            # actually test the bed file is flagged
+            archived_bed_stdout = (
+                "some_other_run_level_file.bed (file-zzz) - archived"
+            )
+
+            assert archived_bed_stdout in self.capsys.readouterr().out, (
+                'Archived bed not correctly identified as archived'
             )
 
 
@@ -821,7 +1194,7 @@ class TestDXManageCheckArchivalState():
             match='non-live files not in a state that can be unarchived'
         ):
             DXManage().check_archival_state(
-                files=files,
+                sample_files=files,
                 unarchive=True
             )
 
@@ -833,13 +1206,14 @@ class TestDXManageCheckArchivalState():
         we call the function to start unarchiving
         """
         DXManage().check_archival_state(
-            files=self.files_w_archive,
+            sample_files=self.files_w_archive,
             unarchive=True
         )
 
         assert mock_unarchive.called, (
             'DXManage.unarchive_files not called for unarchive=True'
         )
+
 
 
 class TestDXManageUnarchiveFiles(unittest.TestCase):
@@ -1985,6 +2359,60 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
 
         assert summary['SNV']['X1234'] == 'X1234_R207.1_SNV_1\nX1234_R207.1_SNV_2', (
             'Suffix for repeat sample incorrect'
+        )
+
+
+    def test_single_gene_reports_name_have_no_colon(self):
+        """
+        Test that when a single gene report is made that the filename
+        does not contain a colon and is replaced with an underscore as
+        this breaks file downloads
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{
+                'describe': {
+                    'name': 'sample.vcf'
+                }
+            }],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X1234.per-base.bed.gz'
+                    }
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {
+                        'name': 'X5678.per-base.bed.gz'
+                    }
+                }
+            ]
+        ]
+
+        # minimal manifest with parsed in indications and panels, make
+        # first sample have single gene test
+        filled_manifest = deepcopy(self.mock_filter_manifest.return_value)
+        filled_manifest[0]["X1234"]["tests"] = [["_HGNC:1234"]]
+
+        self.mock_filter_manifest.return_value = filled_manifest
+        self.mock_index.return_value = 1
+
+        _, _, summary = DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=filled_manifest[0],
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns']
+        )
+
+        assert summary['SNV']['X1234'] == 'X1234_HGNC_1234_SNV_1', (
+            'naming of single gene test incorrect'
         )
 
 

@@ -1,7 +1,7 @@
 {
     "name": "eggd_dias_batch",
     "title": "eggd_dias_batch",
-    "version": "3.1.0",
+    "version": "3.2.0",
     "summary": "Launches downstream analyses for Dias",
     "dxapi": "1.0.0",
     "inputSpec": [
@@ -166,6 +166,14 @@
             "optional": true,
             "default": false,
             "help": "controls whether to automatically unarchive any required files that are archived. Default is to fail the app with a list of files required to unarchive. If set to true, all required files will start to be unarchived and the job will exit with a zero exit code and the job tagged to state no jobs were launched"
+          },
+          {
+            "name": "unarchive_only",
+            "label": "unarchive_only",
+            "class": "boolean",
+            "optional": true,
+            "default": false,
+            "help": "controls if to only run the app to check for archived files and unarchive (i.e no launching of jobs), if all files are found in an unarchived state the app will exit with a zero exit code"
           }
     ],
     "outputSpec": [

@@ -119,7 +119,7 @@ class TestCheckReportIndex():
         )
 
 
-class TestWriteSummaryReport():
+class TestWriteSummaryReport(unittest.TestCase):
     """
     Tests for utils.write_summary_report()
 
@@ -180,6 +180,10 @@ class TestWriteSummaryReport():
         'X111114': {'tests': [['R134.1']]}
     }
 
+    provided_manifest_samples = [
+        'X111111', 'X111112', 'X111113', 'X111114', 'X111115', 'X111116'
+    ]
+
     excluded_samples = ['X111115', 'X111116']
 
     # example list of files excluded from CNV calling
@@ -220,6 +224,7 @@ class TestWriteSummaryReport():
         app=app_details,
         assay_config=assay_config,
         manifest=manifest,
+        provided_manifest_samples=provided_manifest_samples,
         launched_jobs=launched_jobs,
         excluded=excluded_samples,
         cnv_call_excluded=cnv_call_excluded_files,
@@ -244,7 +249,8 @@ class TestWriteSummaryReport():
         # job inputs written between lines 'Job inputs:' and
         # 'Total number of samples in manifest: 4'
         start = self.summary_contents.index('Job inputs:')
-        end = self.summary_contents.index('Total number of samples in manifest: 4')
+        end = self.summary_contents.index(
+            'Total number of samples in provided manifest(s): 6')
 
         written_inputs = self.summary_contents[start + 1: end]
         written_inputs = sorted([
@@ -267,10 +273,10 @@ class TestWriteSummaryReport():
         """
         samples = [
             x for x in self.summary_contents
-            if x.startswith('Total number of samples in manifest')
+            if x.startswith('Total number of samples in provided manifest(s):')
         ]
 
-        assert int(samples[0][-1]) == 4, (
+        assert int(samples[0][-1]) == 6, (
             'Total no. samples wrongly parsed from manifest'
         )
 
@@ -376,6 +382,24 @@ class TestWriteSummaryReport():
 
         assert written_table == correct_table, (
             "Summary table incorrectly written to report"
+        )
+
+
+    def test_manifest_sample_lines_correctly_written(self):
+        """
+        Test that the lines we write to the summary for the samples
+        originally in the provided manifest, the samples we ran jobs for
+        and the samples removed (i.e. where they had Research Use test
+        codes) are correctly written
+        """
+        expected_text = (
+            "\nTotal number of samples in provided manifest(s): 6"
+            "\nTotal number of samples processed from manifest(s): 4"
+            "\nSamples from manifest(s) not processed (2): X111115, X111116"
+        )
+
+        assert expected_text in '\n'.join(self.summary_contents), (
+            'Manifest details incorrect in summary text'
         )
 
 
@@ -806,6 +830,55 @@ class TestParseManifest:
             utils.parse_manifest(data)
 
 
+    def test_epic_invalid_sample_id_skipped_when_subset_specified(self):
+        """
+        Where both ReanalysisID and SampleID are not valid, this would
+        normally raise a RuntimeError (as tested in test_epic_missing_
+        sample_id_caught()). If the subset param is specified these
+        should be skipped and only checked if any of the samples
+        specified to subset do not exist in the resultant manifest
+        """
+        data = deepcopy(self.epic_data)
+
+        # remove the specimen ID for the first sample to make it invalid
+        # row 2 => first row of sample data w/ normal specimen - instrument ID
+        data[2] = ';'.join([
+            '' if idx == 2 else x for idx, x in enumerate(data[2].split(';'))
+        ])
+
+        utils.parse_manifest(
+            data, subset='224289111-33202R00111,324338111-43206R00111'
+        )
+
+
+    def test_epic_invalid_sample_id_skipped_and_subset_checked(self):
+        """
+        As testing above in test_epic_invalid_sample_id_skipped_when_
+        subset_specified() - but now we want to test where the invalid
+        sample in the manifest that is skipped is specified in the
+        subset and we catch this and raise a RuntimeError
+        """
+        data = deepcopy(self.epic_data)
+
+        # remove the specimen ID for the first sample to make it invalid
+        # row 2 => first row of sample data w/ normal specimen - instrument ID
+        data[2] = ';'.join([
+            '' if idx == 2 else x for idx, x in enumerate(data[2].split(';'))
+        ])
+
+        expected_error = re.escape(
+            "Sample names provided to -isubset not in manifest: "
+            "['123245111-23146R00111']"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            # 123245111-23146R00111 provided to subset is missing the
+            # specimenID as removed above - make sure we catch this
+            utils.parse_manifest(
+                data, subset='224289111-33202R00111,123245111-23146R00111'
+            )
+
+
     def test_invalid_manifest(self):
         """
         Manifest file passed is checked if every row contains '\t' =>
@@ -1062,9 +1135,15 @@ class TestCheckManifestValidTestCodes():
         """
         # drop test codes for a manifest sample
         manifest_copy = deepcopy(self.manifest)
+        manifest_copy['324338111-43206R00111']['tests'] = []
         manifest_copy['424487111-53214R00111']['tests'] = [[]]
 
-        with pytest.raises(RuntimeError, match=r"No tests booked for sample"):
+        expected_error = re.escape(
+            "'324338111-43206R00111': ['No tests booked for sample'], "
+            "'424487111-53214R00111': ['No tests booked for sample']"
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
             utils.check_manifest_valid_test_codes(
                 manifest=manifest_copy, genepanels=self.genepanels
             )
