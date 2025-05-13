@@ -989,11 +989,11 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     return manifest_with_panels
 
 
-def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
+def check_exclude_samples(samples, exclude, mode, single_dir=None) -> None:
     """
-    Exclude samples specified to either -iexclude_samples or
-    -iexclude_samples_file from the manifest used for CNV calling
-    and / or CNV reports
+    Checks samples specified to either -iexclude_samples or
+    -iexclude_samples_file are present in the manifest and/or have
+    corresponding bams in the dias single dir.
 
     Parameters
     ----------
