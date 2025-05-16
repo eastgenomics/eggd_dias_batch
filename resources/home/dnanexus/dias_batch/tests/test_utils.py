@@ -1139,8 +1139,9 @@ class TestCheckManifestValidTestCodes():
         manifest_copy['424487111-53214R00111']['tests'] = [[]]
 
         expected_error = re.escape(
-            "'324338111-43206R00111': ['No tests booked for sample'], "
-            "'424487111-53214R00111': ['No tests booked for sample']"
+            "One or more samples had an invalid test code requested:"
+            "\t324338111-43206R00111: ['No tests booked for sample']\n"
+            "\t424487111-53214R00111: ['No tests booked for sample']"
         )
 
         with pytest.raises(RuntimeError, match=expected_error):
