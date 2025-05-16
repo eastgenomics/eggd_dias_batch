@@ -510,21 +510,19 @@ def main(
         ]
 
         if snv_path or cnv_path:
-            artemis_app_id = assay_config.get('artemis_app_id')
-            artemis_inputs = assay_config['modes']['artemis']['inputs']
+            additional_inputs = assay_config['modes']['artemis']['inputs']
 
-            artemis_inputs.update({
-                "single_output_dir": single_output_dir,
-                "app_id": artemis_app_id,
-                "dependent_jobs": dependent_jobs,
-                "start": start_time,
-                "qc_xlsx": qc_file,
-                "snv_output": snv_path,
-                "cnv_output": cnv_path,
-                "multiqc_report": multiqc_report
-            })
-
-            artemis_job = DXExecute().artemis(**artemis_inputs)
+            artemis_job = DXExecute().artemis(
+                single_output_dir=single_output_dir,
+                app_id=assay_config.get('artemis_app_id'),
+                dependent_jobs=dependent_jobs,
+                start=start_time,
+                qc_xlsx=qc_file,
+                snv_output=snv_path,
+                cnv_output=cnv_path,
+                multiqc_report=multiqc_report,
+                **additional_inputs,
+            )
 
             launched_jobs['artemis'] = [artemis_job]
         else:

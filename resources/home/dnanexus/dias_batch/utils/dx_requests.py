@@ -1361,11 +1361,10 @@ class DXExecute():
             dependent_jobs,
             start,
             qc_xlsx,
-            capture_bed,
             snv_output=None,
             cnv_output=None,
-            url_duration=None,
-            multiqc_report=None
+            multiqc_report=None,
+            **additional_inputs
         ) -> str:
         """
         Launch eggd_artemis to generate xlsx file of download links
@@ -1406,10 +1405,9 @@ class DXExecute():
             "snv_path": snv_output,
             "cnv_path": cnv_output,
             "qc_status": qc_xlsx,
-            "bed_file": capture_bed,
-            "url_duration": url_duration
         }
 
+        app_input.update(additional_inputs)
         if details.get('version') >= '1.4.0' and multiqc_report:
             app_input["multiqc_report"] = multiqc_report
 

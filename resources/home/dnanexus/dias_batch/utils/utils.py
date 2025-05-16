@@ -788,9 +788,11 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
             # sample had one or more invalid test code
             invalid[sample].extend(sample_invalid_test)
 
+    formatted_invalid = "\n".join(f"\t{k}: {v}" for k, v in invalid.items())
     if invalid:
         raise RuntimeError(
-            f"One or more samples had an invalid test code requested: {invalid}"
+            "One or more samples had an invalid test code requested: "
+            f"{formatted_invalid}"
         )
     else:
         print("All sample test codes valid!")
