@@ -510,7 +510,9 @@ def main(
         ]
 
         if snv_path or cnv_path:
-            additional_inputs = assay_config['modes']['artemis']['inputs']
+            additional_inputs = assay_config.get(
+                'modes', {}
+            ).get('artemis', {}).get('inputs', {})
 
             artemis_job = DXExecute().artemis(
                 single_output_dir=single_output_dir,
