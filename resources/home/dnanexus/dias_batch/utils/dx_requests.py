@@ -842,12 +842,6 @@ class DXExecute():
                 f"\n\t{printable_excluded}"
             )
 
-        # check to ensure all bams are unarchived
-        DXManage().check_archival_state(
-            sample_files=files,
-            unarchive=unarchive
-        )
-
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['inputs']['bambais'] = files
 
@@ -1195,15 +1189,6 @@ class DXExecute():
                 f"({len(manifest_no_vcf)})"
             ] = manifest_no_vcf
 
-
-        # check to ensure all vcfs (and mosdepth files for SNVs) are unarchived
-        DXManage().check_archival_state(
-            sample_files=vcf_files + mosdepth_files,
-            non_sample_files=excluded_intervals_bed_file,
-            samples=manifest.keys(),
-            unarchive=unarchive
-        )
-
         workflow_details = dxpy.describe(workflow_id)
 
         workflow_name = (
@@ -1361,11 +1346,10 @@ class DXExecute():
             dependent_jobs,
             start,
             qc_xlsx,
-            capture_bed,
             snv_output=None,
             cnv_output=None,
-            url_duration=None,
-            multiqc_report=None
+            multiqc_report=None,
+            **additional_inputs
         ) -> str:
         """
         Launch eggd_artemis to generate xlsx file of download links
@@ -1382,16 +1366,14 @@ class DXExecute():
             start time of running app for naming output folders
         qc_xlsx : dict
             $dnanexus_link mapping of file input of QC status
-        capture_bed : dict
-            $dnanexus_link mapping dict of capture bed
         snv_output : str (optional)
             output path of SNV reports (if run), by default None
         cnv_output : str (optional)
             output path of CNV reports (if run), by default None
-        url_duration : str (optional)
-            expiry time in seconds for artemis urls, by default None
         multiqc_report : str (optional)
             file ID of MultiQC report to specify as input
+        **additional_inputs:
+            key-value pairs passed from config as input to the app
 
         Returns
         -------
@@ -1406,9 +1388,10 @@ class DXExecute():
             "snv_path": snv_output,
             "cnv_path": cnv_output,
             "qc_status": qc_xlsx,
-            "bed_file": capture_bed,
-            "url_duration": url_duration
         }
+
+        if additional_inputs:
+            app_input.update(additional_inputs)
 
         if details.get('version') >= '1.4.0' and multiqc_report:
             app_input["multiqc_report"] = multiqc_report
