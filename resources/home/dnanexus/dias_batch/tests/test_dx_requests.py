@@ -2548,6 +2548,84 @@ class TestDXExecuteArtemis(unittest.TestCase):
 
         self.assertEqual(run_input['app_input']['multiqc_report'], 'file-xxx')
 
+    @patch('utils.dx_requests.make_path')
+    @patch('utils.dx_requests.dxpy.describe')
+    @patch('utils.dx_requests.dxpy.DXApp')
+    def test_additional_inputs_passed_if_exist(
+        self,
+        mock_app,
+        mock_describe,
+        mock_path
+    ):
+        """
+        Test that if additional inputs are passed to the function that
+        these are added to the app input when running the app
+        """
+        # mock app describe output to be 1.4.0 => add multiqc_report
+        mock_describe.return_value = {
+            'name': 'eggd_artemis',
+            'version': '1.4.0'
+        }
+
+        additional_inputs = {
+            "input_1": "value_1",
+            "input_2": 12
+        }
+
+        DXExecute().artemis(
+            single_output_dir='/output_path/',
+            app_id='app-xxx',
+            dependent_jobs=[],
+            start='230922_1012',
+            qc_xlsx='file-xxx',
+            snv_output=None,
+            cnv_output=None,
+            **additional_inputs
+        )
+
+        run_input = mock_app.return_value.run.call_args.kwargs
+        self.assertEqual(run_input['app_input']['input_1'], "value_1")
+        self.assertEqual(run_input['app_input']['input_2'], 12)
+
+    @patch('utils.dx_requests.make_path')
+    @patch('utils.dx_requests.dxpy.describe')
+    @patch('utils.dx_requests.dxpy.DXApp')
+    def test_additional_inputs_not_passed_if_exist(
+        self,
+        mock_app,
+        mock_describe,
+        mock_path
+    ):
+        """
+        Test that if no additional inputs exist they are not passed to
+        to the app input when running the app
+        """
+        # mock app describe output to be 1.4.0 => add multiqc_report
+        mock_describe.return_value = {
+            'name': 'eggd_artemis',
+            'version': '1.4.0'
+        }
+
+        additional_inputs = {}
+
+        DXExecute().artemis(
+            single_output_dir='/output_path/',
+            app_id='app-xxx',
+            dependent_jobs=[],
+            start='230922_1012',
+            qc_xlsx='file-xxx',
+            snv_output=None,
+            cnv_output=None,
+            **additional_inputs
+        )
+
+        expected_run_inputs = {
+            'snv_path', 'cnv_path', 'qc_status'
+        }
+
+        kwargs = mock_app.return_value.run.call_args.kwargs
+        run_input = kwargs['app_input']
+        self.assertEqual(set(run_input.keys()), expected_run_inputs)
 
 class TestDXExecuteTerminate(unittest.TestCase):
     """

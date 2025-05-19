@@ -788,9 +788,11 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
             # sample had one or more invalid test code
             invalid[sample].extend(sample_invalid_test)
 
+    formatted_invalid = "\n".join(f"\t{k}: {v}" for k, v in invalid.items())
     if invalid:
         raise RuntimeError(
-            f"One or more samples had an invalid test code requested: {invalid}"
+            "One or more samples had an invalid test code requested:"
+            f"{formatted_invalid}"
         )
     else:
         print("All sample test codes valid!")
@@ -989,11 +991,11 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
     return manifest_with_panels
 
 
-def check_exclude_samples(samples, exclude, mode, single_dir=None) -> dict:
+def check_exclude_samples(samples, exclude, mode, single_dir=None) -> None:
     """
-    Exclude samples specified to either -iexclude_samples or
-    -iexclude_samples_file from the manifest used for CNV calling
-    and / or CNV reports
+    Checks samples specified to either -iexclude_samples or
+    -iexclude_samples_file are present in the manifest and/or have
+    corresponding bams in the dias single dir.
 
     Parameters
     ----------
