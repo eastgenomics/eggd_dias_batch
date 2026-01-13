@@ -1,7 +1,8 @@
 default_mode_file_patterns = {
     'cnv_reports': {
         'sample': [
-            '_segments.vcf$'
+            '_segments.vcf$',
+            '_segments_annotated.seg$'
         ],
         'run': [
             '_excluded_intervals.bed$'
