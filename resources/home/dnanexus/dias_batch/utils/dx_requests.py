@@ -2,6 +2,7 @@
 Functions related to querying and managing objects in DNAnexus, as well
 as running jobs.
 """
+
 from collections import defaultdict
 from copy import deepcopy
 import concurrent.futures
@@ -11,21 +12,20 @@ import os
 import re
 import sys
 from timeit import default_timer as timer
-from typing import List, Tuple
+from typing import List, Tuple, Any
 
 import dxpy
-from packaging.version import Version
 import pandas as pd
+from packaging.version import Version
 
 from .defaults import default_mode_file_patterns
-
 from .utils import (
     add_dynamic_inputs,
     check_exclude_samples,
     check_report_index,
     filter_manifest_samples_by_files,
     make_path,
-    prettier_print
+    prettier_print,
 )
 
 # for prettier viewing in the logs
@@ -33,10 +33,11 @@ pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
 
 
-class DXManage():
+class DXManage:
     """
     Methods for generic handling of dx related things
     """
+
     def read_assay_config_file(self, file) -> dict:
         """
         Read assay config file specified with -iassay_config_file
@@ -51,7 +52,7 @@ class DXManage():
         dict
             JSON files read into a dict
         """
-        print("\n \nReading in specified assay config file...")
+        print('\n \nReading in specified assay config file...')
         contents = self.read_dxfile(file)
         config = json.loads('\n'.join(contents))
 
@@ -63,11 +64,10 @@ class DXManage():
         config['name'] = file_details['name']
         config['dxid'] = file_details['id']
 
-        print("Assay config file contents:")
+        print('Assay config file contents:')
         prettier_print(config)
 
         return config
-
 
     def get_assay_config(self, path, assay) -> dict:
         """
@@ -100,25 +100,31 @@ class DXManage():
             f'path to assay configs appears invalid: {path}'
         )
 
-        print(f"\n \nSearching following path for assay configs: {path}")
+        print(f'\n \nSearching following path for assay configs: {path}')
 
         project, project_path = path.split(':')
 
-        files = list(dxpy.find_data_objects(
-            name=".json$",
-            name_mode='regexp',
-            project=project,
-            folder=project_path,
-            describe=True
-        ))
+        files = list(
+            dxpy.find_data_objects(
+                name='.json$',
+                name_mode='regexp',
+                project=project,
+                folder=project_path,
+                describe=True,
+            )
+        )
 
         # sense check we find config files
-        assert files, f"No config files found in given path: {path}"
+        assert files, f'No config files found in given path: {path}'
 
-        files_ids='\n\t'.join([
-            f"{x['describe']['name']} ({x['id']} - "
-            f"{x['describe']['archivalState']})" for x in files])
-        print(f"\nAssay config files found:\n\t{files_ids}")
+        files_ids = '\n\t'.join(
+            [
+                f'{x["describe"]["name"]} ({x["id"]} - '
+                f'{x["describe"]["archivalState"]})'
+                for x in files
+            ]
+        )
+        print(f'\nAssay config files found:\n\t{files_ids}')
 
         highest_config = {}
         config_version_files = defaultdict(list)
@@ -126,16 +132,14 @@ class DXManage():
         for file in files:
             if not file['describe']['archivalState'] == 'live':
                 print(
-                    "Config file not in live state - will not be used: "
-                    f"{file['describe']['name']} ({file['id']})"
+                    'Config file not in live state - will not be used: '
+                    f'{file["describe"]["name"]} ({file["id"]})'
                 )
                 continue
 
             config_data = json.loads(
-                dxpy.DXFile(
-                    project=file['project'],
-                    dxid=file['id']
-                ).read())
+                dxpy.DXFile(project=file['project'], dxid=file['id']).read()
+            )
 
             if not config_data.get('assay') == assay:
                 continue
@@ -146,36 +150,235 @@ class DXManage():
                 (file['describe']['name'], file['id'])
             )
 
-            if Version(config_data.get('version')) > Version(highest_config.get('version', '0')):
+            if Version(config_data.get('version')) > Version(
+                highest_config.get('version', '0')
+            ):
                 config_data['dxid'] = file['id']
                 config_data['name'] = file['describe']['name']
                 highest_config = config_data
 
         assert highest_config, (
-            f"No config file was found for {assay} from {path}"
+            f'No config file was found for {assay} from {path}'
         )
 
         if len(config_version_files[highest_config['version']]) > 1:
-            files = '\n\t'.join([
-                f"{x[0]} ({x[1]})"
-                for x in config_version_files[highest_config['version']]
-            ])
+            files = '\n\t'.join(
+                [
+                    f'{x[0]} ({x[1]})'
+                    for x in config_version_files[highest_config['version']]
+                ]
+            )
 
             raise RuntimeError(
-                f"Error: more than one file found for highest version of "
-                f"{assay} configs. Files found:\n\t{files}"
+                f'Error: more than one file found for highest version of '
+                f'{assay} configs. Files found:\n\t{files}'
             )
 
         print(
-            f"Highest version config found for {assay} was "
-            f"{highest_config.get('version')} from {highest_config.get('dxid')}"
+            f'Highest version config found for {assay} was '
+            f'{highest_config.get("version")} from {highest_config.get("dxid")}'
         )
 
-        print("Assay config file contents:")
+        print('Assay config file contents:')
         prettier_print(highest_config)
 
         return highest_config
 
+    def get_static_beds(
+        self,
+        path: str,
+        header_version_regex: re.Pattern,
+        version_regex: re.Pattern,
+    ) -> dict[str, dict[str, Any]]:
+        """
+        For each bed file suffix, return metadata for the highest version file.
+
+        Checks that the version in the file name matches the version in the
+        file header (if present), and that there is only one file for the
+        highest version of each suffix.
+
+        Parameters
+        ----------
+        path : str
+            DNAnexus project:path to dir containing bed files,
+            e.g. "project-xxx:/path/to/beds"
+        header_version_regex : re.Pattern
+            Compiled regex pattern with a 'header_version'
+            named group to extract version from the file header.
+        version_regex : re.Pattern
+            Compiled regex pattern with 'version' and 'suffix' named groups to
+            extract version and suffix from the file name.
+
+        Returns
+        -------
+        dict
+            Mapping of suffix -> bed file metadata dict with keys:
+                - name (str): filename
+                - version (str): resolved version string
+                - dxid (str): DNAnexus file ID
+
+        Raises
+        ------
+        AssertionError
+            If 'path' is not a valid project-xxx:/path format.
+        AssertionError
+            If no bed files are found at the given path.
+        RuntimeError
+            If more than one file shares the highest version for a suffix.
+        RuntimeError
+            If the file header version does not match the filename version.
+        """
+        assert re.match(r'^project-[\d\w]+:/.+', path), (
+            f'Path to bed files appears invalid: {path}'
+        )
+
+        print(f'\nSearching for bed files in: {path}')
+
+        project, project_path = path.split(':')
+
+        # Query DNAnexus for all .bed files in the folder
+        files = list(
+            dxpy.find_data_objects(
+                name=r'\.bed$',
+                name_mode='regexp',
+                project=project,
+                folder=project_path,
+                describe=True,
+            )
+        )
+
+        assert files, f'No bed files found in: {path}'
+
+        _log_found_files(files)
+
+        # version_regex = re.compile(r"^v(?P<version>\d+(?:\.\d+)*)_(?P<suffix>.+)$")
+        # header_version_regex = re.compile(r"^#\s*v?(?P<header_version>\d+(?:\.\d+)*)")
+
+        # suffix -> version_str -> list of (name, dxid)
+        suffix_version_files: dict[str, dict[str, list[Tuple[str, str]]]] = (
+            defaultdict(lambda: defaultdict(list))
+        )
+        highest_beds: dict[str, dict[str, Any]] = {}
+
+        for file in files:
+            desc = file['describe']
+
+            if desc['archivalState'] != 'live':
+                print(
+                    f'Skipping non-live file: {desc["name"]} '
+                    f'({file["id"]} - {desc["archivalState"]})'
+                )
+                continue
+
+            name = desc['name']
+            match = version_regex.match(name)
+            if not match:
+                print(
+                    f"Could not parse version/suffix from '{name}', skipping"
+                )
+                continue
+
+            file_version = match.group('version')
+            suffix = match.group('suffix')
+
+            # Read file header to check for an embedded version
+            header_version = _read_header_version(
+                project=file['project'],
+                dxid=file['id'],
+                pattern=header_version_regex,
+            )
+
+            # If header has a version, validate it matches the filename version
+            if header_version is not None and header_version != file_version:
+                raise RuntimeError(
+                    f"Version mismatch for '{name}': filename has v{file_version} "
+                    f'but header has v{header_version}'
+                )
+
+            resolved_version = file_version
+
+            suffix_version_files[suffix][resolved_version].append(
+                (name, file['id'])
+            )
+
+            # Track the highest version per suffix
+            current_highest = highest_beds.get(suffix, {}).get('version', '0')
+            if Version(resolved_version) > Version(current_highest):
+                highest_beds[suffix] = {
+                    'dxid': file['id'],
+                    'name': name,
+                    'version': resolved_version,
+                }
+
+        assert highest_beds, f'No valid versioned bed files found in: {path}'
+
+        # Validate no duplicate files at the highest version for any suffix
+        for suffix, versions in suffix_version_files.items():
+            highest_version = highest_beds[suffix]['version']
+            matching_files = versions[highest_version]
+            if len(matching_files) > 1:
+                dup_list = '\n\t'.join(
+                    f'{n} ({fid})' for n, fid in matching_files
+                )
+                raise RuntimeError(
+                    f'More than one file found for highest version '
+                    f"(v{highest_version}) of suffix '{suffix}':\n\t{dup_list}"
+                )
+
+        # Log results
+        for suffix, bed in highest_beds.items():
+            print(
+                f"Highest version for '{suffix}': "
+                f'v{bed["version"]} -> {bed["name"]} ({bed["dxid"]})'
+            )
+
+        return highest_beds
+
+    def _log_found_files(self, files: list[dict]) -> None:
+        """Print a summary of all discovered bed files."""
+        lines = [
+            f'{f["describe"]["name"]} ({f["id"]} - {f["describe"]["archivalState"]})'
+            for f in files
+        ]
+        print('\nBed files found:\n\t' + '\n\t'.join(lines))
+
+    def _read_header_version(
+        self,
+        project: str,
+        dxid: str,
+        pattern: re.Pattern,
+    ) -> str | None:
+        """
+        Read the first comment lines of a DXFile and extract a version string.
+
+        Parameters
+        ----------
+        project : str
+            DNAnexus project ID.
+        dxid : str
+            DNAnexus file ID.
+        pattern : re.Pattern
+            Compiled regex with a 'header_version' named group.
+
+        Returns
+        -------
+        str or None
+            The version string from the header, or None if not found.
+        """
+        content = dxpy.DXFile(project=project, dxid=dxid).read()
+
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
+
+        for line in content.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith('#'):
+                break
+            match = pattern.match(stripped)
+            if match:
+                return match.group('header_version')
+
+        return None
 
     def get_file_project_context(self, file) -> dxpy.DXObject:
         """
@@ -198,13 +401,13 @@ class DXManage():
         AssertionError
             Raised if no live copies of the given file could be found
         """
-        print(f"Searching all projects for: {file}")
+        print(f'Searching all projects for: {file}')
 
         # find projects where file exists and get DXFile objects for
         # each to check archivalState, list_projects() returns dict
         # where key is the project ID and value is permission level
         projects = dxpy.DXFile(dxid=file).list_projects()
-        print(f"Found file in {len(projects)} project(s)")
+        print(f'Found file in {len(projects)} project(s)')
 
         files = [
             dxpy.DXFile(dxid=file, project=id).describe()
@@ -214,22 +417,23 @@ class DXManage():
         # filter out any archived files or those resolving
         # to the current job container context
         files = [
-            x for x in files
+            x
+            for x in files
             if x['archivalState'] == 'live'
-            and not re.match(r"^container-[\d\w]+$", x['project'])
+            and not re.match(r'^container-[\d\w]+$', x['project'])
         ]
-        assert files, f"No live files could be found for the ID: {file}"
+        assert files, f'No live files could be found for the ID: {file}'
 
         print(
-            f"Found {file} in {len(files)} projects, "
-            f"using {files[0]['project']} as project context"
+            f'Found {file} in {len(files)} projects, '
+            f'using {files[0]["project"]} as project context'
         )
 
         return files[0]
 
-
     def find_files(
-        self, path, subdir='', limit=None, pattern=None) -> List[dxpy.DXObject]:
+        self, path, subdir='', limit=None, pattern=None
+    ) -> List[dxpy.DXObject]:
         """
         Search given path in DNAnexus, optionally filter down by a sub
         directory and / or with a file name regex pattern. Default
@@ -257,7 +461,7 @@ class DXManage():
             subdir = subdir.strip('/')
 
         print(
-            f"Searching for files in {path} and subdir {subdir} with "
+            f'Searching for files in {path} and subdir {subdir} with '
             f"pattern '{pattern}'"
         )
 
@@ -267,38 +471,41 @@ class DXManage():
 
         path = re.sub(r'^project-[\d\w]+:', '', path)
 
-        files = list(dxpy.find_data_objects(
-            name=pattern,
-            name_mode='regexp',
-            project=project,
-            folder=path,
-            limit=limit,
-            describe=True
-        ))
+        files = list(
+            dxpy.find_data_objects(
+                name=pattern,
+                name_mode='regexp',
+                project=project,
+                folder=path,
+                limit=limit,
+                describe=True,
+            )
+        )
 
         if subdir:
             # filter down to just those in the given sub dir
-            sub_path = f"{path}/{subdir}".lower()
+            sub_path = f'{path}/{subdir}'.lower()
             files = [
-                x for x in files
+                x
+                for x in files
                 if x['describe']['folder'].lower().startswith(sub_path)
             ]
 
         not_live = [
-            f"{x['describe']['name']} ({x['id']})" for x in files
+            f'{x["describe"]["name"]} ({x["id"]})'
+            for x in files
             if x['describe']['archivalState'] != 'live'
         ]
         if not_live:
             print(
-                "WARNING: some files found are in an archived state, if these "
-                "are for samples to be analysed this will raise an error..."
+                'WARNING: some files found are in an archived state, if these '
+                'are for samples to be analysed this will raise an error...'
             )
             prettier_print(not_live)
 
-        print(f"Found {len(files)} files in {path}/{subdir}")
+        print(f'Found {len(files)} files in {path}/{subdir}')
 
         return files
-
 
     def read_dxfile(self, file) -> List[str]:
         """
@@ -324,12 +531,12 @@ class DXManage():
         AssertionError
             Raised if project and file ID not correctly parsed
         """
-        print(f"Reading from {file}")
+        print(f'Reading from {file}')
         if not file:
             # None passed, not sure if I need to handle this but keep tripping
             # myself up with tests so just going to return and probably
             # end up moving the error along somewhere else but oh well
-            print("Empty file passed to read_dxfile() :sadpepe:")
+            print('Empty file passed to read_dxfile() :sadpepe:')
             return
 
         if isinstance(file, dict):
@@ -346,19 +553,19 @@ class DXManage():
             project, file_id = file.split(':')
         else:
             # who knows what's happened, not for me to deal with
-            raise RuntimeError(
-                f"DXFile not in an expected format: {file}"
-            )
+            raise RuntimeError(f'DXFile not in an expected format: {file}')
 
         # sense check that we actually got a project and file ID from above
         assert all([project, file_id]), (
-            "Missing project and / or file ID - "
-            f"project: {project}, file: {file_id}"
+            f'Missing project and / or file ID - project: {project}, file: {file_id}'
         )
 
-        return dxpy.DXFile(
-            project=project, dxid=file_id).read().rstrip('\n').split('\n')
-
+        return (
+            dxpy.DXFile(project=project, dxid=file_id)
+            .read()
+            .rstrip('\n')
+            .split('\n')
+        )
 
     def check_all_files_archival_state(
         self,
@@ -367,8 +574,8 @@ class DXManage():
         path,
         modes,
         unarchive,
-        unarchive_only=False
-        ):
+        unarchive_only=False,
+    ):
         """
         Checks for all specified file patterns and samples for each
         running mode to ensure they are unarchived before attempting
@@ -391,7 +598,7 @@ class DXManage():
             if to only check file archival status and exit without
             returning to launch any jobs
         """
-        print("\nChecking archival states for selected running modes:")
+        print('\nChecking archival states for selected running modes:')
         prettier_print(modes)
 
         if not patterns:
@@ -399,12 +606,12 @@ class DXManage():
             # use current patterns correct as of 12/07/2024 as default
             # TODO - remove this once it is added to both CEN and TWE configs
             print(
-                "No mode file patterns defined in assay config, using "
-                "default values from utils.defaults"
+                'No mode file patterns defined in assay config, using '
+                'default values from utils.defaults'
             )
             patterns = dict(default_mode_file_patterns)
 
-        print("Currently defined patterns:")
+        print('Currently defined patterns:')
         prettier_print(patterns)
 
         sample_files_to_check = []
@@ -422,40 +629,44 @@ class DXManage():
                 # generate regex pattern per sample for each file pattern,
                 # then join it as one big chongus pattern for a single query
                 # because its not our API server load to worry about
-                sample_patterns = '|'.join([
-                    f"{x}.*{y}" for x in samples for y in mode_sample_patterns
-                ])
+                sample_patterns = '|'.join(
+                    [
+                        f'{x}.*{y}'
+                        for x in samples
+                        for y in mode_sample_patterns
+                    ]
+                )
                 print(
-                    f"Searching per sample files for {mode} with "
-                    f"{len(mode_sample_patterns)} patterns for {len(samples)} "
-                    "samples"
+                    f'Searching per sample files for {mode} with '
+                    f'{len(mode_sample_patterns)} patterns for {len(samples)} '
+                    'samples'
                 )
 
-                sample_files_to_check.extend(self.find_files(
-                    path=path,
-                    pattern=sample_patterns
-                ))
+                sample_files_to_check.extend(
+                    self.find_files(path=path, pattern=sample_patterns)
+                )
 
             if mode_run_patterns:
                 print(
-                    f"Searching per run files for {mode} with "
-                    f"{len(mode_run_patterns)} patterns"
+                    f'Searching per run files for {mode} with '
+                    f'{len(mode_run_patterns)} patterns'
                 )
-                run_files_to_check.extend(self.find_files(
-                    path=path,
-                    pattern='|'.join(mode_run_patterns)
-                ))
+                run_files_to_check.extend(
+                    self.find_files(
+                        path=path, pattern='|'.join(mode_run_patterns)
+                    )
+                )
 
         print(
-            f"Found {len(sample_files_to_check)} sample files and "
-            f"{len(run_files_to_check)} run level files to check status of"
+            f'Found {len(sample_files_to_check)} sample files and '
+            f'{len(run_files_to_check)} run level files to check status of'
         )
 
         if sample_files_to_check or run_files_to_check:
             self.check_archival_state(
                 sample_files=sample_files_to_check,
                 non_sample_files=run_files_to_check,
-                unarchive=unarchive
+                unarchive=unarchive,
             )
 
         if unarchive_only:
@@ -465,22 +676,20 @@ class DXManage():
             # zero exit code on no archived files found => just exit here
             # and add a helpful tag to the job
             dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
-                ["unarchive_only set - no jobs launched"]
+                ['unarchive_only set - no jobs launched']
             )
             print(
-                "-iunarchive_only set and no files in archived state "
-                "- exiting now"
+                '-iunarchive_only set and no files in archived state - exiting now'
             )
             exit(0)
 
-
     def check_archival_state(
-            self,
-            sample_files=[],
-            non_sample_files=[],
-            unarchive=False,
-            samples=None
-        ) -> None:
+        self,
+        sample_files=[],
+        non_sample_files=[],
+        unarchive=False,
+        samples=None,
+    ) -> None:
         """
         Check archival state of n files, to be used before attempting
         to launch jobs to ensure nothing fails due to archived files.
@@ -517,17 +726,15 @@ class DXManage():
             Raised when required files are archived and -iunarchive=False
         """
         print(
-            f"\n \nChecking archival state of "
-            f"{len(sample_files) + len(non_sample_files)} files..."
+            f'\n \nChecking archival state of '
+            f'{len(sample_files) + len(non_sample_files)} files...'
         )
 
         # find sample files not in a live state, and filter these down
         # by samples given that we're going to launch jobs for
         not_live = [
-            x for x in sample_files
-            if x['describe']['archivalState'] != 'live'
+            x for x in sample_files if x['describe']['archivalState'] != 'live'
         ]
-
         if samples and not_live:
             not_live_filtered = []
             for dx_file in not_live:
@@ -544,14 +751,17 @@ class DXManage():
             not_live = not_live_filtered
 
         # add in any non sample files that are not in live state
-        not_live.extend([
-            x for x in non_sample_files
-            if x['describe']['archivalState'] != 'live'
-        ])
+        not_live.extend(
+            [
+                x
+                for x in non_sample_files
+                if x['describe']['archivalState'] != 'live'
+            ]
+        )
 
         if not not_live:
             # nothing archived that we need :dancing_penguin:
-            print("No required files in archived state")
+            print('No required files in archived state')
             return
 
         # check for files currently unarchiving (i.e. in 'unarchiving') since
@@ -566,15 +776,17 @@ class DXManage():
                 to_unarchive.append(file)
 
         not_live_ids = ' '.join([x['id'] for x in not_live])
-        not_live_printable = '\n\t'.join([
-            f"{x['describe']['name']} ({x['id']}) - {x['describe']['archivalState']}"
-            for x in not_live
-        ])
+        not_live_printable = '\n\t'.join(
+            [
+                f'{x["describe"]["name"]} ({x["id"]}) - {x["describe"]["archivalState"]}'
+                for x in not_live
+            ]
+        )
 
         print(
-            f"\n \nWARNING: {len(not_live)}/"
-            f"{len(sample_files) + len(non_sample_files)} files to use for "
-            f"analysis are not in a live state:\n\t{not_live_printable}\n \n"
+            f'\n \nWARNING: {len(not_live)}/'
+            f'{len(sample_files) + len(non_sample_files)} files to use for '
+            f'analysis are not in a live state:\n\t{not_live_printable}\n \n'
         )
 
         print(f"{len(unarchiving)} files are currently in state 'unarchiving'")
@@ -586,26 +798,25 @@ class DXManage():
                 # are not in a state that can be unarchived (i.e. unarchiving
                 # already requested) => raise error
                 print(
-                    "ERROR: -unarchive=true but all non-live files found "
-                    "are not in an archived/archival state, and therefore "
-                    "unarchiving can not be performed"
+                    'ERROR: -unarchive=true but all non-live files found '
+                    'are not in an archived/archival state, and therefore '
+                    'unarchiving can not be performed'
                 )
                 raise RuntimeError(
                     'non-live files not in a state that can be unarchived'
                 )
 
             print(
-                "\n \n-iunarchive=true specified, will start unarchiving...\n \n"
+                '\n \n-iunarchive=true specified, will start unarchiving...\n \n'
             )
             self.unarchive_files(to_unarchive)
         else:
             # not unarchiving => print a handy message and rage quit
             print(
-                f"ERROR: files required are archived and -iunarchive not "
-                f"specified, file IDs of archived files:\n\t{not_live_ids}"
+                f'ERROR: files required are archived and -iunarchive not '
+                f'specified, file IDs of archived files:\n\t{not_live_ids}'
             )
             raise RuntimeError('Files required for analysis archived')
-
 
     def unarchive_files(self, files) -> None:
         """
@@ -624,29 +835,20 @@ class DXManage():
         """
         # split list of files into sub lists by project they're present
         # in in case of multiple projects
-        projects = [
-            list(g) for k, g in groupby(files, lambda x: x['project'])
-        ]
-
+        projects = [list(g) for k, g in groupby(files, lambda x: x['project'])]
         for project_files in projects:
             try:
                 dxpy.api.project_unarchive(
                     project_files[0]['project'],
-                    input_params={
-                        "files": [
-                            x['id'] for x in project_files
-                        ]
-                    }
+                    input_params={'files': [x['id'] for x in project_files]},
                 )
             except Exception as error:
                 # API spec doesn't list the potential exceptions raised,
                 # catch everything and exit on any error
                 print(
-                    "Error unarchving files for "
-                    f"{project_files[0]['project']}: {error}"
+                    f'Error unarchving files for {project_files[0]["project"]}: {error}'
                 )
-                raise RuntimeError("Error unarchiving files")
-
+                raise RuntimeError('Error unarchiving files')
 
         # build a handy command to dump into the logs for people to check
         # the state of all of the files we're unarchiving later on
@@ -656,30 +858,31 @@ class DXManage():
         )
 
         print(
-            f"\n \nUnarchiving requested for {len(files)} files, this "
-            "will take some time...\n \n"
+            f'\n \nUnarchiving requested for {len(files)} files, this '
+            'will take some time...\n \n'
         )
 
         print(
-            "The state of all files may be checked with the following command:"
-            f"\n \n\t{check_state_cmd}\n \n"
+            'The state of all files may be checked with the following command:'
+            f'\n \n\t{check_state_cmd}\n \n'
         )
 
         print(
-            "This job can be relaunched once unarchiving is complete by "
-            "running:\n \n\tdx run app-eggd_dias_batch --clone "
-            f"{os.environ.get('DX_JOB_ID')}"
+            'This job can be relaunched once unarchiving is complete by '
+            'running:\n \n\tdx run app-eggd_dias_batch --clone '
+            f'{os.environ.get("DX_JOB_ID")}'
         )
 
         # tag job to know its not launched any jobs
         dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).add_tags(
-            [f"Unarchiving of {len(files)} requested, no jobs launched"]
+            [f'Unarchiving of {len(files)} requested, no jobs launched']
         )
 
         sys.exit(0)
 
-
-    def format_output_folders(self, workflow, single_output, time_stamp, name) -> dict:
+    def format_output_folders(
+        self, workflow, single_output, time_stamp, name
+    ) -> dict:
         """
         Generate dict of output folders for each stage of given workflow
         for passing to dxpy.DXWorkflow().run()
@@ -710,7 +913,7 @@ class DXManage():
         dict
             mapping of stage ID -> output folder path
         """
-        print("\n \nGenerating output folder structure")
+        print('\n \nGenerating output folder structure')
         stage_folders = {}
 
         for stage in workflow['stages']:
@@ -718,32 +921,30 @@ class DXManage():
                 applet_details = dxpy.describe(stage['executable'])
                 folder_name = applet_details['name']
             else:
-                folder_name = stage['executable'].replace(
-                    'app-', '', 1).replace('/', '-')
+                folder_name = (
+                    stage['executable']
+                    .replace('app-', '', 1)
+                    .replace('/', '-')
+                )
 
             path = make_path(single_output, name, time_stamp, folder_name)
 
             stage_folders[stage['id']] = path
 
-        print("Output folders to use:")
+        print('Output folders to use:')
         prettier_print(stage_folders)
 
         return stage_folders
 
 
-class DXExecute():
+class DXExecute:
     """
     Methods for handling execution of apps / workflows
     """
+
     def cnv_calling(
-            self,
-            config,
-            single_output_dir,
-            exclude,
-            start,
-            wait,
-            unarchive
-        ) -> str:
+        self, config, single_output_dir, exclude, start, wait, unarchive
+    ) -> str:
         """
         Run CNV calling for given samples in manifest
 
@@ -775,34 +976,32 @@ class DXExecute():
         dxpy.exceptions.DXJobFailureError
             Raised when CNV calling fails / terminates / timed out
         """
-        print("\n \nBuilding inputs for CNV calling")
+        print('\n \nBuilding inputs for CNV calling')
         cnv_config = config['modes']['cnv_call']
 
         # check if we're searching for files in different project,
         # and set the project input name accordingly
-        remote_project = re.match(r"project-[\w]+", single_output_dir)
+        remote_project = re.match(r'project-[\w]+', single_output_dir)
         if remote_project:
             project_name = dxpy.describe(remote_project.group()).get('name')
         else:
             project_name = dxpy.describe(
-                os.environ.get('DX_PROJECT_CONTEXT_ID')).get('name')
+                os.environ.get('DX_PROJECT_CONTEXT_ID')
+            ).get('name')
 
         cnv_config['inputs']['run_name'] = project_name
 
         files = DXManage().find_files(
             pattern=cnv_config['inputs']['bambais']['name'],
             path=single_output_dir,
-            subdir=cnv_config['inputs']['bambais']['folder']
+            subdir=cnv_config['inputs']['bambais']['folder'],
         )
 
         # sense check we find files and the dir isn't empty
-        assert files, "No BAM files found for CNV calling"
+        assert files, 'No BAM files found for CNV calling'
 
         printable_files = '\n\t'.join([x['describe']['name'] for x in files])
-        print(
-            f"Found {len(files)} .bam/.bai files:"
-            f"\n\t{printable_files}"
-        )
+        print(f'Found {len(files)} .bam/.bai files:\n\t{printable_files}')
 
         excluded_files = []
 
@@ -811,49 +1010,52 @@ class DXExecute():
             check_exclude_samples(
                 samples=[x['describe']['name'] for x in files],
                 exclude=exclude,
-                mode='calling'
+                mode='calling',
             )
 
             # get the files we are excluding to log in the summary report
             excluded_files = [
-                file['describe']['name'] for file in files
-                if any([
-                    re.match(x, file['describe']['name']) for x in exclude
-                ])
+                file['describe']['name']
+                for file in files
+                if any(
+                    [re.match(x, file['describe']['name']) for x in exclude]
+                )
             ]
 
             # get the files of samples we're not excluding
             files = [
-                file for file in files
-                if not any([
-                    re.match(x, file['describe']['name']) for x in exclude
-                ])
+                file
+                for file in files
+                if not any(
+                    [re.match(x, file['describe']['name']) for x in exclude]
+                )
             ]
 
-            printable_files = '\n\t'.join([x['describe']['name'] for x in files])
+            printable_files = '\n\t'.join(
+                [x['describe']['name'] for x in files]
+            )
             print(
-                f"{len(files)} .bam/.bai files after excluding:"
-                f"\n\t{printable_files}"
+                f'{len(files)} .bam/.bai files after excluding:\n\t{printable_files}'
             )
 
             printable_excluded = '\n\t'.join([x for x in excluded_files])
             print(
-                f"{len(excluded_files)} .bam/.bai files excluded:"
-                f"\n\t{printable_excluded}"
+                f'{len(excluded_files)} .bam/.bai files excluded:'
+                f'\n\t{printable_excluded}'
             )
 
-        files = [{"$dnanexus_link": file} for file in files]
+        files = [{'$dnanexus_link': file} for file in files]
         cnv_config['inputs']['bambais'] = files
 
         # set output folder relative to single dir
         app_details = dxpy.describe(config.get('cnv_call_app_id'))
         folder = make_path(
             single_output_dir,
-            f"{app_details['name']}-{app_details['version']}",
-            start
+            f'{app_details["name"]}-{app_details["version"]}',
+            start,
         )
 
-        print(f"Running CNV calling, outputting to {folder}")
+        print(f'Running CNV calling, outputting to {folder}')
 
         job = dxpy.DXApp(dxid=config.get('cnv_call_app_id')).run(
             app_input=cnv_config['inputs'],
@@ -861,44 +1063,44 @@ class DXExecute():
             folder=folder,
             priority='high',
             detach=True,
-            instance_type=cnv_config.get('instance_type')
+            instance_type=cnv_config.get('instance_type'),
         )
 
         job_id = job.describe().get('id')
         job_handle = dxpy.DXJob(dxid=job_id)
 
         if wait:
-            print("Holding app until CNV calling completes...")
+            print('Holding app until CNV calling completes...')
             try:
                 # holds app until job returns success
                 job_handle.wait_on_done()
             except dxpy.exceptions.DXJobFailureError as err:
                 # dx job error raised (i.e. failed, timed out, terminated)
                 raise dxpy.exceptions.DXJobFailureError(
-                    f"CNV calling failed in job {job_id}:\n\n{err}"
+                    f'CNV calling failed in job {job_id}:\n\n{err}'
                 )
-            print("CNV calling completed successfully\n")
+            print('CNV calling completed successfully\n')
         else:
             print(f'CNV calling launched: {job_id}\n')
 
         return job_id, excluded_files
 
-
     def reports_workflow(
-            self,
-            mode,
-            workflow_id,
-            single_output_dir,
-            manifest,
-            config,
-            start,
-            name_patterns,
-            sample_limit=None,
-            call_job_id=None,
-            parent=None,
-            unarchive=None,
-            exclude=None
-        ) -> Tuple[list, dict, dict]:
+        self,
+        mode,
+        workflow_id,
+        single_output_dir,
+        manifest,
+        config,
+        start,
+        name_patterns,
+        sample_limit=None,
+        call_job_id=None,
+        parent=None,
+        unarchive=None,
+        exclude=None,
+        static_beds=None,
+    ) -> Tuple[list, dict, dict]:
         """
         Run Dias reports (or CNV reports) workflow for either
         CNV,SNV or mosaic reports
@@ -967,38 +1169,35 @@ class DXExecute():
         RuntimeError
             Raised when mosdepth files could not be found in given directory
         """
-        print(f"\n \nConfiguring inputs for {mode} reports")
+        print(f'\n \nConfiguring inputs for {mode} reports')
 
         # find all previous xlsx reports to use for indexing report names
-        print("\n \nSearching for previous xlsx reports")
+        print('\n \nSearching for previous xlsx reports')
         xlsx_reports = DXManage().find_files(
-            path=single_output_dir,
-            pattern=r".xlsx$"
+            path=single_output_dir, pattern=r'.xlsx$'
         )
-        xlsx_reports = [
-            x['describe']['name'] for x in xlsx_reports
-        ]
+        xlsx_reports = [x['describe']['name'] for x in xlsx_reports]
         if xlsx_reports:
             reports = '\n\t'.join(sorted(xlsx_reports))
-            print(f"xlsx reports found:\n\t{reports}")
-
+            print(f'xlsx reports found:\n\t{reports}')
 
         # this will either be Epic, Gemini or both
-        manifest_source = sorted(set([
-            x['manifest_source'] for x in manifest.values()]))
+        manifest_source = sorted(
+            set([x['manifest_source'] for x in manifest.values()])
+        )
 
         if manifest_source == ['Epic']:
             pattern = name_patterns.get('Epic')
-            manifest_source = 'Epic'
+            manifest_source_str = 'Epic'
         elif manifest_source == ['Gemini']:
             pattern = name_patterns.get('Gemini')
-            manifest_source = 'Gemini'
+            manifest_source_str = 'Gemini'
         elif manifest_source == ['Epic', 'Gemini']:
             # got 2 (or more) manifests with a mix => use both
             pattern = (
-                fr"{name_patterns.get('Gemini')}|{name_patterns.get('Epic')}"
+                rf'{name_patterns.get("Gemini")}|{name_patterns.get("Epic")}'
             )
-            manifest_source = 'Epic&Gemini'
+            manifest_source_str = 'Epic&Gemini'
         else:
             # who knows what happens if we got here
             raise RuntimeError(
@@ -1020,43 +1219,47 @@ class DXExecute():
 
             vcf_input_field = 'stage-cnv_vep.vcf'
 
-            vcf_dir = f"{job_details.get('project')}:{job_details.get('folder')}"
+            vcf_dir = (
+                f'{job_details.get("project")}:{job_details.get("folder")}'
+            )
             vcf_name = config.get('inputs').get(vcf_input_field).get('name')
 
             print('\n \nSearching for excluded intervals bed file')
-            excluded_intervals_bed_file = list(DXManage().find_files(
-                path=f"{job_details.get('project')}:{job_details.get('folder')}",
-                pattern="_excluded_intervals.bed$",
-                limit=1
-            ))
+            excluded_intervals_bed_file = list(
+                DXManage().find_files(
+                    path=f'{job_details.get("project")}:{job_details.get("folder")}',
+                    pattern='_excluded_intervals.bed$',
+                    limit=1,
+                )
+            )
 
             if not excluded_intervals_bed_file:
                 raise RuntimeError(
-                    f"Failed to find excluded intervals bed file from {call_job_id}"
-            )
+                    f'Failed to find excluded intervals bed file from {call_job_id}'
+                )
 
             excluded_intervals_bed = {
-                "$dnanexus_link": {
-                    "project": excluded_intervals_bed_file[0]['project'],
-                    "id": excluded_intervals_bed_file[0]['id']
+                '$dnanexus_link': {
+                    'project': excluded_intervals_bed_file[0]['project'],
+                    'id': excluded_intervals_bed_file[0]['id'],
                 }
             }
 
-            print("\n \nSearching for VCF files")
-            vcf_files = list(DXManage().find_files(
-                path=vcf_dir,
-                pattern=vcf_name
-            ))
+            print('\n \nSearching for VCF files')
+            vcf_files = list(
+                DXManage().find_files(path=vcf_dir, pattern=vcf_name)
+            )
 
             if not vcf_files:
                 raise RuntimeError(
-                    f"Failed to find vcfs from {call_job_id} ({vcf_dir})"
-            )
+                    f'Failed to find vcfs from {call_job_id} ({vcf_dir})'
+                )
 
             print(
-                "VCFs found:\n\t", '\n\t'.join(
+                'VCFs found:\n\t',
+                '\n\t'.join(
                     sorted([x['describe']['name'] for x in vcf_files])
-                )
+                ),
             )
 
             if exclude:
@@ -1066,7 +1269,7 @@ class DXExecute():
                     samples=manifest.keys(),
                     exclude=exclude,
                     mode='reports',
-                    single_dir=single_output_dir
+                    single_dir=single_output_dir,
                 )
 
                 excluded = [
@@ -1074,21 +1277,22 @@ class DXExecute():
                 ]
 
                 manifest = {
-                    sample: config for sample, config in manifest.items()
+                    sample: config
+                    for sample, config in manifest.items()
                     if sample not in excluded
                 }
 
                 print(
-                    f"\n \nSamples specified to exclude: {exclude}\nExcluded "
-                    f"{len(excluded)} samples from manifest: {excluded}\n"
-                    "Total samples left in manifest to launch CNV reports "
-                    f"workflows for: {len(manifest.keys())}"
+                    f'\n \nSamples specified to exclude: {exclude}\nExcluded '
+                    f'{len(excluded)} samples from manifest: {excluded}\n'
+                    'Total samples left in manifest to launch CNV reports '
+                    f'workflows for: {len(manifest.keys())}'
                 )
 
             print(
-                f"\n \nFound {len(vcf_files)} segments.vcf files from "
-                f"{job_details.get('folder')} and {len(xlsx_reports)} "
-                f"previous xlsx reports"
+                f'\n \nFound {len(vcf_files)} segments.vcf files from '
+                f'{job_details.get("folder")} and {len(xlsx_reports)} '
+                f'previous xlsx reports'
             )
 
         elif mode in ('SNV', 'mosaic'):
@@ -1097,102 +1301,108 @@ class DXExecute():
             vcf_dir = config.get('inputs').get(vcf_input_field).get('folder')
             vcf_name = config.get('inputs').get(vcf_input_field).get('name')
 
-            mosdepth_dir = config.get('inputs').get(
-                'stage-rpt_athena.mosdepth_files').get('folder')
-            mosdepth_name = config.get('inputs').get(
-                'stage-rpt_athena.mosdepth_files').get('name')
+            # Collect static beds
+            vep_static_bed = DXManage().get_static_beds(
+                config.get('static_beds_path')
+            )
+            mosdepth_dir = (
+                config.get('inputs')
+                .get('stage-rpt_athena.mosdepth_files')
+                .get('folder')
+            )
+            mosdepth_name = (
+                config.get('inputs')
+                .get('stage-rpt_athena.mosdepth_files')
+                .get('name')
+            )
 
-            print("\n \nSearching for VCF files")
+            print('\n \nSearching for VCF files')
 
             vcf_files = DXManage().find_files(
-                path=single_output_dir,
-                subdir=vcf_dir,
-                pattern=vcf_name
+                path=single_output_dir, subdir=vcf_dir, pattern=vcf_name
             )
 
             if not vcf_files:
                 error = (
-                    f"Found no vcf files! {mode} reports in {single_output_dir} "
-                    f"and subdir {vcf_dir} with pattern {vcf_name}"
+                    f'Found no vcf files! {mode} reports in {single_output_dir} '
+                    f'and subdir {vcf_dir} with pattern {vcf_name}'
                 )
 
                 raise RuntimeError(error)
 
             print(
-                "VCFs found:\n\t", '\n\t'.join(
+                'VCFs found:\n\t',
+                '\n\t'.join(
                     sorted([x['describe']['name'] for x in vcf_files])
-                )
+                ),
             )
 
-            print("\n \nSearching for mosdepth files")
+            print('\n \nSearching for mosdepth files')
             mosdepth_files = DXManage().find_files(
                 path=single_output_dir,
                 subdir=mosdepth_dir,
-                pattern=mosdepth_name
+                pattern=mosdepth_name,
             )
 
             if not mosdepth_files:
                 error = (
-                    f"Found no mosdepth files! {mode} reports in "
-                    f"{single_output_dir} and subdir {mosdepth_dir} with "
-                    f"pattern {mosdepth_name}"
+                    f'Found no mosdepth files! {mode} reports in '
+                    f'{single_output_dir} and subdir {mosdepth_dir} with '
+                    f'pattern {mosdepth_name}'
                 )
 
                 raise RuntimeError(error)
 
-            manifest, _, manifest_no_mosdepth = filter_manifest_samples_by_files(
-                manifest=manifest,
-                files=mosdepth_files,
-                name='mosdepth',
-                pattern=pattern
+            manifest, _, manifest_no_mosdepth = (
+                filter_manifest_samples_by_files(
+                    manifest=manifest,
+                    files=mosdepth_files,
+                    name='mosdepth',
+                    pattern=pattern,
+                )
             )
 
             if manifest_no_mosdepth:
                 errors[
-                    f"Samples in manifest with no mosdepth files found "
-                    f"({len(manifest_no_mosdepth)})"
+                    f'Samples in manifest with no mosdepth files found '
+                    f'({len(manifest_no_mosdepth)})'
                 ] = manifest_no_mosdepth
 
             print(
-                f"Found {len(vcf_files)} vcf files from "
-                f"{single_output_dir} in subdir {vcf_dir}, "
-                f"{len(mosdepth_files)} from {single_output_dir} in subdir "
-                f"{mosdepth_dir} and {len(xlsx_reports)} previous xlsx reports"
+                f'Found {len(vcf_files)} vcf files from '
+                f'{single_output_dir} in subdir {vcf_dir}, '
+                f'{len(mosdepth_files)} from {single_output_dir} in subdir '
+                f'{mosdepth_dir} and {len(xlsx_reports)} previous xlsx reports'
             )
 
         else:
             # this really shouldn't happen as we call it, but catch it
             # incase I forget and do something dumb (which is likely)
-            raise RuntimeError(
-                f"Invalid mode set for running reports: {mode}"
-            )
-
+            raise RuntimeError(f'Invalid mode set for running reports: {mode}')
 
         # ensure we have a vcf per sample, exclude those that don't have one
-        manifest, manifest_no_match, manifest_no_vcf = \
+        manifest, manifest_no_match, manifest_no_vcf = (
             filter_manifest_samples_by_files(
-                manifest=manifest,
-                files=vcf_files,
-                name='vcf',
-                pattern=pattern
+                manifest=manifest, files=vcf_files, name='vcf', pattern=pattern
             )
+        )
 
         if manifest_no_match:
             errors[
-                f"Samples in manifest not matching expected {manifest_source} "
-                f"pattern ({len(manifest_no_match)}) {pattern}"
+                f'Samples in manifest not matching expected {manifest_source_str} '
+                f'pattern ({len(manifest_no_match)}) {pattern}'
             ] = manifest_no_match
 
         if manifest_no_vcf:
             errors[
-                f"Samples in manifest with no VCF found "
-                f"({len(manifest_no_vcf)})"
+                f'Samples in manifest with no VCF found ({len(manifest_no_vcf)})'
             ] = manifest_no_vcf
 
         workflow_details = dxpy.describe(workflow_id)
 
         workflow_name = (
-            f"{workflow_details['name']}_{mode}" if mode in ['SNV', 'mosaic']
+            f'{workflow_details["name"]}_{mode}'
+            if mode in ['SNV', 'mosaic']
             else workflow_details['name']
         )
 
@@ -1200,18 +1410,18 @@ class DXExecute():
             workflow=workflow_details,
             single_output=single_output_dir,
             time_stamp=start,
-            name=workflow_name
+            name=workflow_name,
         )
 
         parent_folder = make_path(single_output_dir, workflow_name, start)
 
         if not manifest:
             # empty manifest after filtering against files etc
-            error = f"No samples left after filtering to run {mode} reports on"
+            error = f'No samples left after filtering to run {mode} reports on'
 
             raise RuntimeError(error)
 
-        print(f"\n \nLaunching {mode} reports per sample...")
+        print(f'\n \nLaunching {mode} reports per sample...')
         start = timer()
 
         launched_jobs = []
@@ -1222,7 +1432,6 @@ class DXExecute():
 
         # launch reports workflow, once per sample -> set of test codes
         for sample, sample_config in manifest.items():
-
             all_test_lists = sample_config['tests']
             vcf = sample_config['vcf'][0]  # TODO : need to test for >1 VCF?
 
@@ -1232,9 +1441,9 @@ class DXExecute():
 
             for idx, test_list in enumerate(all_test_lists):
                 print(
-                    f"[{samples_run+1}/{len(manifest)}] Launching {mode} "
-                    f"reports workflow {idx+1}/{len(all_test_lists)} for "
-                    f"{sample} with test(s): {test_list}"
+                    f'[{samples_run + 1}/{len(manifest)}] Launching {mode} '
+                    f'reports workflow {idx + 1}/{len(all_test_lists)} for '
+                    f'{sample} with test(s): {test_list}'
                 )
 
                 input = deepcopy(config['inputs'])
@@ -1242,9 +1451,9 @@ class DXExecute():
                 # add vcf found for sample to input dict, currently just
                 # needs providing to VEP for both workflows
                 input[vcf_input_field] = {
-                    "$dnanexus_link": {
-                        "project": vcf['project'],
-                        "id": vcf['id']
+                    '$dnanexus_link': {
+                        'project': vcf['project'],
+                        'id': vcf['id'],
                     }
                 }
 
@@ -1255,9 +1464,13 @@ class DXExecute():
 
                 # set prefix for naming output report with integer suffix
                 name = (
-                    f"{vcf['describe']['name'].split('_')[0]}_"
-                    f"{'_'.join(test_list)}_{mode}"
-                ).replace(':', '_').replace('__', '_')
+                    (
+                        f'{vcf["describe"]["name"].split("_")[0]}_'
+                        f'{"_".join(test_list)}_{mode}'
+                    )
+                    .replace(':', '_')
+                    .replace('__', '_')
+                )
 
                 suffix = check_report_index(name=name, reports=xlsx_reports)
 
@@ -1267,31 +1480,57 @@ class DXExecute():
                     suffix = sample_name_to_suffix.get(name) + 1
 
                     print(
-                        f"Already launched report for current sample, "
-                        f"will now use suffix {suffix}"
+                        f'Already launched report for current sample, '
+                        f'will now use suffix {suffix}'
                     )
 
                 sample_name_to_suffix[name] = suffix
-                name = f"{name}_{suffix}"
+                name = f'{name}_{suffix}'
 
                 # build mosdepth files as a list of dx_links for athena
                 mosdepth_links = [
-                    {"$dnanexus_link": {
-                        "project": file['project'],
-                        "id": file['id']
-                    }}
+                    {
+                        '$dnanexus_link': {
+                            'project': file['project'],
+                            'id': file['id'],
+                        }
+                    }
                     for file in sample_config.get('mosdepth', [])
                 ]
 
                 if mosdepth_links:
                     # will only exist if this is for SNVs
-                    input["stage-rpt_athena.mosdepth_files"] = mosdepth_links
+                    input['stage-rpt_athena.mosdepth_files'] = mosdepth_links
 
                 if excluded_intervals_bed:
                     # will only exist if this is for CNVs
                     input[
-                        "stage-cnv_annotate_excluded_regions.excluded_regions"
+                        'stage-cnv_annotate_excluded_regions.excluded_regions'
                     ] = excluded_intervals_bed
+                # Use test list to find matching higest version static beds
+                # for VEP and Athena, if not found just pass None and the workflow will handle it
+                vep_static_bed = None
+                athena_static_bed = None
+                excluded_static_bed = None
+                test_code_str = ''.join(test_list)  # need to test this well!
+                if static_beds is None:
+                    raise RuntimeError(
+                        'Static beds dict not provided to reports workflow'
+                    )
+                if mode in ('SNV', 'mosaic'):
+                    vep_static_bed = static_beds.get(
+                        f'{test_code_str}_SNV_vep_b38.bed', {}
+                    ).get('dxid')
+                    athena_static_bed = static_beds.get(
+                        f'{test_code_str}_SNV_athena_b38.bed', {}
+                    ).get('dxid')
+                elif mode == 'CNV':
+                    vep_static_bed = static_beds.get(
+                        f'{test_code_str}_CNV_vep_b38.bed', {}
+                    ).get('dxid')
+                    excluded_static_bed = static_beds.get(
+                        f'{test_code_str}_CNV_excluded_b38.bed', {}
+                    ).get('dxid')
 
                 # all combinations of placeholder text that can be in the
                 # config and values to replace with
@@ -1300,21 +1539,26 @@ class DXExecute():
                     clinical_indications=indications,
                     test_codes=codes,
                     panels=panels,
-                    sample_name=name
+                    sample_name=name,
+                    vep_static_bed=vep_static_bed if vep_static_bed else None,
+                    excluded_static_bed=excluded_static_bed
+                    if excluded_static_bed
+                    else None,
+                    athena_static_bed=athena_static_bed
+                    if athena_static_bed
+                    else None,
                 )
 
                 # now we can finally run the reports workflow
-                job_handle = dxpy.DXWorkflow(
-                    dxid=workflow_id
-                ).run(
+                job_handle = dxpy.DXWorkflow(dxid=workflow_id).run(
                     workflow_input=input,
                     rerun_stages=['*'],
                     detach=True,
-                    name=f"{workflow_details['name']}_{sample}_{codes} ({mode})",
+                    name=f'{workflow_details["name"]}_{sample}_{codes} ({mode})',
                     folder=parent_folder,
                     stage_folders=stage_folders,
-                    stage_instance_types=config.get("stage_instance_types"),
-                    depends_on=parent
+                    stage_instance_types=config.get('stage_instance_types'),
+                    depends_on=parent,
                 )
 
                 launched_jobs.append(job_handle._dxid)
@@ -1328,29 +1572,28 @@ class DXExecute():
 
             samples_run += 1
             if samples_run == sample_limit:
-                print("Sample limit hit, stopping launching further jobs")
+                print('Sample limit hit, stopping launching further jobs')
                 break
 
         end = timer()
         print(
-            f"Successfully launched {len(launched_jobs)} {mode} reports "
-            f"workflows in {round(end - start)}s"
+            f'Successfully launched {len(launched_jobs)} {mode} reports '
+            f'workflows in {round(end - start)}s'
         )
         return launched_jobs, errors, sample_summary
 
-
     def artemis(
-            self,
-            single_output_dir,
-            app_id,
-            dependent_jobs,
-            start,
-            qc_xlsx,
-            snv_output=None,
-            cnv_output=None,
-            multiqc_report=None,
-            **additional_inputs
-        ) -> str:
+        self,
+        single_output_dir,
+        app_id,
+        dependent_jobs,
+        start,
+        qc_xlsx,
+        snv_output=None,
+        cnv_output=None,
+        multiqc_report=None,
+        **additional_inputs,
+    ) -> str:
         """
         Launch eggd_artemis to generate xlsx file of download links
 
@@ -1380,23 +1623,23 @@ class DXExecute():
         str
             job ID of launched job
         """
-        print("Launching eggd_artemis")
+        print('Launching eggd_artemis')
         details = dxpy.describe(app_id)
         path = make_path(single_output_dir, details['name'], start)
 
         app_input = {
-            "snv_path": snv_output,
-            "cnv_path": cnv_output,
-            "qc_status": qc_xlsx,
+            'snv_path': snv_output,
+            'cnv_path': cnv_output,
+            'qc_status': qc_xlsx,
         }
 
         if additional_inputs:
             app_input.update(additional_inputs)
 
         if details.get('version') >= '1.4.0' and multiqc_report:
-            app_input["multiqc_report"] = multiqc_report
+            app_input['multiqc_report'] = multiqc_report
 
-        print("Inputs for eggd_artemis:")
+        print('Inputs for eggd_artemis:')
         prettier_print(app_input)
 
         job = dxpy.DXApp(dxid=app_id).run(
@@ -1404,11 +1647,10 @@ class DXExecute():
             project=os.environ.get('DX_PROJECT_CONTEXT_ID'),
             folder=path,
             depends_on=dependent_jobs,
-            detach=True
+            detach=True,
         )
 
         return job._dxid
-
 
     @staticmethod
     def terminate(jobs) -> None:
@@ -1420,6 +1662,7 @@ class DXExecute():
         jobs : list
             list of job / analysis IDs
         """
+
         def terminate_one(job) -> None:
             """dx call to terminate single job"""
             if job.startswith('job'):
@@ -1429,8 +1672,8 @@ class DXExecute():
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
             concurrent_jobs = {
-                executor.submit(terminate_one, id):
-                id for id in sorted(jobs, reverse=True)
+                executor.submit(terminate_one, id): id
+                for id in sorted(jobs, reverse=True)
             }
             for future in concurrent.futures.as_completed(concurrent_jobs):
                 # access returned output as each is returned in any order
@@ -1439,8 +1682,8 @@ class DXExecute():
                 except Exception as exc:
                     # catch any errors that might get raised
                     print(
-                        "Error terminating job "
-                        f"{concurrent_jobs[future]}: {exc}"
+                        'Error terminating job '
+                        f'{concurrent_jobs[future]}: {exc}'
                     )
 
-        print("Terminated jobs.")
+        print('Terminated jobs.')
