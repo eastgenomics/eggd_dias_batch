@@ -31,7 +31,7 @@ tabulate = { path = "resources/home/dnanexus/packages/tabulate-0.9.0-py3-none-an
 tzdata = { path = "resources/home/dnanexus/packages/tzdata-2023.3-py2.py3-none-any.whl" }
 
 [tool.ruff]
-line-length = 100
+line-length = 79
 
 [tool.ruff.format]
-quote-style = "double"
+quote-style = "single"
