@@ -1,0 +1,37 @@
+[project]
+name = "eggd-dias-batch"
+version = "3.4.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "dxpy==0.318.1",
+    "numpy==1.24.4",
+    "packaging==24.1",
+    "pandas==2.0.3",
+    "pydantic>=2.10.6",
+    "pytest==7.0.1",
+    "pytest-cov==4.0.0",
+    "pytest-html==4.1.0",
+    "pytest-metadata==3.0.0",
+    "pytest-mock==3.11.1",
+    "pytest-subtests==0.11.0",
+    "pytz==2023.3",
+    "setuptools==70.0.0",
+    "tabulate==0.9.0",
+    "tzdata==2023.3",
+]
+
+[tool.uv.sources]
+numpy = { path = "resources/home/dnanexus/packages/numpy-1.24.4-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" }
+packaging = { path = "resources/home/dnanexus/packages/packaging-23.1-py3-none-any.whl" }
+pandas = { path = "resources/home/dnanexus/packages/pandas-2.0.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" }
+pytz = { path = "resources/home/dnanexus/packages/pytz-2023.3.post1-py2.py3-none-any.whl" }
+tabulate = { path = "resources/home/dnanexus/packages/tabulate-0.9.0-py3-none-any.whl" }
+tzdata = { path = "resources/home/dnanexus/packages/tzdata-2023.3-py2.py3-none-any.whl" }
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "double"
