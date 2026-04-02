@@ -5,7 +5,6 @@ import os
 import re
 import subprocess
 
-from resources.home.dnanexus.dias_batch.utils.get_static_beds import get_static_beds
 
 if os.path.exists('/home/dnanexus'):
     # running in DNAnexus
@@ -406,7 +405,7 @@ def main(
     # get static bed files for any report workflows that need them and add to
     # config inputs
     if static_beds_mode:
-        static_beds = get_static_beds(
+        static_beds = DXManage().get_static_beds(
             path=assay_config.get('static_bed_files_dir'),
             header_version_regex=assay_config.get('static_bed_header_version_regex'),
             version_regex=assay_config.get('static_bed_version_regex')
