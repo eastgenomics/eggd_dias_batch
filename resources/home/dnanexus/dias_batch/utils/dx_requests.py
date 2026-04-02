@@ -3,16 +3,18 @@ Functions related to querying and managing objects in DNAnexus, as well
 as running jobs.
 """
 
-from collections import defaultdict
-from copy import deepcopy
+from __future__ import annotations
+
 import concurrent.futures
-from itertools import groupby
 import json
 import os
 import re
 import sys
+from collections import defaultdict
+from copy import deepcopy
+from itertools import groupby
 from timeit import default_timer as timer
-from typing import List, Tuple, Any
+from typing import Any, List, Tuple
 
 import dxpy
 import pandas as pd
@@ -187,8 +189,8 @@ class DXManage:
     def get_static_beds(
         self,
         path: str,
-        header_version_regex: re.Pattern,
-        version_regex: re.Pattern,
+        header_version_regex: re.Pattern | None = None,
+        version_regex: re.Pattern | None = None,
     ) -> dict[str, dict[str, Any]]:
         """
         For each bed file suffix, return metadata for the highest version file.
@@ -228,9 +230,19 @@ class DXManage:
         RuntimeError
             If the file header version does not match the filename version.
         """
-        assert re.match(r'^project-[\d\w]+:/.+', path), (
-            f'Path to bed files appears invalid: {path}'
-        )
+        assert isinstance(path, str) and re.match(
+            r'^project-[\d\w]+:/.+', path
+        ), f'Path to bed files appears invalid: {path}'
+
+        if version_regex is None:
+            version_regex = re.compile(
+                r'^v(?P<version>\d+(?:\.\d+)*)_(?P<suffix>.+)$'
+            )
+
+        if header_version_regex is None:
+            header_version_regex = re.compile(
+                r'^#\s*v?(?P<header_version>\d+(?:\.\d+)*)'
+            )
 
         print(f'\nSearching for bed files in: {path}')
 
@@ -249,7 +261,7 @@ class DXManage:
 
         assert files, f'No bed files found in: {path}'
 
-        _log_found_files(files)
+        self._log_found_files(files)
 
         # version_regex = re.compile(r"^v(?P<version>\d+(?:\.\d+)*)_(?P<suffix>.+)$")
         # header_version_regex = re.compile(r"^#\s*v?(?P<header_version>\d+(?:\.\d+)*)")
@@ -282,7 +294,7 @@ class DXManage:
             suffix = match.group('suffix')
 
             # Read file header to check for an embedded version
-            header_version = _read_header_version(
+            header_version = self._read_header_version(
                 project=file['project'],
                 dxid=file['id'],
                 pattern=header_version_regex,
@@ -333,6 +345,62 @@ class DXManage:
             )
 
         return highest_beds
+
+    def select_static_beds(
+        self,
+        mode: str,
+        test_code: str,
+        static_beds: dict[str, dict[str, Any]] | None,
+    ) -> dict[str, str | None]:
+        """
+        Select the appropriate static bed files for the workflow based on the mode and test code.
+        Parameters
+        ----------
+        mode : str
+            The mode of the workflow (e.g., 'SNV', 'mosaic', 'CNV').
+        test_code : str
+            The test code to identify the correct bed files (e.g., 'R140.1', 'R97.1').
+        static_beds : dict
+            A dictionary of available static bed files with their metadata.
+        Returns
+        -------
+        dict
+            A dictionary containing the selected bed file IDs for 'vep', 'athena', and 'excluded' (if applicable).
+            i.e.
+            {
+                'vep': 'file-xxx',
+                'athena': 'file-xxx',
+                'excluded': 'file-xxx' or None
+            }
+        """
+        static_beds = static_beds or {}
+        static_bed_for_workflow: dict[str, str | None] = {}
+        vep_bed: str | None = None
+        athena_bed: str | None = None
+        excluded_bed: str | None = None
+        if mode in ('SNV', 'mosaic'):
+            vep_bed = static_beds.get(f'{test_code}_SNV_vep_b38.bed', {}).get(
+                'dxid'
+            )
+            athena_bed = static_beds.get(
+                f'{test_code}_SNV_athena_b38.bed', {}
+            ).get('dxid')
+        elif mode == 'CNV':
+            vep_bed = static_beds.get(f'{test_code}_CNV_vep_b38.bed', {}).get(
+                'dxid'
+            )
+            athena_bed = static_beds.get(
+                f'{test_code}_CNV_athena_b38.bed', {}
+            ).get('dxid')
+            excluded_bed = static_beds.get(
+                f'{test_code}_CNV_excluded_b38.bed', {}
+            ).get('dxid')
+        static_bed_for_workflow = {
+            'vep': vep_bed,
+            'athena': athena_bed,
+            'excluded': excluded_bed,
+        }
+        return static_bed_for_workflow
 
     def _log_found_files(self, files: list[dict]) -> None:
         """Print a summary of all discovered bed files."""
@@ -1300,11 +1368,6 @@ class DXExecute:
 
             vcf_dir = config.get('inputs').get(vcf_input_field).get('folder')
             vcf_name = config.get('inputs').get(vcf_input_field).get('name')
-
-            # Collect static beds
-            vep_static_bed = DXManage().get_static_beds(
-                config.get('static_beds_path')
-            )
             mosdepth_dir = (
                 config.get('inputs')
                 .get('stage-rpt_athena.mosdepth_files')
@@ -1380,6 +1443,14 @@ class DXExecute:
             # incase I forget and do something dumb (which is likely)
             raise RuntimeError(f'Invalid mode set for running reports: {mode}')
 
+        # Collect static beds (required unless precomputed static beds passed)
+        if static_beds is None:
+            static_beds_path = config.get('static_beds_path')
+            if not static_beds_path:
+                raise RuntimeError(
+                    'Missing required static_beds_path in reports mode config'
+                )
+            static_beds = DXManage().get_static_beds(static_beds_path)
         # ensure we have a vcf per sample, exclude those that don't have one
         manifest, manifest_no_match, manifest_no_vcf = (
             filter_manifest_samples_by_files(
@@ -1513,24 +1584,14 @@ class DXExecute:
                 athena_static_bed = None
                 excluded_static_bed = None
                 test_code_str = ''.join(test_list)  # need to test this well!
-                if static_beds is None:
-                    raise RuntimeError(
-                        'Static beds dict not provided to reports workflow'
-                    )
-                if mode in ('SNV', 'mosaic'):
-                    vep_static_bed = static_beds.get(
-                        f'{test_code_str}_SNV_vep_b38.bed', {}
-                    ).get('dxid')
-                    athena_static_bed = static_beds.get(
-                        f'{test_code_str}_SNV_athena_b38.bed', {}
-                    ).get('dxid')
-                elif mode == 'CNV':
-                    vep_static_bed = static_beds.get(
-                        f'{test_code_str}_CNV_vep_b38.bed', {}
-                    ).get('dxid')
-                    excluded_static_bed = static_beds.get(
-                        f'{test_code_str}_CNV_excluded_b38.bed', {}
-                    ).get('dxid')
+                static_bed_for_workflow = DXManage().select_static_beds(
+                    mode=mode,
+                    test_code=test_code_str,
+                    static_beds=static_beds,
+                )
+                vep_static_bed = static_bed_for_workflow.get('vep')
+                athena_static_bed = static_bed_for_workflow.get('athena')
+                excluded_static_bed = static_bed_for_workflow.get('excluded')
 
                 # all combinations of placeholder text that can be in the
                 # config and values to replace with
