@@ -3,10 +3,11 @@ The majority of functions in dx_requests.py relate to interacting with
 DNAnexus via dxpy API calls to either manage data (in DXManage) or for
 launching jobs (in DXExecute).
 """
-from copy import deepcopy
+
 import os
 import sys
 import unittest
+from copy import deepcopy
 from unittest import mock
 from unittest.mock import patch
 
@@ -14,16 +15,15 @@ import dxpy
 import pandas as pd
 import pytest
 
-
-sys.path.append(os.path.abspath(
-    os.path.join(os.path.realpath(__file__), '../../')
-))
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.realpath(__file__), '../../'))
+)
 
 from utils import utils
 from utils.dx_requests import DXExecute, DXManage
 
 
-class TestDXManageReadAssayConfigFile():
+class TestDXManageReadAssayConfigFile:
     """
     Tests for DXManage.read_assay_config_file()
 
@@ -43,25 +43,23 @@ class TestDXManageReadAssayConfigFile():
         # minimal describe call return from config file
         mock_file.return_value.describe.return_value = {
             'id': 'file-xxx',
-            'name': 'testAssayConfig.json'
+            'name': 'testAssayConfig.json',
         }
 
         # minimal example of what would be returned from DXManage.read_dxfile
-        mock_read.return_value = [
-            '{"assay": "test", "version": "1.0.0"}'
-        ]
+        mock_read.return_value = ['{"assay": "test", "version": "1.0.0"}']
 
         contents = DXManage().read_assay_config_file(file='file-xxx')
 
         correct_contents = {
-            "assay": "test",
-            "version": "1.0.0",
-            "dxid": "file-xxx",
-            "name": "testAssayConfig.json"
+            'assay': 'test',
+            'version': '1.0.0',
+            'dxid': 'file-xxx',
+            'name': 'testAssayConfig.json',
         }
 
         assert contents == correct_contents, (
-            "Contents parsed from config file incorrect"
+            'Contents parsed from config file incorrect'
         )
 
 
@@ -72,13 +70,16 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
     Function either takes a path and assay string to search in DNAnexus
     and return the highest config file version for
     """
+
     def setUp(self):
         """
         Setup our mocks
         """
         # set up patches for each sub function call in DXExecute.cnv_calling
         self.loads_patch = mock.patch('utils.dx_requests.json.loads')
-        self.find_patch = mock.patch('utils.dx_requests.dxpy.find_data_objects')
+        self.find_patch = mock.patch(
+            'utils.dx_requests.dxpy.find_data_objects'
+        )
         self.file_patch = mock.patch('utils.dx_requests.dxpy.DXFile')
         self.read_patch = mock.patch('utils.dx_requests.dxpy.DXFile.read')
 
@@ -88,19 +89,16 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         self.mock_file = self.file_patch.start()
         self.mock_read = self.read_patch.start()
 
-
     def tearDown(self):
         self.mock_loads.stop()
         self.mock_find.stop()
         self.mock_file.stop()
         self.mock_read.stop()
 
-
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
         """Capture stdout to provide it to tests"""
         self.capsys = capsys
-
 
     def test_error_raised_when_path_invalid(self):
         """
@@ -110,7 +108,6 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
 
         with pytest.raises(AssertionError, match=expected_error):
             DXManage().get_assay_config(path='invalid_path', assay='')
-
 
     def test_error_raised_when_no_config_files_found(self):
         """
@@ -124,8 +121,9 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             'No config files found in given path: project-xxx:/test_path'
         )
         with pytest.raises(AssertionError, match=expected_error):
-            DXManage().get_assay_config(path='project-xxx:/test_path', assay='')
-
+            DXManage().get_assay_config(
+                path='project-xxx:/test_path', assay=''
+            )
 
     def test_error_raised_when_no_config_file_found_for_assay(self):
         """
@@ -139,10 +137,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
-                    'name': 'config1.json',
-                    'archivalState': 'live'
-                }
+                'describe': {'name': 'config1.json', 'archivalState': 'live'},
             }
         ]
 
@@ -153,15 +148,13 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         self.mock_loads.return_value = {'assay': 'CEN', 'version': '1.0.0'}
 
         expected_error = (
-            "No config file was found for test from project-xxx:/test_path"
+            'No config file was found for test from project-xxx:/test_path'
         )
 
         with pytest.raises(AssertionError, match=expected_error):
             DXManage().get_assay_config(
-                path='project-xxx:/test_path',
-                assay='test'
+                path='project-xxx:/test_path', assay='test'
             )
-
 
     def test_highest_version_correctly_selected(self):
         """
@@ -177,10 +170,7 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
-                    'name': 'config.json',
-                    'archivalState': 'live'
-                }
+                'describe': {'name': 'config.json', 'archivalState': 'live'},
             }
         ] * 5
 
@@ -194,19 +184,16 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {'assay': 'test', 'version': '1.1.0'},
             {'assay': 'test', 'version': '1.0.10'},
             {'assay': 'test', 'version': '1.1.11'},
-            {'assay': 'test', 'version': '1.2.1'}
+            {'assay': 'test', 'version': '1.2.1'},
         ]
 
-
         config = DXManage().get_assay_config(
-            path='project-xxx:/test_path',
-            assay='test'
+            path='project-xxx:/test_path', assay='test'
         )
 
         assert config['version'] == '1.2.1', (
-            "Incorrect config file version returned"
+            'Incorrect config file version returned'
         )
-
 
     def test_non_live_files_skipped(self):
         """
@@ -218,61 +205,51 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe': {
-                    'name': 'config1.json',
-                    'archivalState': 'live'
-                }
+                'describe': {'name': 'config1.json', 'archivalState': 'live'},
             },
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
                 'describe': {
                     'name': 'config2.json',
-                    'archivalState': 'archived'
-                }
+                    'archivalState': 'archived',
+                },
             },
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
                 'describe': {
                     'name': 'config3.json',
-                    'archivalState': 'archival'
-                }
+                    'archivalState': 'archival',
+                },
             },
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
                 'describe': {
                     'name': 'config4.json',
-                    'archivalState': 'unarchiving'
-                }
-            }
+                    'archivalState': 'unarchiving',
+                },
+            },
         ]
 
         # patch the DXFile object that read() gets called on
         self.mock_file.return_value = dxpy.DXFile
 
         # patch the output from DXFile.read() for our live config
-        self.mock_loads.return_value = {
-            'assay': 'test', 'version': '1.0.0'
-        }
+        self.mock_loads.return_value = {'assay': 'test', 'version': '1.0.0'}
 
         DXManage().get_assay_config(
-            path='project-xxx:/test_path',
-            assay='test'
+            path='project-xxx:/test_path', assay='test'
         )
 
         stdout = self.capsys.readouterr().out
 
-        expected_warning = (
-            "Config file not in live state - will not be used: "
-            "config2.json (file-xxx)"
-        )
+        expected_warning = 'Config file not in live state - will not be used: config2.json (file-xxx)'
 
         assert expected_warning in stdout, (
-            "Warning not printed for archived file"
+            'Warning not printed for archived file'
         )
-
 
     def test_multiple_files_raises_error(self):
         """
@@ -287,27 +264,18 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
-                    'name': 'config1.json',
-                    'archivalState': 'live'
-                }
+                'describe': {'name': 'config1.json', 'archivalState': 'live'},
             },
             {
                 'project': 'project-xxx',
                 'id': 'file-yyy',
-                'describe' : {
-                    'name': 'config2.json',
-                    'archivalState': 'live'
-                }
+                'describe': {'name': 'config2.json', 'archivalState': 'live'},
             },
             {
                 'project': 'project-xxx',
                 'id': 'file-zzz',
-                'describe' : {
-                    'name': 'config3.json',
-                    'archivalState': 'live'
-                }
-            }
+                'describe': {'name': 'config3.json', 'archivalState': 'live'},
+            },
         ]
 
         # patch the DXFile object that read() gets called on
@@ -322,34 +290,29 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         ]
 
         expected_error = (
-            "Error: more than one file found for highest version of test "
-            "configs. Files found:\\n\\tconfig2.json \(file-yyy\)\\n\\t"
-            "config3.json \(file-zzz\)"
+            'Error: more than one file found for highest version of test '
+            'configs. Files found:\\n\\tconfig2.json \(file-yyy\)\\n\\t'
+            'config3.json \(file-zzz\)'
         )
 
         with pytest.raises(RuntimeError, match=expected_error):
             DXManage().get_assay_config(
-                path='project-xxx:/test_path',
-                assay='test'
+                path='project-xxx:/test_path', assay='test'
             )
 
 
-class TestDXManageGetFileProjectContext():
+class TestDXManageGetFileProjectContext:
     """
     Tests for DXManage.get_file_project_context()
 
     Function takes a DXFile ID and returns a project ID in which
     the file has been found in a live state
     """
+
     @patch('utils.dx_requests.dxpy.DXFile.list_projects')
     @patch('utils.dx_requests.dxpy.DXFile.describe')
     @patch('utils.dx_requests.dxpy.DXFile')
-    def test_no_live_files(
-            self,
-            mock_file,
-            mock_describe,
-            mock_list
-        ):
+    def test_no_live_files(self, mock_file, mock_describe, mock_list):
         """
         Test that when no files in a live state are found that an
         AssertionError is raised
@@ -358,7 +321,7 @@ class TestDXManageGetFileProjectContext():
         mock_file.return_value = dxpy.DXFile
         mock_list.return_value = {
             'project-xxx': 'CONTRIBUTE',
-            'project-yyy': 'CONTRIBUTE'
+            'project-yyy': 'CONTRIBUTE',
         }
 
         # mock describing each project:file context found
@@ -366,14 +329,13 @@ class TestDXManageGetFileProjectContext():
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'archivalState': 'archived'
+                'archivalState': 'archived',
             },
             {
                 'project': 'project-yyy',
                 'id': 'file-xxx',
-                'archivalState': 'archival'
-
-            }
+                'archivalState': 'archival',
+            },
         ]
 
         correct_error = 'No live files could be found for the ID: file-xxx'
@@ -384,13 +346,7 @@ class TestDXManageGetFileProjectContext():
     @patch('utils.dx_requests.dxpy.DXFile.list_projects')
     @patch('utils.dx_requests.dxpy.DXFile.describe')
     @patch('utils.dx_requests.dxpy.DXFile')
-    def test_live_files(
-        self,
-        mock_file,
-        mock_describe,
-        mock_list,
-        capsys
-    ):
+    def test_live_files(self, mock_file, mock_describe, mock_list, capsys):
         """
         Test when some live files are found, we correctly return the
         first one to use as the project context
@@ -399,7 +355,7 @@ class TestDXManageGetFileProjectContext():
         mock_file.return_value = dxpy.DXFile
         mock_list.return_value = {
             'project-xxx': 'CONTRIBUTE',
-            'project-yyy': 'CONTRIBUTE'
+            'project-yyy': 'CONTRIBUTE',
         }
 
         # mock describing each project:file context found
@@ -407,14 +363,13 @@ class TestDXManageGetFileProjectContext():
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'archivalState': 'live'
+                'archivalState': 'live',
             },
             {
                 'project': 'project-yyy',
                 'id': 'file-xxx',
-                'archivalState': 'live'
-
-            }
+                'archivalState': 'live',
+            },
         ]
 
         returned = DXManage().get_file_project_context(file='file-xxx')
@@ -423,9 +378,7 @@ class TestDXManageGetFileProjectContext():
 
         # check we print what we expect
         stdout = capsys.readouterr().out
-        expected_print = (
-            'Found file-xxx in 2 projects, using project-xxx as project context'
-        )
+        expected_print = 'Found file-xxx in 2 projects, using project-xxx as project context'
 
         if expected_print not in stdout:
             errors.append('Did not print expected file project context')
@@ -436,7 +389,7 @@ class TestDXManageGetFileProjectContext():
         assert not errors, errors
 
 
-class TestDXManageFindFiles():
+class TestDXManageFindFiles:
     """
     Tests for DXManage.find_files()
 
@@ -455,25 +408,18 @@ class TestDXManageFindFiles():
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
-                    'name': 'file1',
-                    'archivalState': 'live'
-                }
+                'describe': {'name': 'file1', 'archivalState': 'live'},
             },
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
-                    'name': 'file2',
-                    'archivalState': 'live'
-                }
-            }
+                'describe': {'name': 'file2', 'archivalState': 'live'},
+            },
         ]
 
         files = DXManage().find_files(path='project-xxx:/some_path/')
 
         assert files == mock_find.return_value, 'Incorrect files returned'
-
 
     @patch('utils.dx_requests.dxpy.find_data_objects')
     def test_sub_dir_filters_correctly(self, mock_find):
@@ -484,32 +430,30 @@ class TestDXManageFindFiles():
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
+                'describe': {
                     'name': 'file1',
                     'archivalState': 'live',
-                    'folder': '/path_to_files/subdir1/app1'
-                }
+                    'folder': '/path_to_files/subdir1/app1',
+                },
             },
             {
                 'project': 'project-xxx',
                 'id': 'file-xxx',
-                'describe' : {
+                'describe': {
                     'name': 'file2',
                     'archivalState': 'live',
-                    'folder': 'path_to_files/subdir2/app1'
-                }
-            }
+                    'folder': 'path_to_files/subdir2/app1',
+                },
+            },
         ]
 
         files = DXManage().find_files(
-            path='project-xxx:/path_to_files/',
-            subdir='/subdir1'
+            path='project-xxx:/path_to_files/', subdir='/subdir1'
         )
 
         assert files == [mock_find.return_value[0]], (
             'Incorrect file returned when filtering to subdir'
         )
-
 
     @patch('utils.dx_requests.dxpy.find_data_objects')
     def test_archived_files_flagged_in_logs(self, mock_find, capsys):
@@ -525,14 +469,12 @@ class TestDXManageFindFiles():
                 'describe': {
                     'name': 'file1',
                     'archivalState': 'archived',
-                    'folder': '/path_to_files/subdir1/app1'
-                }
+                    'folder': '/path_to_files/subdir1/app1',
+                },
             }
         ]
 
-        DXManage().find_files(
-            path='project-xxx:/path_to_files/'
-        )
+        DXManage().find_files(path='project-xxx:/path_to_files/')
 
         stdout = capsys.readouterr().out
         expected_warning = (
@@ -546,7 +488,7 @@ class TestDXManageFindFiles():
         )
 
 
-class TestDXManageReadDXfile():
+class TestDXManageReadDXfile:
     """
     Tests for DXManage.read_dxfile()
 
@@ -554,6 +496,7 @@ class TestDXManageReadDXfile():
     list of strings, accepts file ID input as some form of string or
     $dnanexus_link mapping
     """
+
     def test_none_object_passed(self, capsys):
         """
         If an empty object gets passed we should just print and return
@@ -574,14 +517,11 @@ class TestDXManageReadDXfile():
 
         set variables for reading the file
         """
-        file = {
-            "$dnanexus_link": "project-xxx:file-xxx"
-        }
+        file = {'$dnanexus_link': 'project-xxx:file-xxx'}
 
         # project and file should get split and pass the assert, we have
         # patched DXFile.read() so nothing will get returned as we expect
         DXManage().read_dxfile(file=file)
-
 
     @patch('utils.dx_requests.DXManage.get_file_project_context')
     @patch('utils.dx_requests.dxpy.DXFile.read')
@@ -595,14 +535,13 @@ class TestDXManageReadDXfile():
         # patch a minimal DXObject response
         mock_context.return_value = {
             'project': 'project-xxx',
-            'id': 'file-xxx'
+            'id': 'file-xxx',
         }
 
         # project and file should get split from the get_file_project_context
         # response and pass the assert, we have patched DXFile.read() so
         # nothing will get returned as we expect
         DXManage().read_dxfile(file='file-xxx')
-
 
     @patch('utils.dx_requests.DXManage.get_file_project_context')
     @patch('utils.dx_requests.dxpy.DXFile.read')
@@ -620,10 +559,9 @@ class TestDXManageReadDXfile():
 
         with pytest.raises(
             AssertionError,
-            match=r'Missing project and \/ or file ID - project: None, file: None'
+            match=r'Missing project and \/ or file ID - project: None, file: None',
         ):
             DXManage().read_dxfile(file='file-xxx')
-
 
     @patch('utils.dx_requests.dxpy.DXFile.read')
     @patch('utils.dx_requests.dxpy.DXFile')
@@ -636,17 +574,15 @@ class TestDXManageReadDXfile():
         # patched DXFile.read() so nothing will get returned as we expect
         DXManage().read_dxfile(file='project-xxx:file-xxx')
 
-
     def test_invalid_string_raises_error(self):
         """
         Test if an invalid string is passed that an error is raised
         """
         with pytest.raises(
             RuntimeError,
-            match=r'DXFile not in an expected format: invalid_str'
+            match=r'DXFile not in an expected format: invalid_str',
         ):
             DXManage().read_dxfile(file='invalid_str')
-
 
     @patch('utils.dx_requests.dxpy.DXFile')
     def test_trailing_blank_line_removed(self, mock_file):
@@ -672,11 +608,11 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
     check archival state of, and queries the given path for all files
     and then checks the archival state.
     """
+
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
         """Capture stdout to provide it to tests"""
         self.capsys = capsys
-
 
     def test_default_patterns_used_if_no_default_provided(
         self, mock_archive, mock_find
@@ -698,14 +634,13 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'cnv_reports': True,
                 'snv_reports': True,
                 'mosaic_reports': True,
-                'artemis': True
-            }
+                'artemis': True,
+            },
         )
 
         assert mock_find.call_count == 6, (
             'incorrect number of calls to dx_requests.find_files'
         )
-
 
     def test_running_mode_check_skipped_if_not_selected(
         self, mock_archive, mock_find
@@ -724,20 +659,19 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'cnv_reports': False,
                 'snv_reports': True,
                 'mosaic_reports': True,
-                'artemis': True
-            }
+                'artemis': True,
+            },
         )
 
         with self.subTest('expected message not in stdout'):
             expected_stdout = (
-                "Running mode cnv_reports not selected, skipping file check"
+                'Running mode cnv_reports not selected, skipping file check'
             )
 
             assert expected_stdout in self.capsys.readouterr().out
 
         with self.subTest('incorrect calls made to dx_requests.find_files'):
             assert mock_find.call_count == 4
-
 
     def test_correct_patterns_provided_for_each_mode(
         self, mock_archive, mock_find
@@ -755,15 +689,16 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'cnv_reports': True,
                 'snv_reports': True,
                 'mosaic_reports': True,
-                'artemis': True
-            }
+                'artemis': True,
+            },
         )
 
         # define what patterns we expect the function to provide to
         # each call to dx_requests.find_files for each running mode
         expected_called_patterns = {
             'cnv_reports_sample': (
-                    'sample_1.*_segments.vcf$|sample_2.*_segments.vcf$'
+                'sample_1.*_segments.vcf$|sample_1.*_segments_annotated.seg$|'
+                'sample_2.*_segments.vcf$|sample_2.*_segments_annotated.seg$'
             ),
             'cnv_reports_run': '_excluded_intervals.bed$',
             'snv_reports': (
@@ -771,7 +706,7 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'sample_1.*per-base.bed.gz$|sample_1.*reference_build.txt$|'
                 'sample_2.*_markdup_recalibrated_Haplotyper.vcf.gz$|'
                 'sample_2.*per-base.bed.gz$|sample_2.*reference_build.txt$'
-                ),
+            ),
             'mosaic_reports': (
                 'sample_1.*_markdup_recalibrated_tnhaplotyper2.vcf.gz|'
                 'sample_1.*per-base.bed.gz$|sample_1.*reference_build.txt$|'
@@ -786,15 +721,14 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'sample_2.*_copy_ratios.gcnv.bed.gz$|'
                 'sample_2.*_copy_ratios.gcnv.bed.gz.tbi$'
             ),
-            'artemis_run': '-multiqc.html'
+            'artemis_run': '-multiqc.html',
         }
 
         called_patterns = [x[1]['pattern'] for x in mock_find.call_args_list]
 
-        assert sorted(expected_called_patterns.values()) == sorted(called_patterns), (
-            'incorrect patterns provided to dx_requests.find_files'
-        )
-
+        assert sorted(expected_called_patterns.values()) == sorted(
+            called_patterns
+        ), 'incorrect patterns provided to dx_requests.find_files'
 
     def test_call_to_check_archival_state_correct(
         self, mock_archive, mock_find
@@ -816,7 +750,7 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'sample1_per-base.bed.gz',
                 'sample2_reference_build.txt',
                 'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt'
+                'sample2_reference_build.txt',
             ],
             [
                 'sample1_markdup_recalibrated_tnhaplotyper2.vcf.gz',
@@ -824,7 +758,7 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'sample1_per-base.bed.gz',
                 'sample2_reference_build.txt',
                 'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt'
+                'sample2_reference_build.txt',
             ],
             [
                 'sample1_bam$',
@@ -834,9 +768,9 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'sample2_bam$',
                 'sample2_bam.bai$',
                 'sample2_copy_ratios.gcnv.bed$',
-                'sample2_copy_ratios.gcnv.bed.tbi$'
+                'sample2_copy_ratios.gcnv.bed.tbi$',
             ],
-            ['002_myRun-multiqc.html']
+            ['002_myRun-multiqc.html'],
         ]
 
         DXManage().check_all_files_archival_state(
@@ -848,49 +782,52 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'cnv_reports': True,
                 'snv_reports': True,
                 'mosaic_reports': True,
-                'artemis': True
-            }
+                'artemis': True,
+            },
         )
 
         # we expect to pass a single level list of all above files to
         # dx_requests.check_archival_state
         expected_sample_files = [
-                'sample1_segments.vcf', 'sample2_segments.vcf',
-                'sample1_markdup_recalibrated_Haplotyper.vcf.gz',
-                'sample2_markdup_recalibrated_Haplotyper.vcf.gz',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_markdup_recalibrated_tnhaplotyper2.vcf.gz',
-                'sample2_markdup_recalibrated_tnhaplotyper2.vcf.gz',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_bam$',
-                'sample1_bam.bai$',
-                'sample1_copy_ratios.gcnv.bed$',
-                'sample1_copy_ratios.gcnv.bed.tbi$',
-                'sample2_bam$',
-                'sample2_bam.bai$',
-                'sample2_copy_ratios.gcnv.bed$',
-                'sample2_copy_ratios.gcnv.bed.tbi$'
+            'sample1_segments.vcf',
+            'sample2_segments.vcf',
+            'sample1_markdup_recalibrated_Haplotyper.vcf.gz',
+            'sample2_markdup_recalibrated_Haplotyper.vcf.gz',
+            'sample1_per-base.bed.gz',
+            'sample2_reference_build.txt',
+            'sample1_per-base.bed.gz',
+            'sample2_reference_build.txt',
+            'sample1_markdup_recalibrated_tnhaplotyper2.vcf.gz',
+            'sample2_markdup_recalibrated_tnhaplotyper2.vcf.gz',
+            'sample1_per-base.bed.gz',
+            'sample2_reference_build.txt',
+            'sample1_per-base.bed.gz',
+            'sample2_reference_build.txt',
+            'sample1_bam$',
+            'sample1_bam.bai$',
+            'sample1_copy_ratios.gcnv.bed$',
+            'sample1_copy_ratios.gcnv.bed.tbi$',
+            'sample2_bam$',
+            'sample2_bam.bai$',
+            'sample2_copy_ratios.gcnv.bed$',
+            'sample2_copy_ratios.gcnv.bed.tbi$',
         ]
 
         expected_run_files = [
             '002_myRun-multiqc.html',
-            'myRun_excluded_intervals.bed'
+            'myRun_excluded_intervals.bed',
         ]
 
         with self.subTest('wrong sample files passed to check archival state'):
-            assert sorted(mock_archive.call_args[1]['sample_files']) == \
-                sorted(expected_sample_files)
+            assert sorted(mock_archive.call_args[1]['sample_files']) == sorted(
+                expected_sample_files
+            )
 
         with self.subTest('wrong run files passed to check archival state'):
-            assert sorted(mock_archive.call_args[1]['non_sample_files']) == \
-                expected_run_files
-
+            assert (
+                sorted(mock_archive.call_args[1]['non_sample_files'])
+                == expected_run_files
+            )
 
     def test_unarchive_passed_to_check_archival_state(
         self, mock_archive, mock_find
@@ -912,8 +849,8 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                     'cnv_reports': True,
                     'snv_reports': True,
                     'mosaic_reports': True,
-                    'artemis': True
-                }
+                    'artemis': True,
+                },
             )
 
             # should be passed through as False
@@ -929,8 +866,8 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                     'cnv_reports': True,
                     'snv_reports': True,
                     'mosaic_reports': True,
-                    'artemis': True
-                }
+                    'artemis': True,
+                },
             )
 
             # should be passed through as True
@@ -956,19 +893,17 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
                 'cnv_reports': True,
                 'snv_reports': True,
                 'mosaic_reports': True,
-                'artemis': True
-            }
+                'artemis': True,
+            },
         )
 
         with self.subTest('stdout not correct'):
-            expected_stdout = (
-                '-iunarchive_only set and no files in archived state '
-                '- exiting now'
-            )
+            expected_stdout = '-iunarchive_only set and no files in archived state - exiting now'
             assert expected_stdout in self.capsys.readouterr().out
 
         with self.subTest('DXJob.add_tags not called'):
             assert mock_job.return_value.add_tags.call_count == 1
+
 
 class TestDXManageCheckArchivalState(unittest.TestCase):
     """
@@ -978,35 +913,24 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
     of sample names to filter by), and checks the archival state of
     the files to ensure all are live before launching jobs
     """
+
     # minimal dxpy.find_data_objects() return that we expect to pass in
     files = [
         {
             'id': 'file-xxx',
-            'describe': {
-                'name': 'sample1-file1',
-                'archivalState': 'live'
-            }
+            'describe': {'name': 'sample1-file1', 'archivalState': 'live'},
         },
         {
             'id': 'file-xxx',
-            'describe': {
-                'name': 'sample2-file1',
-                'archivalState': 'live'
-            }
+            'describe': {'name': 'sample2-file1', 'archivalState': 'live'},
         },
         {
             'id': 'file-xxx',
-            'describe': {
-                'name': 'sample3-file1',
-                'archivalState': 'live'
-            }
+            'describe': {'name': 'sample3-file1', 'archivalState': 'live'},
         },
         {
             'id': 'file-xxx',
-            'describe': {
-                'name': 'sample4-file1',
-                'archivalState': 'live'
-            }
+            'describe': {'name': 'sample4-file1', 'archivalState': 'live'},
         },
     ]
 
@@ -1014,27 +938,21 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
     files_w_archive = files + [
         {
             'id': 'file-xxx',
-            'describe': {
-                'name': 'sample5-file1',
-                'archivalState': 'archived'
-            }
+            'describe': {'name': 'sample5-file1', 'archivalState': 'archived'},
         }
     ]
-
 
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
         """Capture stdout to provide it to tests"""
         self.capsys = capsys
 
-
     def test_all_live(self):
         """
         Test no error is raised when all provided files are live
         """
         DXManage().check_archival_state(
-            sample_files=self.files,
-            unarchive=False
+            sample_files=self.files, unarchive=False
         )
 
         # since we don't explicitly return anything when there are no
@@ -1046,21 +964,17 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
             'Expected print for all live files not in captured stdout'
         )
 
-
     def test_error_raised_for_archived_files(self):
         """
         Test when files contains an archived file that a RuntimeError
         is correctly raised
         """
         with pytest.raises(
-            RuntimeError,
-            match='Files required for analysis archived'
+            RuntimeError, match='Files required for analysis archived'
         ):
             DXManage().check_archival_state(
-                sample_files=self.files_w_archive,
-                unarchive=False
+                sample_files=self.files_w_archive, unarchive=False
             )
-
 
     def test_archived_files_filtered_out_when_not_in_sample_list(self):
         """
@@ -1072,7 +986,7 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
         DXManage().check_archival_state(
             sample_files=self.files_w_archive,
             unarchive=False,
-            samples=['sample1', 'sample2', 'sample3', 'sample4']
+            samples=['sample1', 'sample2', 'sample3', 'sample4'],
         )
 
         # since we don't explicitly return anything for all being live check
@@ -1083,24 +997,21 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
             'Expected print for all live files not in captured stdout'
         )
 
-
     def test_archived_files_kept_when_in_sample_list(self):
         """
         Test when we have some archived files and a provided list of samples,
         and the archived files are for those selected samples
         """
         with pytest.raises(
-            RuntimeError,
-            match='Files required for analysis archived'
+            RuntimeError, match='Files required for analysis archived'
         ):
             # provide list of sample names to filter by, sample5 has
             # archived file and unarchive=False => should raise error
             DXManage().check_archival_state(
                 sample_files=self.files_w_archive,
                 unarchive=False,
-                samples=['sample5']
+                samples=['sample5'],
             )
-
 
     def test_archived_non_sample_file_kept_when_sample_list_given(self):
         """
@@ -1114,26 +1025,26 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
                 'id': 'file-zzz',
                 'describe': {
                     'name': 'some_other_run_level_file.bed',
-                    'archivalState': 'archived'
-                }
+                    'archivalState': 'archived',
+                },
             }
         ]
 
         # test archived non sample file correctly raises error when
         # provided with sample files and samples list
-        expected_error = "Files required for analysis archived"
+        expected_error = 'Files required for analysis archived'
         with self.subTest():
             with pytest.raises(RuntimeError, match=expected_error):
                 DXManage().check_archival_state(
                     sample_files=self.files_w_archive,
                     non_sample_files=non_sample_archived_file,
                     unarchive=False,
-                    samples=['sample5']
+                    samples=['sample5'],
                 )
 
             # actually test the bed file is flagged
             archived_bed_stdout = (
-                "some_other_run_level_file.bed (file-zzz) - archived"
+                'some_other_run_level_file.bed (file-zzz) - archived'
             )
 
             assert archived_bed_stdout in self.capsys.readouterr().out, (
@@ -1142,23 +1053,21 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
 
         # test archived non sample file correctly raises error when
         # NOT provided with other files
-        expected_error = "Files required for analysis archived"
+        expected_error = 'Files required for analysis archived'
         with self.subTest():
             with pytest.raises(RuntimeError, match=expected_error):
                 DXManage().check_archival_state(
-                    non_sample_files=non_sample_archived_file,
-                    unarchive=False
+                    non_sample_files=non_sample_archived_file, unarchive=False
                 )
 
             # actually test the bed file is flagged
             archived_bed_stdout = (
-                "some_other_run_level_file.bed (file-zzz) - archived"
+                'some_other_run_level_file.bed (file-zzz) - archived'
             )
 
             assert archived_bed_stdout in self.capsys.readouterr().out, (
                 'Archived bed not correctly identified as archived'
             )
-
 
     def test_error_raised_when_non_live_files_can_not_be_unarchived(self):
         """
@@ -1175,29 +1084,22 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
         files = [
             {
                 'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample1-file1',
-                    'archivalState': 'live'
-                }
+                'describe': {'name': 'sample1-file1', 'archivalState': 'live'},
             },
             {
                 'id': 'file-xxx',
                 'describe': {
                     'name': 'sample2-file1',
-                    'archivalState': 'unarchiving'
-                }
-            }
+                    'archivalState': 'unarchiving',
+                },
+            },
         ]
 
         with pytest.raises(
             RuntimeError,
-            match='non-live files not in a state that can be unarchived'
+            match='non-live files not in a state that can be unarchived',
         ):
-            DXManage().check_archival_state(
-                sample_files=files,
-                unarchive=True
-            )
-
+            DXManage().check_archival_state(sample_files=files, unarchive=True)
 
     @patch('utils.dx_requests.DXManage.unarchive_files')
     def test_unarchive_files_called_when_specified(self, mock_unarchive):
@@ -1206,14 +1108,12 @@ class TestDXManageCheckArchivalState(unittest.TestCase):
         we call the function to start unarchiving
         """
         DXManage().check_archival_state(
-            sample_files=self.files_w_archive,
-            unarchive=True
+            sample_files=self.files_w_archive, unarchive=True
         )
 
         assert mock_unarchive.called, (
             'DXManage.unarchive_files not called for unarchive=True'
         )
-
 
 
 class TestDXManageUnarchiveFiles(unittest.TestCase):
@@ -1224,24 +1124,19 @@ class TestDXManageUnarchiveFiles(unittest.TestCase):
     archived files found and unarchive=True set, will go through the
     given file IDs and start the unarchiving process
     """
+
     # minimal dxpy.find_data_objects() return that we expect to unarchive
     files = [
         {
             'project': 'project-xxx',
             'id': 'file-xxx',
-            'describe': {
-                'name': 'sample1-file1',
-                'archivalState': 'archived'
-            }
+            'describe': {'name': 'sample1-file1', 'archivalState': 'archived'},
         },
         {
             'project': 'project-xxx',
             'id': 'file-xxx',
-            'describe': {
-                'name': 'sample2-file1',
-                'archivalState': 'archived'
-            }
-        }
+            'describe': {'name': 'sample2-file1', 'archivalState': 'archived'},
+        },
     ]
 
     @patch('utils.dx_requests.dxpy.DXJob.add_tags')
@@ -1249,34 +1144,23 @@ class TestDXManageUnarchiveFiles(unittest.TestCase):
     @patch('utils.dx_requests.dxpy.api.project_unarchive')
     @patch('utils.dx_requests.sys.exit')
     def test_unarchiving_called(
-            self,
-            exit,
-            mock_unarchive,
-            mock_job,
-            mock_tags
-        ):
+        self, exit, mock_unarchive, mock_job, mock_tags
+    ):
         """
         Test that dxpy.api.project_unarchive() gets called on
         the provided list of DXFile objects
         """
-        DXManage().unarchive_files(
-            self.files
-        )
+        DXManage().unarchive_files(self.files)
 
         mock_unarchive.assert_called()
-
 
     @patch('utils.dx_requests.dxpy.DXJob.add_tags')
     @patch('utils.dx_requests.dxpy.DXJob')
     @patch('utils.dx_requests.dxpy.api.project_unarchive')
     @patch('utils.dx_requests.sys.exit')
     def test_unarchive_called_per_project(
-            self,
-            exit,
-            mock_unarchive,
-            mock_job,
-            mock_tags
-        ):
+        self, exit, mock_unarchive, mock_job, mock_tags
+    ):
         """
         If files found are in more than one project the function
         will loop over each set of files per project, test that this
@@ -1289,49 +1173,42 @@ class TestDXManageUnarchiveFiles(unittest.TestCase):
                 'id': 'file-xxx',
                 'describe': {
                     'name': 'sample1-file1',
-                    'archivalState': 'archived'
-                }
+                    'archivalState': 'archived',
+                },
             },
             {
                 'project': 'project-yyy',
                 'id': 'file-yyy',
                 'describe': {
                     'name': 'sample2-file1',
-                    'archivalState': 'archived'
-                }
+                    'archivalState': 'archived',
+                },
             },
             {
                 'project': 'project-zzz',
                 'id': 'file-zzz',
                 'describe': {
                     'name': 'sample2-file1',
-                    'archivalState': 'archived'
-                }
-            }
+                    'archivalState': 'archived',
+                },
+            },
         ]
 
         DXManage().unarchive_files(files)
 
         self.assertEqual(mock_unarchive.call_count, 3)
 
-
     @patch(
         'utils.dx_requests.dxpy.api.project_unarchive',
-        side_effect=Exception('someDNAnexusAPIError')
+        side_effect=Exception('someDNAnexusAPIError'),
     )
-    def test_error_raised_if_unable_to_unarchive(
-            self,
-            mock_unarchive
-        ):
+    def test_error_raised_if_unable_to_unarchive(self, mock_unarchive):
         """
         If any error is raised during calling dxpy.api.project_unarchive
         it will be caught and raise a RuntimeError, test that if an
         Exception is raised we get the expected error message
         """
-        with pytest.raises(
-            RuntimeError,
-            match='Error unarchiving files'
-        ):
+        with pytest.raises(RuntimeError, match='Error unarchiving files'):
             DXManage().unarchive_files(self.files)
 
 
@@ -1355,27 +1232,22 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
 
         workflow_details = {
             'name': 'workflow1',
-            'stages': [
-                {
-                    'id': 'stage1',
-                    'executable': 'applet-xxx'
-                }
-            ]
+            'stages': [{'id': 'stage1', 'executable': 'applet-xxx'}],
         }
 
         returned_stage_folder = DXManage().format_output_folders(
             workflow=workflow_details,
             single_output='some_output_path',
             time_stamp='010123_1303',
-            name='workflow1_SNV'
+            name='workflow1_SNV',
         )
 
         correct_stage_folder = {
-            "stage1": "/some_output_path/workflow1_SNV/010123_1303/applet1-v1.2.3/"
+            'stage1': '/some_output_path/workflow1_SNV/010123_1303/applet1-v1.2.3/'
         }
 
         assert correct_stage_folder == returned_stage_folder, (
-            "Incorrect stage folders returned for applet"
+            'Incorrect stage folders returned for applet'
         )
 
     def test_correct_folder_app(self):
@@ -1386,27 +1258,22 @@ class TestDXManageFormatOutputFolders(unittest.TestCase):
         """
         workflow_details = {
             'name': 'workflow1',
-            'stages': [
-                {
-                    'id': 'stage1',
-                    'executable': 'app-xxx/1.2.3'
-                }
-            ]
+            'stages': [{'id': 'stage1', 'executable': 'app-xxx/1.2.3'}],
         }
 
         correct_stage_folder = {
-            "stage1": "/some_output_path/workflow1/010123_1303/xxx-1.2.3/"
+            'stage1': '/some_output_path/workflow1/010123_1303/xxx-1.2.3/'
         }
 
         returned_stage_folder = DXManage().format_output_folders(
             workflow=workflow_details,
             single_output='some_output_path',
             time_stamp='010123_1303',
-            name='workflow1'
+            name='workflow1',
         )
 
         assert correct_stage_folder == returned_stage_folder, (
-            "Invalid stage folders returned for app"
+            'Invalid stage folders returned for app'
         )
 
 
@@ -1422,13 +1289,14 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
     We will mostly be testing that where the different inputs are given,
     that expected prints go to stdout since that is the most we can test
     """
+
     config = {
         'modes': {
             'cnv_call': {
                 'inputs': {
                     'bambais': {
                         'folder': '/sentieon-dnaseq',
-                        'name': '.bam$|.bam.bai$'
+                        'name': '.bam$|.bam.bai$',
                     }
                 }
             }
@@ -1449,7 +1317,9 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         self.dxapp_patch = mock.patch('utils.dx_requests.dxpy.DXApp')
         self.run_patch = mock.patch('utils.dx_requests.dxpy.run')
         self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
-        self.wait_patch = mock.patch('utils.dx_requests.dxpy.bindings.DXJob.wait_on_done')
+        self.wait_patch = mock.patch(
+            'utils.dx_requests.dxpy.bindings.DXJob.wait_on_done'
+        )
 
         # create our mocks to reference
         self.mock_path = self.path_patch.start()
@@ -1470,65 +1340,27 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             (
                 'project-GZ025k04VjykZx3bJ7YP837:/output/CEN-230719_1604/'
                 'GATK_gCNV_call-1.2.3/0925-17'
-            )
+            ),
         ]
 
         # mocked return of calling DXManage.find_files to search for input BAMs
         self.mock_find.return_value = [
-            {
-                'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample1.bam'
-                }
-            },
-            {
-                'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample1.bam.bai'
-                }
-            },
-            {
-                'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample2.bam'
-                }
-            },
-            {
-                'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample2.bam.bai'
-                }
-            },
-            {
-                'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample3.bam'
-                }
-            },
-            {
-                'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample3.bam.bai'
-                }
-            }
+            {'id': 'file-xxx', 'describe': {'name': 'sample1.bam'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample1.bam.bai'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample2.bam'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample2.bam.bai'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample3.bam'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample3.bam.bai'}},
         ]
 
         # first dxpy.describe call is on the project ID to get the project
         # name, second is on app ID and third is on job ID
         # patch in minimal responses with required keys
         self.mock_describe.side_effect = [
-            {
-                'name': '002_test_project'
-            },
-            {
-                'name': 'GATK_gCNV_call',
-                'version': '1.2.3'
-            },
-            {
-                'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'
-            }
+            {'name': '002_test_project'},
+            {'name': 'GATK_gCNV_call', 'version': '1.2.3'},
+            {'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'},
         ]
-
 
     def tearDown(self):
         """
@@ -1543,12 +1375,10 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         self.mock_job.stop()
         self.mock_wait.stop()
 
-
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
         """Capture stdout to provide it to tests"""
         self.capsys = capsys
-
 
     def test_cnv_call(self):
         """
@@ -1560,9 +1390,8 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             exclude=[],
             start='',
             wait=False,
-            unarchive=False
+            unarchive=False,
         )
-
 
     def test_wait_on_done(self):
         """
@@ -1575,7 +1404,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             exclude=[],
             start='',
             wait=True,
-            unarchive=False
+            unarchive=False,
         )
 
         stdout = self.capsys.readouterr().out
@@ -1583,7 +1412,6 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         assert 'Holding app until CNV calling completes...' in stdout, (
             'App not waiting with wait=True specified'
         )
-
 
     def test_exclude(self):
         """
@@ -1595,19 +1423,14 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             exclude=['sample2', 'sample3'],
             start='',
             wait=False,
-            unarchive=False
+            unarchive=False,
         )
 
         stdout = self.capsys.readouterr().out
 
-        correct_exclude = (
-            '2 .bam/.bai files after excluding:\n\tsample1.bam\n\tsample1.bam.bai'
-        )
+        correct_exclude = '2 .bam/.bai files after excluding:\n\tsample1.bam\n\tsample1.bam.bai'
 
-        assert correct_exclude in stdout, (
-            'exclude samples incorrect'
-        )
-
+        assert correct_exclude in stdout, 'exclude samples incorrect'
 
     def test_exclude_invalid_sample(self):
         """
@@ -1616,7 +1439,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         the call to utils.check_exclude_samples
         """
         correct_error = (
-            "samples provided to exclude from CNV calling not valid: "
+            'samples provided to exclude from CNV calling not valid: '
             r"\['sample1000'\]"
         )
 
@@ -1627,9 +1450,8 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 exclude=['sample1000'],
                 start='',
                 wait=False,
-                unarchive=False
+                unarchive=False,
             )
-
 
     def test_excluded_files_returned_correct_format(self):
         """
@@ -1642,15 +1464,17 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             exclude=['sample2', 'sample3'],
             start='',
             wait=False,
-            unarchive=False
+            unarchive=False,
         )
 
         correct_exclude = [
-            'sample2.bam', 'sample2.bam.bai', 'sample3.bam', 'sample3.bam.bai'
+            'sample2.bam',
+            'sample2.bam.bai',
+            'sample3.bam',
+            'sample3.bam.bai',
         ]
 
         self.assertEqual(excluded, correct_exclude)
-
 
     def test_correct_error_raised_on_calling_failing(self):
         """
@@ -1661,7 +1485,8 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         # error to be raised from DXJob.wait_on_done()
         self.mock_job.return_value = dxpy.bindings.DXJob(dxid='localjob-')
         self.mock_wait.side_effect = dxpy.exceptions.DXJobFailureError(
-            'oh no :sadpanda:')
+            'oh no :sadpanda:'
+        )
 
         with pytest.raises(
             dxpy.exceptions.DXJobFailureError, match='oh no :sadpanda:'
@@ -1672,9 +1497,8 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 exclude=[],
                 start='',
                 wait=True,
-                unarchive=False
+                unarchive=False,
             )
-
 
     def test_assertion_error_raised_on_no_files_found(self):
         """
@@ -1684,8 +1508,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         self.mock_find.return_value = []
 
         with pytest.raises(
-            AssertionError,
-            match='No BAM files found for CNV calling'
+            AssertionError, match='No BAM files found for CNV calling'
         ):
             DXExecute().cnv_calling(
                 config=deepcopy(self.config),
@@ -1693,7 +1516,7 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
                 exclude=[],
                 start='',
                 wait=True,
-                unarchive=False
+                unarchive=False,
             )
 
 
@@ -1710,65 +1533,63 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
     be a lot of mocking and patching returns etc. to test all the
     conditional behaviour.
     """
+
     # example minimal assay config with required keys for testing
     assay_config = {
-        "assay": "CEN",
-        "version": "2.2.0",
-        "cnv_call_app_id": "app-GJZVB2840KK0kxX998QjgXF0",
-        "snv_report_workflow_id": "workflow-GXzkfYj4QPQp9z4Jz4BF09y6",
-        "cnv_report_workflow_id": "workflow-GXzvJq84XZB1fJk9fBfG88XJ",
-        "name_patterns": {
-            "Epic": "^[\\d\\w]+-[\\d\\w]+",
-            "Gemini": "^X[\\d]+"
+        'assay': 'CEN',
+        'version': '2.2.0',
+        'cnv_call_app_id': 'app-GJZVB2840KK0kxX998QjgXF0',
+        'snv_report_workflow_id': 'workflow-GXzkfYj4QPQp9z4Jz4BF09y6',
+        'cnv_report_workflow_id': 'workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+        'name_patterns': {
+            'Epic': '^[\\d\\w]+-[\\d\\w]+',
+            'Gemini': '^X[\\d]+',
         },
-        "modes": {
-            "cnv_reports": {
-                "inputs": {
-                    "stage-cnv_vep.vcf": {
-                        "folder": "CNV_vcfs",
-                        "name": "_segments.vcf$"
+        'modes': {
+            'cnv_reports': {
+                'static_beds_path': 'project-xxx:/static_beds/',
+                'inputs': {
+                    'stage-cnv_vep.vcf': {
+                        'folder': 'CNV_vcfs',
+                        'name': '_segments.vcf$',
                     }
-                }
+                },
             },
-            "snv_reports": {
-                "inputs": {
-                    "stage-rpt_vep.vcf": {
-                        "folder": "sentieon-dnaseq",
-                        "name": ".vcf"
+            'snv_reports': {
+                'static_beds_path': 'project-xxx:/static_beds/',
+                'inputs': {
+                    'stage-rpt_vep.vcf': {
+                        'folder': 'sentieon-dnaseq',
+                        'name': '.vcf',
                     },
-                    "stage-rpt_athena.mosdepth_files": {
-                        "folder": "eggd_mosdepth",
-                        "name": "per-base.bed.gz$|reference.txt$"
-                    }
-                }
-            }
-        }
+                    'stage-rpt_athena.mosdepth_files': {
+                        'folder': 'eggd_mosdepth',
+                        'name': 'per-base.bed.gz$|reference.txt$',
+                    },
+                },
+            },
+        },
     }
 
     # minimal manifest with parsed in indications and panels
     manifest = {
-        "X1234": {
-            "manifest_source": "Epic",
-            "tests": [["R207.1"]],
-            "panels": [
-                ["Inherited ovarian cancer (without breast cancer)_4.0"]
+        'X1234': {
+            'manifest_source': 'Epic',
+            'tests': [['R207.1']],
+            'panels': [
+                ['Inherited ovarian cancer (without breast cancer)_4.0']
             ],
-            "indications": [[
-                "R207.1_Inherited ovarian cancer (without breast cancer)_P"
-            ]]
+            'indications': [
+                ['R207.1_Inherited ovarian cancer (without breast cancer)_P']
+            ],
         },
-        "X5678": {
-            "manifest_source": "Epic",
-            "tests": [["R134.1"]],
-            "panels": [
-                ["Familial hypercholesterolaemia (GMS)_2.0"]
-            ],
-            "indications": [
-                ["R134.1_Familial hypercholesterolaemia_P"]
-            ]
+        'X5678': {
+            'manifest_source': 'Epic',
+            'tests': [['R134.1']],
+            'panels': [['Familial hypercholesterolaemia (GMS)_2.0']],
+            'indications': [['R134.1_Familial hypercholesterolaemia_P']],
         },
     }
-
 
     def setUp(self):
         """
@@ -1791,7 +1612,9 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.workflow_patch = mock.patch('utils.dx_requests.dxpy.DXWorkflow')
         self.describe_patch = mock.patch('utils.dx_requests.dxpy.describe')
         self.timer_patch = mock.patch('utils.dx_requests.timer')
-
+        self.static_beds_patch = mock.patch(
+            'utils.dx_requests.DXManage.get_static_beds'
+        )
 
         self.mock_find = self.find_patch.start()
         self.mock_job = self.job_patch.start()
@@ -1803,90 +1626,78 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_workflow = self.workflow_patch.start()
         self.mock_describe = self.describe_patch.start()
         self.mock_timer = self.timer_patch.start()
-
+        self.mock_static_beds = self.static_beds_patch.start()
+        self.mock_static_beds.return_value = {}
 
         # Below are some generalised expected returns for each of the
         # function calls, these will be patched over individually to
         # adjust for expected environment of each test
 
         # mock of filtering manifest where no invalid samples found
-        self.mock_filter_manifest.return_value = [
-            self.manifest,
-            [],
-            []
-        ]
+        self.mock_filter_manifest.return_value = [self.manifest, [], []]
 
         # patch of dxpy.describe when called on workflow to return name
         # for setting output paths and job names
-        self.mock_describe.return_value = {
-            'name': 'reports_workflow'
-        }
+        self.mock_describe.return_value = {'name': 'reports_workflow'}
 
         # patch of adding vcfs to the manifest (i.e. manifest with describe
         # output of the vcf file added to the manifest under 'vcf' key)
         self.mock_filter_manifest.return_value = [
             {
-                "X1234": {
-                    "manifest_source": "Epic",
-                    "tests": [["R207.1"]],
-                    "panels": [
-                        ["Inherited ovarian cancer (without breast cancer)_4.0"]
+                'X1234': {
+                    'manifest_source': 'Epic',
+                    'tests': [['R207.1']],
+                    'panels': [
+                        [
+                            'Inherited ovarian cancer (without breast cancer)_4.0'
+                        ]
                     ],
-                    "indications": [[
-                        "R207.1_Inherited ovarian cancer (without breast cancer)_P"
-                    ]],
-                    "vcf": [
+                    'indications': [
+                        [
+                            'R207.1_Inherited ovarian cancer (without breast cancer)_P'
+                        ]
+                    ],
+                    'vcf': [
                         {
                             'project': 'project-xxx',
                             'id': 'file-xxx',
-                            'describe': {
-                                'name': 'X1234_markdup.vcf'
-                            }
+                            'describe': {'name': 'X1234_markdup.vcf'},
                         }
                     ],
-                    "mosdepth": [
+                    'mosdepth': [
                         {
                             'project': 'project-xxx',
                             'id': 'file-xxx',
-                            'describe': {
-                                'name': 'X1234.per-base.bed.gz'
-                            }
+                            'describe': {'name': 'X1234.per-base.bed.gz'},
                         }
-                    ]
+                    ],
                 },
-                "X5678": {
-                    "manifest_source": "Epic",
-                    "tests": [["R134.1"]],
-                    "panels": [
-                        ["Familial hypercholesterolaemia (GMS)_2.0"]
+                'X5678': {
+                    'manifest_source': 'Epic',
+                    'tests': [['R134.1']],
+                    'panels': [['Familial hypercholesterolaemia (GMS)_2.0']],
+                    'indications': [
+                        ['R134.1_Familial hypercholesterolaemia_P']
                     ],
-                    "indications": [
-                        ["R134.1_Familial hypercholesterolaemia_P"]
-                    ],
-                    "vcf": [
+                    'vcf': [
                         {
                             'project': 'project-xxx',
                             'id': 'file-xxx',
-                            'describe': {
-                                'name': 'X5678_markdup.vcf'
-                            }
+                            'describe': {'name': 'X5678_markdup.vcf'},
                         }
                     ],
-                    "mosdepth": [
+                    'mosdepth': [
                         {
                             'project': 'project-xxx',
                             'id': 'file-xxx',
-                            'describe': {
-                                'name': 'X5678.per-base.bed.gz'
-                            }
+                            'describe': {'name': 'X5678.per-base.bed.gz'},
                         },
-                    ]
+                    ],
                 },
             },
             [],
-            []
+            [],
         ]
-
 
     def tearDown(self):
         self.mock_find.stop()
@@ -1899,12 +1710,12 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_workflow.stop()
         self.mock_describe.stop()
         self.mock_timer.stop()
+        self.static_beds_patch.stop()
 
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
         """Capture stdout to provide it to tests"""
         self.capsys = capsys
-
 
     def test_error_raised_if_name_pattern_missing_from_config(self):
         """
@@ -1916,7 +1727,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         with pytest.raises(
             RuntimeError,
-            match='Unable to correctly parse manifest source. Parsed:'
+            match='Unable to correctly parse manifest source. Parsed:',
         ):
             DXExecute().reports_workflow(
                 mode='CNV',
@@ -1926,9 +1737,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 config={},
                 start='230925_0943',
                 name_patterns={},
-                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb',
             )
-
 
     def test_xlsx_reports_found(self):
         """
@@ -1942,23 +1752,12 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         # minimal set of xlsx reports found
         self.mock_find.return_value = [
-            {
-                'id': 'file-xxx',
-                'describe': {
-                    'name': 'sample1.xlsx'
-                }
-            },
-            {
-                'id': 'file-yyy',
-                'describe': {
-                    'name': 'sample2.xlsx'
-                }
-            }
+            {'id': 'file-xxx', 'describe': {'name': 'sample1.xlsx'}},
+            {'id': 'file-yyy', 'describe': {'name': 'sample2.xlsx'}},
         ]
 
         with pytest.raises(
-            RuntimeError,
-            match='Invalid mode set for running reports: test'
+            RuntimeError, match='Invalid mode set for running reports: test'
         ):
             DXExecute().reports_workflow(
                 mode='test',
@@ -1968,14 +1767,13 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 config=self.assay_config,
                 start='230925_0943',
                 name_patterns={'Epic': '[\d\w]+-[\d\w]+'},
-                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb',
             )
 
         stdout = self.capsys.readouterr().out
         reports = 'xlsx reports found:\n\tsample1.xlsx\n\tsample2.xlsx'
 
-        assert reports in stdout, ('Expected xlsx reports not found')
-
+        assert reports in stdout, 'Expected xlsx reports not found'
 
     def test_cnv_mode_error_raised_when_missing_intervals_bed(self):
         """
@@ -1987,9 +1785,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         with pytest.raises(
             RuntimeError,
             match=(
-                'Failed to find excluded intervals bed file '
-                'from job-QaTZ9qEwkEsovKLs14DSdNqb'
-            )
+                'Failed to find excluded intervals bed file from job-QaTZ9qEwkEsovKLs14DSdNqb'
+            ),
         ):
             DXExecute().reports_workflow(
                 mode='CNV',
@@ -1999,9 +1796,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 config=self.assay_config['modes']['cnv_reports'],
                 start='230925_0943',
                 name_patterns=self.assay_config['name_patterns'],
-                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb',
             )
-
 
     def test_cnv_mode_error_raised_when_missing_vcf_files(self):
         """
@@ -2010,16 +1806,13 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         # patch return of DXManage.find_files to have a bed file but no vcfs
         self.mock_find.side_effect = [
             [],
-            [{
-                'project': 'project-xxx',
-                'id': 'file-xxx'
-            }],
-            []
+            [{'project': 'project-xxx', 'id': 'file-xxx'}],
+            [],
         ]
 
         with pytest.raises(
             RuntimeError,
-            match='Failed to find vcfs from job-QaTZ9qEwkEsovKLs14DSdNqb'
+            match='Failed to find vcfs from job-QaTZ9qEwkEsovKLs14DSdNqb',
         ):
             DXExecute().reports_workflow(
                 mode='CNV',
@@ -2029,9 +1822,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 config=self.assay_config['modes']['cnv_reports'],
                 start='230925_0943',
                 name_patterns={'Gemini': 'X[\d]+'},
-                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb'
+                call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb',
             )
-
 
     def test_cnv_mode_exclude_samples_correct(self):
         """
@@ -2042,26 +1834,19 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         # patch in returned bed and vcfs
         self.mock_find.side_effect = [
             [],
-            [{
-                'project': 'project-xxx',
-                'id': 'file-xxx'
-            }],
+            [{'project': 'project-xxx', 'id': 'file-xxx'}],
             [
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X1234_markdup.vcf'
-                    }
+                    'describe': {'name': 'X1234_markdup.vcf'},
                 },
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X5678_markdup.vcf'
-                    }
-                }
-            ]
+                    'describe': {'name': 'X5678_markdup.vcf'},
+                },
+            ],
         ]
 
         DXExecute().reports_workflow(
@@ -2073,7 +1858,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns'],
             call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb',
-            exclude=['X1234']
+            exclude=['X1234'],
         )
 
         # check that excluded sample is dumped to stdout, about the best
@@ -2085,7 +1870,6 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             'Exclude sample not correctly excluded'
         )
 
-
     def test_snv_mode_error_raised_when_missing_vcfs(self):
         """
         Check correct error is raised if no VCFs are found in given dir
@@ -2093,8 +1877,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         self.mock_find.return_value = []
 
         expected_error = (
-            "Found no vcf files! SNV reports in /path_to_single/ and subdir "
-            "sentieon-dnaseq with pattern .vcf"
+            'Found no vcf files! SNV reports in /path_to_single/ and subdir '
+            'sentieon-dnaseq with pattern .vcf'
         )
 
         with pytest.raises(RuntimeError, match=expected_error):
@@ -2105,9 +1889,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 manifest=self.manifest,
                 config=self.assay_config['modes']['snv_reports'],
                 start='230925_0943',
-                name_patterns=self.assay_config['name_patterns']
+                name_patterns=self.assay_config['name_patterns'],
             )
-
 
     def test_snv_mode_error_raised_when_missing_mosdepth_files(self):
         """
@@ -2117,18 +1900,14 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         # no mosdepth files
         self.mock_find.side_effect = [
             [],
-            [{
-                'describe': {
-                    'name': 'sample.vcf'
-                }
-            }],
-            []
+            [{'describe': {'name': 'sample.vcf'}}],
+            [],
         ]
 
         expected_error = (
-            "Found no mosdepth files\! SNV reports in \/path_to_single\/ "
-            "and subdir eggd_mosdepth with pattern per\-base\.bed\.gz\$\|"
-            "reference\.txt\$"
+            'Found no mosdepth files\! SNV reports in \/path_to_single\/ '
+            'and subdir eggd_mosdepth with pattern per\-base\.bed\.gz\$\|'
+            'reference\.txt\$'
         )
 
         with pytest.raises(RuntimeError, match=expected_error):
@@ -2139,9 +1918,8 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
                 manifest=self.manifest,
                 config=self.assay_config['modes']['snv_reports'],
                 start='230925_0943',
-                name_patterns=self.assay_config['name_patterns']
+                name_patterns=self.assay_config['name_patterns'],
             )
-
 
     def test_snv_mode_filter_manifest_by_files_is_called(self):
         """
@@ -2152,27 +1930,19 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         # minimal mock of returned vcf and mosdepth files
         self.mock_find.side_effect = [
             [],
-            [{
-                'describe': {
-                    'name': 'sample.vcf'
-                }
-            }],
+            [{'describe': {'name': 'sample.vcf'}}],
             [
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X1234.per-base.bed.gz'
-                    }
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
                 },
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X5678.per-base.bed.gz'
-                    }
-                }
-            ]
+                    'describe': {'name': 'X5678.per-base.bed.gz'},
+                },
+            ],
         ]
 
         DXExecute().reports_workflow(
@@ -2182,7 +1952,7 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             manifest=self.manifest,
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
-            name_patterns=self.assay_config['name_patterns']
+            name_patterns=self.assay_config['name_patterns'],
         )
 
         # check we called filter_manifest_samples_by_files() for mosdepth
@@ -2190,9 +1960,42 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             name='mosdepth',
             files=mock.ANY,
             manifest=mock.ANY,
-            pattern=mock.ANY
+            pattern=mock.ANY,
         )
 
+    def test_error_raised_if_static_beds_path_missing(self):
+        """
+        static_beds_path is required for reports workflows, test that
+        a clear error is raised when it is missing from mode config.
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{'describe': {'name': 'sample.vcf'}}],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
+                }
+            ],
+        ]
+
+        config = deepcopy(self.assay_config['modes']['snv_reports'])
+        config.pop('static_beds_path')
+
+        expected_error = (
+            'Missing required static_beds_path in reports mode config'
+        )
+        with pytest.raises(RuntimeError, match=expected_error):
+            DXExecute().reports_workflow(
+                mode='SNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest=self.manifest,
+                config=config,
+                start='230925_0943',
+                name_patterns=self.assay_config['name_patterns'],
+            )
 
     def test_samples_no_vcfs_or_mosdepth_files_added_to_errors(self):
         """
@@ -2201,27 +2004,19 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         self.mock_find.side_effect = [
             [],
-            [{
-                'describe': {
-                    'name': 'sample.vcf'
-                }
-            }],
+            [{'describe': {'name': 'sample.vcf'}}],
             [
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X1234.per-base.bed.gz'
-                    }
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
                 },
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X5678.per-base.bed.gz'
-                    }
-                }
-            ]
+                    'describe': {'name': 'X5678.per-base.bed.gz'},
+                },
+            ],
         ]
 
         # patch in an error for adding files to the output of
@@ -2238,22 +2033,20 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             manifest=self.manifest,
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
-            name_patterns=self.assay_config['name_patterns']
+            name_patterns=self.assay_config['name_patterns'],
         )
 
         expected_errors = {
             (
-                'Samples in manifest not matching expected Epic pattern '
-                '(1) ^[\\d\\w]+-[\\d\\w]+'
+                'Samples in manifest not matching expected Epic pattern (1) ^[\\d\\w]+-[\\d\\w]+'
             ): ['X1928'],
             'Samples in manifest with no mosdepth files found (1)': ['X1928'],
-            'Samples in manifest with no VCF found (1)': ['X1928']
+            'Samples in manifest with no VCF found (1)': ['X1928'],
         }
 
         assert errors == expected_errors, (
             'Expected errors not returned from samples missing files'
         )
-
 
     def test_error_raised_if_manifest_empty_after_filtering(self):
         """
@@ -2263,44 +2056,37 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         self.mock_find.side_effect = [
             [],
-            [{
-                'describe': {
-                    'name': 'sample.vcf'
-                }
-            }],
+            [{'describe': {'name': 'sample.vcf'}}],
             [
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X1234.per-base.bed.gz'
-                    }
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
                 },
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X5678.per-base.bed.gz'
-                    }
-                }
-            ]
+                    'describe': {'name': 'X5678.per-base.bed.gz'},
+                },
+            ],
         ]
 
         self.mock_filter_manifest.return_value = [{}, [], []]
 
-        expected_error = "No samples left after filtering to run SNV reports on"
+        expected_error = (
+            'No samples left after filtering to run SNV reports on'
+        )
 
         with pytest.raises(RuntimeError, match=expected_error):
             DXExecute().reports_workflow(
-            mode='SNV',
-            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
-            single_output_dir='/path_to_single/',
-            manifest=self.manifest,
-            config=self.assay_config['modes']['snv_reports'],
-            start='230925_0943',
-            name_patterns=self.assay_config['name_patterns']
-        )
-
+                mode='SNV',
+                workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+                single_output_dir='/path_to_single/',
+                manifest=self.manifest,
+                config=self.assay_config['modes']['snv_reports'],
+                start='230925_0943',
+                name_patterns=self.assay_config['name_patterns'],
+            )
 
     def test_name_suffix_integer_incremented(self):
         """
@@ -2310,27 +2096,19 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         self.mock_find.side_effect = [
             [],
-            [{
-                'describe': {
-                    'name': 'sample.vcf'
-                }
-            }],
+            [{'describe': {'name': 'sample.vcf'}}],
             [
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X1234.per-base.bed.gz'
-                    }
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
                 },
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X5678.per-base.bed.gz'
-                    }
-                }
-            ]
+                    'describe': {'name': 'X5678.per-base.bed.gz'},
+                },
+            ],
         ]
 
         self.mock_index.return_value = 1
@@ -2338,12 +2116,15 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         # add additional test to manifest for X1234 (just duplicating the
         # one already added)
         filled_manifest = deepcopy(self.mock_filter_manifest.return_value)
-        filled_manifest[0]["X1234"]["tests"] = \
-            filled_manifest[0]["X1234"]["tests"] * 2
-        filled_manifest[0]["X1234"]["indications"] = \
-            filled_manifest[0]["X1234"]["indications"] * 2
-        filled_manifest[0]["X1234"]["panels"] = \
-            filled_manifest[0]["X1234"]["panels"] * 2
+        filled_manifest[0]['X1234']['tests'] = (
+            filled_manifest[0]['X1234']['tests'] * 2
+        )
+        filled_manifest[0]['X1234']['indications'] = (
+            filled_manifest[0]['X1234']['indications'] * 2
+        )
+        filled_manifest[0]['X1234']['panels'] = (
+            filled_manifest[0]['X1234']['panels'] * 2
+        )
 
         self.mock_filter_manifest.return_value = filled_manifest
 
@@ -2354,13 +2135,12 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             manifest=filled_manifest[0],
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
-            name_patterns=self.assay_config['name_patterns']
+            name_patterns=self.assay_config['name_patterns'],
         )
 
-        assert summary['SNV']['X1234'] == 'X1234_R207.1_SNV_1\nX1234_R207.1_SNV_2', (
-            'Suffix for repeat sample incorrect'
-        )
-
+        assert (
+            summary['SNV']['X1234'] == 'X1234_R207.1_SNV_1\nX1234_R207.1_SNV_2'
+        ), 'Suffix for repeat sample incorrect'
 
     def test_single_gene_reports_name_have_no_colon(self):
         """
@@ -2370,33 +2150,25 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         self.mock_find.side_effect = [
             [],
-            [{
-                'describe': {
-                    'name': 'sample.vcf'
-                }
-            }],
+            [{'describe': {'name': 'sample.vcf'}}],
             [
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X1234.per-base.bed.gz'
-                    }
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
                 },
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X5678.per-base.bed.gz'
-                    }
-                }
-            ]
+                    'describe': {'name': 'X5678.per-base.bed.gz'},
+                },
+            ],
         ]
 
         # minimal manifest with parsed in indications and panels, make
         # first sample have single gene test
         filled_manifest = deepcopy(self.mock_filter_manifest.return_value)
-        filled_manifest[0]["X1234"]["tests"] = [["_HGNC:1234"]]
+        filled_manifest[0]['X1234']['tests'] = [['_HGNC:1234']]
 
         self.mock_filter_manifest.return_value = filled_manifest
         self.mock_index.return_value = 1
@@ -2408,13 +2180,12 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             manifest=filled_manifest[0],
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
-            name_patterns=self.assay_config['name_patterns']
+            name_patterns=self.assay_config['name_patterns'],
         )
 
         assert summary['SNV']['X1234'] == 'X1234_HGNC_1234_SNV_1', (
             'naming of single gene test incorrect'
         )
-
 
     def test_sample_limit_works(self):
         """
@@ -2422,27 +2193,19 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         """
         self.mock_find.side_effect = [
             [],
-            [{
-                'describe': {
-                    'name': 'sample.vcf'
-                }
-            }],
+            [{'describe': {'name': 'sample.vcf'}}],
             [
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X1234.per-base.bed.gz'
-                    }
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
                 },
                 {
                     'project': 'project-xxx',
                     'id': 'file-xxx',
-                    'describe': {
-                        'name': 'X5678.per-base.bed.gz'
-                    }
-                }
-            ]
+                    'describe': {'name': 'X5678.per-base.bed.gz'},
+                },
+            ],
         ]
 
         DXExecute().reports_workflow(
@@ -2453,12 +2216,12 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             config=self.assay_config['modes']['snv_reports'],
             start='230925_0943',
             name_patterns=self.assay_config['name_patterns'],
-            sample_limit=1
+            sample_limit=1,
         )
 
         stdout = self.capsys.readouterr().out
 
-        assert "Sample limit hit, stopping launching further jobs" in stdout, (
+        assert 'Sample limit hit, stopping launching further jobs' in stdout, (
             "Sample limit param didn't break as expected"
         )
 
@@ -2476,12 +2239,7 @@ class TestDXExecuteArtemis(unittest.TestCase):
     @patch('utils.dx_requests.make_path')
     @patch('utils.dx_requests.dxpy.describe')
     @patch('utils.dx_requests.dxpy.DXApp')
-    def test_called(
-        self,
-        mock_app,
-        mock_describe,
-        mock_path
-    ):
+    def test_called(self, mock_app, mock_describe, mock_path):
         """
         Test when we run artemis that we get back the job ID which is stored
         as '_dxid' attribute of the DXJob dx object
@@ -2493,7 +2251,7 @@ class TestDXExecuteArtemis(unittest.TestCase):
 
         mock_describe.return_value = {
             'name': 'eggd_artemis',
-            'version': '1.3.0'
+            'version': '1.3.0',
         }
 
         job = DXExecute().artemis(
@@ -2505,7 +2263,7 @@ class TestDXExecuteArtemis(unittest.TestCase):
             capture_bed='file-xxx',
             snv_output=None,
             cnv_output=None,
-            url_duration=None
+            url_duration=None,
         )
 
         assert job == 'job-QaTZ9qEwkEsovKLs14DSdNqb', (
@@ -2515,12 +2273,7 @@ class TestDXExecuteArtemis(unittest.TestCase):
     @patch('utils.dx_requests.make_path')
     @patch('utils.dx_requests.dxpy.describe')
     @patch('utils.dx_requests.dxpy.DXApp')
-    def test_multiqc_report_added(
-        self,
-        mock_app,
-        mock_describe,
-        mock_path
-    ):
+    def test_multiqc_report_added(self, mock_app, mock_describe, mock_path):
         """
         Test that when eggd_artemis >=1.4.0 that multiqc_report is
         specified as an input when running the app
@@ -2528,7 +2281,7 @@ class TestDXExecuteArtemis(unittest.TestCase):
         # mock app describe output to be 1.4.0 => add multiqc_report
         mock_describe.return_value = {
             'name': 'eggd_artemis',
-            'version': '1.4.0'
+            'version': '1.4.0',
         }
 
         DXExecute().artemis(
@@ -2541,7 +2294,7 @@ class TestDXExecuteArtemis(unittest.TestCase):
             snv_output=None,
             cnv_output=None,
             url_duration=None,
-            multiqc_report='file-xxx'
+            multiqc_report='file-xxx',
         )
 
         run_input = mock_app.return_value.run.call_args.kwargs
@@ -2552,10 +2305,7 @@ class TestDXExecuteArtemis(unittest.TestCase):
     @patch('utils.dx_requests.dxpy.describe')
     @patch('utils.dx_requests.dxpy.DXApp')
     def test_additional_inputs_passed_if_exist(
-        self,
-        mock_app,
-        mock_describe,
-        mock_path
+        self, mock_app, mock_describe, mock_path
     ):
         """
         Test that if additional inputs are passed to the function that
@@ -2564,13 +2314,10 @@ class TestDXExecuteArtemis(unittest.TestCase):
         # mock app describe output to be 1.4.0 => add multiqc_report
         mock_describe.return_value = {
             'name': 'eggd_artemis',
-            'version': '1.4.0'
+            'version': '1.4.0',
         }
 
-        additional_inputs = {
-            "input_1": "value_1",
-            "input_2": 12
-        }
+        additional_inputs = {'input_1': 'value_1', 'input_2': 12}
 
         DXExecute().artemis(
             single_output_dir='/output_path/',
@@ -2580,21 +2327,18 @@ class TestDXExecuteArtemis(unittest.TestCase):
             qc_xlsx='file-xxx',
             snv_output=None,
             cnv_output=None,
-            **additional_inputs
+            **additional_inputs,
         )
 
         run_input = mock_app.return_value.run.call_args.kwargs
-        self.assertEqual(run_input['app_input']['input_1'], "value_1")
+        self.assertEqual(run_input['app_input']['input_1'], 'value_1')
         self.assertEqual(run_input['app_input']['input_2'], 12)
 
     @patch('utils.dx_requests.make_path')
     @patch('utils.dx_requests.dxpy.describe')
     @patch('utils.dx_requests.dxpy.DXApp')
     def test_additional_inputs_not_passed_if_exist(
-        self,
-        mock_app,
-        mock_describe,
-        mock_path
+        self, mock_app, mock_describe, mock_path
     ):
         """
         Test that if no additional inputs exist they are not passed to
@@ -2603,7 +2347,7 @@ class TestDXExecuteArtemis(unittest.TestCase):
         # mock app describe output to be 1.4.0 => add multiqc_report
         mock_describe.return_value = {
             'name': 'eggd_artemis',
-            'version': '1.4.0'
+            'version': '1.4.0',
         }
 
         additional_inputs = {}
@@ -2616,16 +2360,15 @@ class TestDXExecuteArtemis(unittest.TestCase):
             qc_xlsx='file-xxx',
             snv_output=None,
             cnv_output=None,
-            **additional_inputs
+            **additional_inputs,
         )
 
-        expected_run_inputs = {
-            'snv_path', 'cnv_path', 'qc_status'
-        }
+        expected_run_inputs = {'snv_path', 'cnv_path', 'qc_status'}
 
         kwargs = mock_app.return_value.run.call_args.kwargs
         run_input = kwargs['app_input']
         self.assertEqual(set(run_input.keys()), expected_run_inputs)
+
 
 class TestDXExecuteTerminate(unittest.TestCase):
     """
@@ -2635,22 +2378,22 @@ class TestDXExecuteTerminate(unittest.TestCase):
     dxpy call to terminate it, used when running testing to stop all
     launched jobs
     """
+
     def setUp(self):
         """Setup up mocks of terminate"""
         self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
         self.job_terminate_patch = mock.patch(
-            'utils.dx_requests.dxpy.bindings.DXJob.terminate')
-        self.analysis_patch = mock.patch(
-            'utils.dx_requests.dxpy.DXAnalysis'
+            'utils.dx_requests.dxpy.bindings.DXJob.terminate'
         )
+        self.analysis_patch = mock.patch('utils.dx_requests.dxpy.DXAnalysis')
         self.analysis_terminate_patch = mock.patch(
-            'utils.dx_requests.dxpy.bindings.DXAnalysis.terminate')
+            'utils.dx_requests.dxpy.bindings.DXAnalysis.terminate'
+        )
 
         self.mock_job = self.job_patch.start()
         self.mock_job_terminate = self.job_terminate_patch.start()
         self.mock_analysis = self.analysis_patch.start()
         self.mock_analysis_terminate = self.analysis_terminate_patch.start()
-
 
     def tearDown(self):
         self.mock_job.stop()
@@ -2658,12 +2401,10 @@ class TestDXExecuteTerminate(unittest.TestCase):
         self.mock_analysis.stop()
         self.mock_analysis_terminate.stop()
 
-
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
         """Capture stdout to provide it to tests"""
         self.capsys = capsys
-
 
     def test_jobs_terminate(self):
         """
@@ -2676,19 +2417,18 @@ class TestDXExecuteTerminate(unittest.TestCase):
 
         self.mock_job_terminate.assert_called()
 
-
     def test_analysis_terminate(self):
         """
         Test when analysis IDs provided they get terminate() called
         """
         # patch job object on which terminate() will get called
         self.mock_analysis.return_value = dxpy.bindings.DXAnalysis(
-            dxid='analysis-QaTZ9qEwkEsovKLs14DSdNqb')
+            dxid='analysis-QaTZ9qEwkEsovKLs14DSdNqb'
+        )
 
         DXExecute().terminate(['analysis-xxx', 'analysis-yyy'])
 
         self.mock_analysis_terminate.assert_called()
-
 
     def test_errors_caught(self):
         """
@@ -2696,7 +2436,8 @@ class TestDXExecuteTerminate(unittest.TestCase):
         """
         # patch the call to DXJob.terminate() to raise an Exception
         self.mock_job.return_value = dxpy.bindings.DXJob(
-            dxid='job-QaTZ9qEwkEsovKLs14DSdNqb')
+            dxid='job-QaTZ9qEwkEsovKLs14DSdNqb'
+        )
         self.mock_job_terminate.side_effect = Exception('oh no :sadpepe:')
 
         DXExecute().terminate(['job-xxx'])
@@ -2706,3 +2447,295 @@ class TestDXExecuteTerminate(unittest.TestCase):
         assert 'Error terminating job job-xxx: oh no :sadpepe:' in stdout, (
             'Error in terminating job not correctly caught'
         )
+
+
+class TestDXManageGetStaticBeds:
+    """Tests for DXManage.get_static_beds()"""
+
+    def setup_method(self):
+        self.find_patch = mock.patch(
+            'utils.dx_requests.dxpy.find_data_objects'
+        )
+        self.dxfile_patch = mock.patch('utils.dx_requests.dxpy.DXFile')
+
+        self.mock_find = self.find_patch.start()
+        self.mock_dxfile = self.dxfile_patch.start()
+
+        # storage for per-file content to return from DXFile.read()
+        self.file_contents = {}
+
+        def dxfile_side_effect(project=None, dxid=None):
+            dx_file = mock.Mock()
+            dx_file.read.return_value = self.file_contents.get(dxid, '')
+            return dx_file
+
+        self.mock_dxfile.side_effect = dxfile_side_effect
+
+    def teardown_method(self):
+        self.find_patch.stop()
+        self.dxfile_patch.stop()
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        self.capsys = capsys
+
+    def test_invalid_path_raises_assertion(self):
+        expected_error = 'Path to bed files appears invalid: invalid_path'
+        with pytest.raises(AssertionError, match=expected_error):
+            DXManage().get_static_beds(path='invalid_path')
+
+    def test_no_bed_files_found(self):
+        self.mock_find.return_value = []
+        expected_error = 'No bed files found in: project-xxx:/beds'
+        with pytest.raises(AssertionError, match=expected_error):
+            DXManage().get_static_beds(path='project-xxx:/beds')
+
+    def test_header_version_mismatch_raises_error(self):
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-1',
+                'describe': {
+                    'name': 'v1.0_suffixA.bed',
+                    'archivalState': 'live',
+                },
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-2',
+                'describe': {
+                    'name': 'v1.5_suffixA.bed',
+                    'archivalState': 'live',
+                },
+            },
+        ]
+
+        # header declares v2.0 while filename declares v1.0 => mismatch error
+        self.file_contents['file-1'] = b'# v2.0\nchr1\t1\t2\n'
+        self.file_contents['file-2'] = '# v1.5\nchr1\t1\t2\n'
+
+        expected_error = (
+            r"Version mismatch for 'v1\.0_suffixA\.bed': filename has v1\.0 "
+            r'but header has v2\.0'
+        )
+        with pytest.raises(RuntimeError, match=expected_error):
+            DXManage().get_static_beds(path='project-xxx:/beds')
+
+    def test_multiple_files_for_highest_version_raises(self):
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-1',
+                'describe': {
+                    'name': 'v1.0_suffixA.bed',
+                    'archivalState': 'live',
+                },
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-2',
+                'describe': {
+                    'name': 'v1.0_suffixA.bed',
+                    'archivalState': 'live',
+                },
+            },
+        ]
+
+        self.file_contents['file-1'] = '# v1.0\nchr1\t1\t2\n'
+        self.file_contents['file-2'] = '# v1.0\nchr1\t1\t2\n'
+
+        expected_error = (
+            r'More than one file found for highest version '
+            r"\(v1\.0\) of suffix 'suffixA\.bed':\n\tv1.0_suffixA.bed "
+            r'\(file-1\)\n\tv1.0_suffixA.bed \(file-2\)'
+        )
+
+        with pytest.raises(RuntimeError, match=expected_error):
+            DXManage().get_static_beds(path='project-xxx:/beds')
+
+    def test_correct_list_for_static_beds(self):
+        """
+        Test returned structure for a valid static bed query response.
+        """
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-1',
+                'describe': {
+                    'name': 'v1.0_R453.1_CNV_excluded_b38.bed',
+                    'archivalState': 'live',
+                },
+            }
+        ]
+        self.file_contents['file-1'] = '# v1.0\nchr1\t1\t2\n'
+
+        beds = DXManage().get_static_beds(path='project-xxx:/beds')
+
+        # Verify structure of returned beds dict
+        assert isinstance(beds, dict), 'Should return a dictionary'
+
+        for bed_name, bed_info in beds.items():
+            assert isinstance(bed_info, dict), (
+                f'Bed info for {bed_name} should be a dict'
+            )
+            assert 'dxid' in bed_info, f"Missing 'dxid' for {bed_name}"
+            assert 'name' in bed_info, f"Missing 'name' for {bed_name}"
+            assert 'version' in bed_info, f"Missing 'version' for {bed_name}"
+            assert bed_info['dxid'].startswith('file-'), (
+                f'Invalid dxid format for {bed_name}'
+            )
+
+
+class TestDXManageSelectStaticBeds:
+    """Tests for DXManage.select_static_beds()"""
+
+    def setup_method(self):
+        self.manager = DXManage()
+
+    def test_select_static_beds_no_match_for_r_code(self):
+        static_beds = {
+            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
+            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
+        }
+
+        result = self.manager.select_static_beds(
+            mode='SNV',
+            test_code='R999.9',
+            static_beds=static_beds,
+        )
+
+        assert result == {'vep': None, 'athena': None, 'excluded': None}
+
+    def test_select_static_beds_two_matching_r_codes_exact_combined_code(self):
+        static_beds = {
+            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-single-vep'},
+            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-single-athena'},
+            'R140.1R141.1_SNV_vep_b38.bed': {'dxid': 'file-combined-vep'},
+            'R140.1R141.1_SNV_athena_b38.bed': {
+                'dxid': 'file-combined-athena'
+            },
+        }
+
+        result = self.manager.select_static_beds(
+            mode='SNV',
+            test_code='R140.1R141.1',
+            static_beds=static_beds,
+        )
+
+        assert result == {
+            'vep': 'file-combined-vep',
+            'athena': 'file-combined-athena',
+            'excluded': None,
+        }
+
+    def test_select_static_beds_normal_case_snv(self):
+        static_beds = {
+            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
+            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
+            'R140.1_CNV_vep_b38.bed': {'dxid': 'file-cnv-vep'},
+        }
+
+        result = self.manager.select_static_beds(
+            mode='SNV',
+            test_code='R140.1',
+            static_beds=static_beds,
+        )
+
+        assert result == {
+            'vep': 'file-vep',
+            'athena': 'file-athena',
+            'excluded': None,
+        }
+
+    def test_select_static_beds_normal_case_cnv(self):
+        static_beds = {
+            'R140.1_CNV_vep_b38.bed': {'dxid': 'file-cnv-vep'},
+            'R140.1_CNV_athena_b38.bed': {'dxid': 'file-cnv-athena'},
+            'R140.1_CNV_excluded_b38.bed': {'dxid': 'file-cnv-excluded'},
+        }
+
+        result = self.manager.select_static_beds(
+            mode='CNV',
+            test_code='R140.1',
+            static_beds=static_beds,
+        )
+
+        assert result == {
+            'vep': 'file-cnv-vep',
+            'athena': 'file-cnv-athena',
+            'excluded': 'file-cnv-excluded',
+        }
+
+    def test_select_static_beds_mosaic_uses_snv_keys(self):
+        static_beds = {
+            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
+            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
+        }
+
+        result = self.manager.select_static_beds(
+            mode='mosaic',
+            test_code='R140.1',
+            static_beds=static_beds,
+        )
+
+        assert result == {
+            'vep': 'file-vep',
+            'athena': 'file-athena',
+            'excluded': None,
+        }
+
+    def test_select_static_beds_capitalisation_of_r_code_input(self):
+        static_beds = {
+            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
+            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
+        }
+
+        # Lowercase test_code should not match uppercase keys (case-sensitive)
+        result = self.manager.select_static_beds(
+            mode='SNV',
+            test_code='r140.1',
+            static_beds=static_beds,
+        )
+
+        assert result == {'vep': None, 'athena': None, 'excluded': None}
+
+    def test_select_static_beds_capitalisation_in_static_beds_not_matching(
+        self,
+    ):
+        static_beds = {
+            'r140.1_SNV_vep_b38.bed': {'dxid': 'file-vep-lower'},
+            'r140.1_SNV_athena_b38.bed': {'dxid': 'file-athena-lower'},
+        }
+
+        # Uppercase test_code should not match lowercase keys (case-sensitive)
+        result = self.manager.select_static_beds(
+            mode='SNV',
+            test_code='R140.1',
+            static_beds=static_beds,
+        )
+
+        assert result == {'vep': None, 'athena': None, 'excluded': None}
+
+    def test_select_static_beds_handles_none_static_beds(self):
+        result = self.manager.select_static_beds(
+            mode='SNV',
+            test_code='R140.1',
+            static_beds=None,
+        )
+
+        assert result == {'vep': None, 'athena': None, 'excluded': None}
+
+    def test_select_static_beds_unknown_mode_returns_none_values(self):
+        static_beds = {
+            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
+            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
+            'R140.1_CNV_excluded_b38.bed': {'dxid': 'file-excluded'},
+        }
+
+        result = self.manager.select_static_beds(
+            mode='snv',  # wrong case, unsupported by function
+            test_code='R140.1',
+            static_beds=static_beds,
+        )
+
+        assert result == {'vep': None, 'athena': None, 'excluded': None}
