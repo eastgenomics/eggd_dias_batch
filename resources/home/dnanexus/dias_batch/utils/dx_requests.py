@@ -318,6 +318,7 @@ class DXManage:
             if Version(resolved_version) > Version(current_highest):
                 highest_beds[suffix] = {
                     'dxid': file['id'],
+                    'project': file['project'],
                     'name': name,
                     'version': resolved_version,
                 }
@@ -351,7 +352,11 @@ class DXManage:
         mode: str,
         test_code: str,
         static_beds: dict[str, dict[str, Any]] | None,
-    ) -> dict[str, str | None]:
+    ) -> tuple[
+        dict[str, dict[str, str | None]] | None,
+        dict[str, dict[str, str | None]] | None,
+        dict[str, dict[str, str | None]] | None,
+    ]:
         """
         Select the appropriate static bed files for the workflow based on the mode and test code.
         Parameters
@@ -364,43 +369,78 @@ class DXManage:
             A dictionary of available static bed files with their metadata.
         Returns
         -------
-        dict
-            A dictionary containing the selected bed file IDs for 'vep', 'athena', and 'excluded' (if applicable).
-            i.e.
-            {
-                'vep': 'file-xxx',
-                'athena': 'file-xxx',
-                'excluded': 'file-xxx' or None
+        vep_bed_dict : dict
+            A dictionary containing the DNAnexus link for the VEP bed file.
+        athena_bed_dict : dict
+            A dictionary containing the DNAnexus link for the Athena bed file.
+        excluded_bed_dict : dict
+            A dictionary containing the DNAnexus link for the excluded bed file (only for CNV mode).
+        i.e.
+        {
+        "dnanexus_link": {
+            "project": "project-xxx",
+            "id": "file-xxx"
             }
+        }
         """
         static_beds = static_beds or {}
-        static_bed_for_workflow: dict[str, str | None] = {}
-        vep_bed: str | None = None
-        athena_bed: str | None = None
-        excluded_bed: str | None = None
+        vep_bed_dict: dict[str, dict[str, str | None]] | None = None
+        athena_bed_dict: dict[str, dict[str, str | None]] | None = None
+        excluded_bed_dict: dict[str, dict[str, str | None]] | None = None
         if mode in ('SNV', 'mosaic'):
-            vep_bed = static_beds.get(f'{test_code}_SNV_vep_b38.bed', {}).get(
-                'dxid'
-            )
-            athena_bed = static_beds.get(
-                f'{test_code}_SNV_athena_b38.bed', {}
-            ).get('dxid')
+            vep_bed_dict = {
+                '$dnanexus_link': {
+                    'project': static_beds.get(
+                        f'{test_code}_SNV_vep_b38.bed', {}
+                    ).get('project'),
+                    'id': static_beds.get(
+                        f'{test_code}_SNV_vep_b38.bed', {}
+                    ).get('dxid'),
+                }
+            }
+            athena_bed_dict = {
+                '$dnanexus_link': {
+                    'project': static_beds.get(
+                        f'{test_code}_SNV_athena_b38.bed', {}
+                    ).get('project'),
+                    'id': static_beds.get(
+                        f'{test_code}_SNV_athena_b38.bed', {}
+                    ).get('dxid'),
+                }
+            }
         elif mode == 'CNV':
-            vep_bed = static_beds.get(f'{test_code}_CNV_vep_b38.bed', {}).get(
-                'dxid'
-            )
-            athena_bed = static_beds.get(
-                f'{test_code}_CNV_athena_b38.bed', {}
-            ).get('dxid')
-            excluded_bed = static_beds.get(
-                f'{test_code}_CNV_excluded_b38.bed', {}
-            ).get('dxid')
-        static_bed_for_workflow = {
-            'vep': vep_bed,
-            'athena': athena_bed,
-            'excluded': excluded_bed,
-        }
-        return static_bed_for_workflow
+            vep_bed_dict = {
+                '$dnanexus_link': {
+                    'project': static_beds.get(
+                        f'{test_code}_CNV_vep_b38.bed', {}
+                    ).get('project'),
+                    'id': static_beds.get(
+                        f'{test_code}_CNV_vep_b38.bed', {}
+                    ).get('dxid'),
+                }
+            }
+            athena_bed_dict = {
+                '$dnanexus_link': {
+                    'project': static_beds.get(
+                        f'{test_code}_CNV_athena_b38.bed', {}
+                    ).get('project'),
+                    'id': static_beds.get(
+                        f'{test_code}_CNV_athena_b38.bed', {}
+                    ).get('dxid'),
+                }
+            }
+            excluded_bed_dict = {
+                '$dnanexus_link': {
+                    'project': static_beds.get(
+                        f'{test_code}_CNV_excluded_b38.bed', {}
+                    ).get('project'),
+                    'id': static_beds.get(
+                        f'{test_code}_CNV_excluded_b38.bed', {}
+                    ).get('dxid'),
+                }
+            }
+
+        return vep_bed_dict, athena_bed_dict, excluded_bed_dict
 
     def _log_found_files(self, files: list[dict]) -> None:
         """Print a summary of all discovered bed files."""
@@ -1205,6 +1245,16 @@ class DXExecute:
             list of sample names to exclude from generating reports (n.b.
             this is ONLY for CNV reports), will be formatted as
             InstrumentID-SpecimenID (i.e. [123245111-33202R00111, ...])
+        static_beds : dict
+            dict of static bed files with their metadata to select from for
+            the workflow instead of searching for these in the project, should be formatted as:
+            {
+                'R140.1_SNV_vep_b38.bed': {'dxid': 'file-xxx'},
+                'R140.1_SNV_athena_b38.bed': {'dxid': 'file-xxx'},
+                'R140.1_CNV_vep_b38.bed': {'dxid': 'file-xxx'},
+                'R140.1_CNV_athena_b38.bed': {'dxid': 'file-xxx'},
+                'R140.1_CNV_excluded_b38.bed': {'dxid': 'file-xxx'},
+                ...
 
         Returns
         -------
@@ -1443,14 +1493,6 @@ class DXExecute:
             # incase I forget and do something dumb (which is likely)
             raise RuntimeError(f'Invalid mode set for running reports: {mode}')
 
-        # Collect static beds (required unless precomputed static beds passed)
-        if static_beds is None:
-            static_beds_path = config.get('static_beds_path')
-            if not static_beds_path:
-                raise RuntimeError(
-                    'Missing required static_beds_path in reports mode config'
-                )
-            static_beds = DXManage().get_static_beds(static_beds_path)
         # ensure we have a vcf per sample, exclude those that don't have one
         manifest, manifest_no_match, manifest_no_vcf = (
             filter_manifest_samples_by_files(
@@ -1580,18 +1622,18 @@ class DXExecute:
                     ] = excluded_intervals_bed
                 # Use test list to find matching higest version static beds
                 # for VEP and Athena, if not found just pass None and the workflow will handle it
-                vep_static_bed = None
-                athena_static_bed = None
+                vep_panel_bed = None
+                athena_panel_bed = None
                 excluded_static_bed = None
                 test_code_str = ''.join(test_list)  # need to test this well!
-                static_bed_for_workflow = DXManage().select_static_beds(
-                    mode=mode,
-                    test_code=test_code_str,
-                    static_beds=static_beds,
+                vep_panel_bed, athena_panel_bed, excluded_static_bed = (
+                    DXManage().select_static_beds(
+                        mode=mode,
+                        test_code=test_code_str,
+                        static_beds=static_beds,
+                    )
                 )
-                vep_static_bed = static_bed_for_workflow.get('vep')
-                athena_static_bed = static_bed_for_workflow.get('athena')
-                excluded_static_bed = static_bed_for_workflow.get('excluded')
+
 
                 # all combinations of placeholder text that can be in the
                 # config and values to replace with
@@ -1601,12 +1643,14 @@ class DXExecute:
                     test_codes=codes,
                     panels=panels,
                     sample_name=name,
-                    vep_static_bed=vep_static_bed if vep_static_bed else None,
+                    vep_panel_bed=vep_panel_bed
+                    if vep_panel_bed
+                    else None,
                     excluded_static_bed=excluded_static_bed
                     if excluded_static_bed
                     else None,
-                    athena_static_bed=athena_static_bed
-                    if athena_static_bed
+                    athena_panel_bed=athena_panel_bed
+                    if athena_panel_bed
                     else None,
                 )
 
