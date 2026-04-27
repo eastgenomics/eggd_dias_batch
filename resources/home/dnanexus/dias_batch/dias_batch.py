@@ -402,16 +402,19 @@ def main(
             for sample in manifest
         }
 
-    # get static bed files for any report workflows that need them and add to
-    # config inputs
-    if static_beds_mode:
-        static_beds = DXManage().get_static_beds(
-            path=assay_config.get('static_bed_files_dir'),
-            header_version_regex=assay_config.get('static_bed_header_version_regex'),
-            version_regex=assay_config.get('static_bed_version_regex')
+    # get static bed files for report workflows if explicitly requested
+    static_bed_files_dir = assay_config.get('static_bed_files_dir')
+    if not static_bed_files_dir:
+        raise RuntimeError(
+            "-istatic_beds_mode=true but assay config is missing "
+            "'static_bed_files_dir' value for where to find static bed files in the project"
         )
-    else:
-        static_beds = None
+
+    static_beds = DXManage().get_static_beds(
+        path=static_bed_files_dir,
+        header_version_regex=assay_config.get('static_bed_header_version_regex'),
+        version_regex=assay_config.get('static_bed_version_regex')
+    )
 
     # check up front if any files for any of the selected running modes
     # are in an archived state which would cause jobs to fail to launch

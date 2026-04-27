@@ -2594,8 +2594,14 @@ class TestDXManageSelectStaticBeds:
 
     def test_select_static_beds_no_match_for_r_code(self):
         static_beds = {
-            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
-            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
+            'R140.1_SNV_vep_b38.bed': {
+                'dxid': 'file-vep',
+                'project': 'project-vep',
+            },
+            'R140.1_SNV_athena_b38.bed': {
+                'dxid': 'file-athena',
+                'project': 'project-athena',
+            },
         }
 
         result = self.manager.select_static_beds(
@@ -2604,15 +2610,25 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == {'vep': None, 'athena': None, 'excluded': None}
+        assert result == (None, None, None)
 
     def test_select_static_beds_two_matching_r_codes_exact_combined_code(self):
         static_beds = {
-            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-single-vep'},
-            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-single-athena'},
-            'R140.1R141.1_SNV_vep_b38.bed': {'dxid': 'file-combined-vep'},
+            'R140.1_SNV_vep_b38.bed': {
+                'dxid': 'file-single-vep',
+                'project': 'project-single-vep',
+            },
+            'R140.1_SNV_athena_b38.bed': {
+                'dxid': 'file-single-athena',
+                'project': 'project-single-athena',
+            },
+            'R140.1R141.1_SNV_vep_b38.bed': {
+                'dxid': 'file-combined-vep',
+                'project': 'project-combined-vep',
+            },
             'R140.1R141.1_SNV_athena_b38.bed': {
-                'dxid': 'file-combined-athena'
+                'dxid': 'file-combined-athena',
+                'project': 'project-combined-athena',
             },
         }
 
@@ -2622,17 +2638,29 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == {
-            'vep': 'file-combined-vep',
-            'athena': 'file-combined-athena',
-            'excluded': None,
-        }
+        assert result == (
+            {'id': 'file-combined-vep', 'project': 'project-combined-vep'},
+            {
+                'id': 'file-combined-athena',
+                'project': 'project-combined-athena',
+            },
+            None,
+        )
 
     def test_select_static_beds_normal_case_snv(self):
         static_beds = {
-            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
-            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
-            'R140.1_CNV_vep_b38.bed': {'dxid': 'file-cnv-vep'},
+            'R140.1_SNV_vep_b38.bed': {
+                'dxid': 'file-vep',
+                'project': 'project-vep',
+            },
+            'R140.1_SNV_athena_b38.bed': {
+                'dxid': 'file-athena',
+                'project': 'project-athena',
+            },
+            'R140.1_CNV_vep_b38.bed': {
+                'dxid': 'file-cnv-vep',
+                'project': 'project-cnv-vep',
+            },
         }
 
         result = self.manager.select_static_beds(
@@ -2641,17 +2669,26 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == {
-            'vep': 'file-vep',
-            'athena': 'file-athena',
-            'excluded': None,
-        }
+        assert result == (
+            {'id': 'file-vep', 'project': 'project-vep'},
+            {'id': 'file-athena', 'project': 'project-athena'},
+            None,
+        )
 
     def test_select_static_beds_normal_case_cnv(self):
         static_beds = {
-            'R140.1_CNV_vep_b38.bed': {'dxid': 'file-cnv-vep'},
-            'R140.1_CNV_athena_b38.bed': {'dxid': 'file-cnv-athena'},
-            'R140.1_CNV_excluded_b38.bed': {'dxid': 'file-cnv-excluded'},
+            'R140.1_CNV_vep_b38.bed': {
+                'dxid': 'file-cnv-vep',
+                'project': 'project-cnv-vep',
+            },
+            'R140.1_CNV_athena_b38.bed': {
+                'dxid': 'file-cnv-athena',
+                'project': 'project-cnv-athena',
+            },
+            'R140.1_CNV_excluded_b38.bed': {
+                'dxid': 'file-cnv-excluded',
+                'project': 'project-cnv-excluded',
+            },
         }
 
         result = self.manager.select_static_beds(
@@ -2660,16 +2697,22 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == {
-            'vep': 'file-cnv-vep',
-            'athena': 'file-cnv-athena',
-            'excluded': 'file-cnv-excluded',
-        }
+        assert result == (
+            {'id': 'file-cnv-vep', 'project': 'project-cnv-vep'},
+            {'id': 'file-cnv-athena', 'project': 'project-cnv-athena'},
+            {'id': 'file-cnv-excluded', 'project': 'project-cnv-excluded'},
+        )
 
     def test_select_static_beds_mosaic_uses_snv_keys(self):
         static_beds = {
-            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
-            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
+            'R140.1_SNV_vep_b38.bed': {
+                'dxid': 'file-vep',
+                'project': 'project-vep',
+            },
+            'R140.1_SNV_athena_b38.bed': {
+                'dxid': 'file-athena',
+                'project': 'project-athena',
+            },
         }
 
         result = self.manager.select_static_beds(
@@ -2678,16 +2721,22 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == {
-            'vep': 'file-vep',
-            'athena': 'file-athena',
-            'excluded': None,
-        }
+        assert result == (
+            {'id': 'file-vep', 'project': 'project-vep'},
+            {'id': 'file-athena', 'project': 'project-athena'},
+            None,
+        )
 
     def test_select_static_beds_capitalisation_of_r_code_input(self):
         static_beds = {
-            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
-            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
+            'R140.1_SNV_vep_b38.bed': {
+                'dxid': 'file-vep',
+                'project': 'project-vep',
+            },
+            'R140.1_SNV_athena_b38.bed': {
+                'dxid': 'file-athena',
+                'project': 'project-athena',
+            },
         }
 
         # Lowercase test_code should not match uppercase keys (case-sensitive)
@@ -2697,14 +2746,20 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == {'vep': None, 'athena': None, 'excluded': None}
+        assert result == (None, None, None)
 
     def test_select_static_beds_capitalisation_in_static_beds_not_matching(
         self,
     ):
         static_beds = {
-            'r140.1_SNV_vep_b38.bed': {'dxid': 'file-vep-lower'},
-            'r140.1_SNV_athena_b38.bed': {'dxid': 'file-athena-lower'},
+            'r140.1_SNV_vep_b38.bed': {
+                'dxid': 'file-vep-lower',
+                'project': 'project-vep-lower',
+            },
+            'r140.1_SNV_athena_b38.bed': {
+                'dxid': 'file-athena-lower',
+                'project': 'project-athena-lower',
+            },
         }
 
         # Uppercase test_code should not match lowercase keys (case-sensitive)
@@ -2714,7 +2769,7 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == {'vep': None, 'athena': None, 'excluded': None}
+        assert result == (None, None, None)
 
     def test_select_static_beds_handles_none_static_beds(self):
         result = self.manager.select_static_beds(
@@ -2723,13 +2778,22 @@ class TestDXManageSelectStaticBeds:
             static_beds=None,
         )
 
-        assert result == {'vep': None, 'athena': None, 'excluded': None}
+        assert result == (None, None, None)
 
     def test_select_static_beds_unknown_mode_returns_none_values(self):
         static_beds = {
-            'R140.1_SNV_vep_b38.bed': {'dxid': 'file-vep'},
-            'R140.1_SNV_athena_b38.bed': {'dxid': 'file-athena'},
-            'R140.1_CNV_excluded_b38.bed': {'dxid': 'file-excluded'},
+            'R140.1_SNV_vep_b38.bed': {
+                'dxid': 'file-vep',
+                'project': 'project-vep',
+            },
+            'R140.1_SNV_athena_b38.bed': {
+                'dxid': 'file-athena',
+                'project': 'project-athena',
+            },
+            'R140.1_CNV_excluded_b38.bed': {
+                'dxid': 'file-excluded',
+                'project': 'project-excluded',
+            },
         }
 
         result = self.manager.select_static_beds(
@@ -2738,4 +2802,4 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == {'vep': None, 'athena': None, 'excluded': None}
+        assert result == (None, None, None)
