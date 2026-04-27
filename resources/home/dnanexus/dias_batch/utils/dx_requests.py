@@ -12,6 +12,7 @@ import re
 import sys
 from collections import defaultdict
 from copy import deepcopy
+from dataclasses import dataclass
 from itertools import groupby
 from timeit import default_timer as timer
 from typing import Any, List, Tuple
@@ -33,6 +34,15 @@ from .utils import (
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
 pd.set_option('max_colwidth', 1500)
+
+
+@dataclass(frozen=True)
+class StaticBedSelection:
+    """Static bed files selected for a report workflow."""
+
+    vep_bed: dict[str, Any] | None = None
+    athena_bed: dict[str, Any] | None = None
+    excluded_bed: dict[str, Any] | None = None
 
 
 class DXManage:
@@ -352,9 +362,7 @@ class DXManage:
         mode: str,
         test_code: str,
         static_beds: dict[str, dict[str, Any]] | None,
-    ) -> tuple[
-        dict[str, str] | None, dict[str, str] | None, dict[str, str] | None
-    ]:
+    ) -> StaticBedSelection:
         """
         Select the appropriate static bed files for the workflow based on the mode and test code.
         Parameters
@@ -421,7 +429,11 @@ class DXManage:
                     'project': excluded_info.get('project'),
                 }
 
-        return (vep_bed, athena_bed, excluded_bed)
+        return StaticBedSelection(
+            vep_bed=vep_bed,
+            athena_bed=athena_bed,
+            excluded_bed=excluded_bed,
+        )
 
     def _log_found_files(self, files: list[dict]) -> None:
         """Print a summary of all discovered bed files."""
@@ -1612,12 +1624,10 @@ class DXExecute:
                 # Use test list to find matching highest version static beds.
                 # Convert selected file IDs to dnanexus links for dynamic inputs.
                 test_code_str = ''.join(test_list)  # need to test this well!
-                vep_bed, athena_bed, excluded_bed = (
-                    DXManage().select_static_beds(
-                        mode=mode,
-                        test_code=test_code_str,
-                        static_beds=static_beds,
-                    )
+                selected_static_beds = DXManage().select_static_beds(
+                    mode=mode,
+                    test_code=test_code_str,
+                    static_beds=static_beds,
                 )
 
                 def to_dxlink(
@@ -1633,9 +1643,11 @@ class DXExecute:
                         }
                     }
 
-                vep_panel_bed = to_dxlink(vep_bed)
-                athena_panel_bed = to_dxlink(athena_bed)
-                excluded_static_bed = to_dxlink(excluded_bed)
+                vep_panel_bed = to_dxlink(selected_static_beds.vep_bed)
+                athena_panel_bed = to_dxlink(selected_static_beds.athena_bed)
+                excluded_static_bed = to_dxlink(
+                    selected_static_beds.excluded_bed
+                )
 
                 # all combinations of placeholder text that can be in the
                 # config and values to replace with

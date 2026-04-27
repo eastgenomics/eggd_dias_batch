@@ -20,7 +20,7 @@ sys.path.append(
 )
 
 from utils import utils
-from utils.dx_requests import DXExecute, DXManage
+from utils.dx_requests import DXExecute, DXManage, StaticBedSelection
 
 
 class TestDXManageReadAssayConfigFile:
@@ -2610,7 +2610,7 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == (None, None, None)
+        assert result == StaticBedSelection()
 
     def test_select_static_beds_two_matching_r_codes_exact_combined_code(self):
         static_beds = {
@@ -2638,13 +2638,15 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == (
-            {'id': 'file-combined-vep', 'project': 'project-combined-vep'},
-            {
+        assert result == StaticBedSelection(
+            vep_bed={
+                'id': 'file-combined-vep',
+                'project': 'project-combined-vep',
+            },
+            athena_bed={
                 'id': 'file-combined-athena',
                 'project': 'project-combined-athena',
             },
-            None,
         )
 
     def test_select_static_beds_normal_case_snv(self):
@@ -2669,10 +2671,9 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == (
-            {'id': 'file-vep', 'project': 'project-vep'},
-            {'id': 'file-athena', 'project': 'project-athena'},
-            None,
+        assert result == StaticBedSelection(
+            vep_bed={'id': 'file-vep', 'project': 'project-vep'},
+            athena_bed={'id': 'file-athena', 'project': 'project-athena'},
         )
 
     def test_select_static_beds_normal_case_cnv(self):
@@ -2697,10 +2698,16 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == (
-            {'id': 'file-cnv-vep', 'project': 'project-cnv-vep'},
-            {'id': 'file-cnv-athena', 'project': 'project-cnv-athena'},
-            {'id': 'file-cnv-excluded', 'project': 'project-cnv-excluded'},
+        assert result == StaticBedSelection(
+            vep_bed={'id': 'file-cnv-vep', 'project': 'project-cnv-vep'},
+            athena_bed={
+                'id': 'file-cnv-athena',
+                'project': 'project-cnv-athena',
+            },
+            excluded_bed={
+                'id': 'file-cnv-excluded',
+                'project': 'project-cnv-excluded',
+            },
         )
 
     def test_select_static_beds_mosaic_uses_snv_keys(self):
@@ -2721,10 +2728,9 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == (
-            {'id': 'file-vep', 'project': 'project-vep'},
-            {'id': 'file-athena', 'project': 'project-athena'},
-            None,
+        assert result == StaticBedSelection(
+            vep_bed={'id': 'file-vep', 'project': 'project-vep'},
+            athena_bed={'id': 'file-athena', 'project': 'project-athena'},
         )
 
     def test_select_static_beds_capitalisation_of_r_code_input(self):
@@ -2746,7 +2752,7 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == (None, None, None)
+        assert result == StaticBedSelection()
 
     def test_select_static_beds_capitalisation_in_static_beds_not_matching(
         self,
@@ -2769,7 +2775,7 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == (None, None, None)
+        assert result == StaticBedSelection()
 
     def test_select_static_beds_handles_none_static_beds(self):
         result = self.manager.select_static_beds(
@@ -2778,7 +2784,7 @@ class TestDXManageSelectStaticBeds:
             static_beds=None,
         )
 
-        assert result == (None, None, None)
+        assert result == StaticBedSelection()
 
     def test_select_static_beds_unknown_mode_returns_none_values(self):
         static_beds = {
@@ -2802,4 +2808,4 @@ class TestDXManageSelectStaticBeds:
             static_beds=static_beds,
         )
 
-        assert result == (None, None, None)
+        assert result == StaticBedSelection()
