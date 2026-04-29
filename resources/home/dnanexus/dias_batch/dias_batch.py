@@ -307,7 +307,6 @@ def main(
     sample_limit=None,
     unarchive=None,
     unarchive_only=None,
-    static_beds_mode=None,
 ):
     dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
 
@@ -318,9 +317,6 @@ def main(
 
     # ensure unarchive is set from CheckInputs.check_unarchive_set
     unarchive = check.inputs['unarchive']
-
-    # ensure static_beds_mode is set from CheckInputs.check_static_beds_mode
-    static_beds_mode = check.inputs['static_beds_mode']
 
     # time of running for naming output folders
     start_time = time_stamp()
