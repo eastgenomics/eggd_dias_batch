@@ -5,6 +5,9 @@ launching jobs (in DXExecute).
 """
 
 import os
+import json
+from pathlib import Path
+import re
 import sys
 import unittest
 from copy import deepcopy
@@ -90,10 +93,10 @@ class TestDXManageGetAssayConfig(unittest.TestCase):
         self.mock_read = self.read_patch.start()
 
     def tearDown(self):
-        self.mock_loads.stop()
-        self.mock_find.stop()
-        self.mock_file.stop()
-        self.mock_read.stop()
+        self.loads_patch.stop()
+        self.find_patch.stop()
+        self.file_patch.stop()
+        self.read_patch.stop()
 
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
@@ -1366,14 +1369,14 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
         """
         Remove test class wide patches
         """
-        self.mock_path.stop()
-        self.mock_find.stop()
-        self.mock_archive.stop()
-        self.mock_describe.stop()
-        self.mock_dxapp.stop()
-        self.mock_run.stop()
-        self.mock_job.stop()
-        self.mock_wait.stop()
+        self.path_patch.stop()
+        self.find_patch.stop()
+        self.check_archival_state_patch.stop()
+        self.describe_patch.stop()
+        self.dxapp_patch.stop()
+        self.run_patch.stop()
+        self.job_patch.stop()
+        self.wait_patch.stop()
 
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
@@ -1700,16 +1703,16 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
         ]
 
     def tearDown(self):
-        self.mock_find.stop()
-        self.mock_job.stop()
-        self.mock_filter_manifest.stop()
-        self.mock_archival.stop()
-        self.mock_output_folders.stop()
-        self.mock_path.stop()
-        self.mock_index.stop()
-        self.mock_workflow.stop()
-        self.mock_describe.stop()
-        self.mock_timer.stop()
+        self.find_patch.stop()
+        self.job_patch.stop()
+        self.filter_manifest_patch.stop()
+        self.archival_patch.stop()
+        self.output_folders_patch.stop()
+        self.path_patch.stop()
+        self.index_patch.stop()
+        self.workflow_patch.stop()
+        self.describe_patch.stop()
+        self.timer_patch.stop()
         self.static_beds_patch.stop()
 
     @pytest.fixture(autouse=True)
@@ -2187,6 +2190,71 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
             'naming of single gene test incorrect'
         )
 
+    @patch('utils.dx_requests.DXManage.select_static_beds')
+    @patch('utils.dx_requests.add_dynamic_inputs')
+    def test_reports_workflow_multiple_hgnc_codes_are_parsed_correctly(
+        self, mock_add_dynamic_inputs, mock_select_static_beds
+    ):
+        """
+        Test that multiple HGNC codes in a single test list are preserved as
+        one workflow launch and passed downstream as a combined string.
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{'describe': {'name': 'sample.vcf'}}],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
+                },
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {'name': 'X5678.per-base.bed.gz'},
+                },
+            ],
+        ]
+
+        filled_manifest = deepcopy(self.mock_filter_manifest.return_value)
+        filled_manifest[0].pop('X5678', None)
+        filled_manifest[0]['X1234']['tests'] = [['_HGNC:1076', '_HGNC:6770']]
+
+        self.mock_filter_manifest.return_value = filled_manifest
+        self.mock_index.return_value = 1
+        self.mock_static_beds.return_value = {'available': 'beds'}
+        mock_select_static_beds.return_value = StaticBedSelection(
+            vep_bed={'id': 'file-vep', 'project': 'project-vep'},
+            athena_bed={'id': 'file-athena', 'project': 'project-athena'},
+        )
+        mock_add_dynamic_inputs.side_effect = lambda config, **kwargs: config
+
+        _, _, summary = DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=filled_manifest[0],
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns'],
+        )
+
+        self.mock_static_beds.assert_called_once_with(
+            path='project-xxx:/static_beds/'
+        )
+        mock_select_static_beds.assert_called_once_with(
+            mode='SNV',
+            test_code='_HGNC:1076&&_HGNC:6770',
+            static_beds={'available': 'beds'},
+        )
+        self.assertEqual(
+            mock_add_dynamic_inputs.call_args.kwargs['test_codes'],
+            '_HGNC:1076&&_HGNC:6770',
+        )
+        self.assertEqual(
+            summary['SNV']['X1234'], 'X1234_HGNC_1076_HGNC_6770_SNV_1'
+        )
+
     def test_sample_limit_works(self):
         """
         Test when sample limit is set that it works as expected
@@ -2223,6 +2291,211 @@ class TestDXExecuteReportsWorkflow(unittest.TestCase):
 
         assert 'Sample limit hit, stopping launching further jobs' in stdout, (
             "Sample limit param didn't break as expected"
+        )
+
+    @patch('utils.dx_requests.DXManage.select_static_beds')
+    @patch('utils.dx_requests.add_dynamic_inputs')
+    def test_snv_static_beds_are_converted_to_dxlinks(
+        self, mock_add_dynamic_inputs, mock_select_static_beds
+    ):
+        """
+        Static beds should be selected per workflow launch when a sample has
+        multiple single-code test lists from the parsed manifest.
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{'describe': {'name': 'sample.vcf'}}],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {'name': 'X1234.per-base.bed.gz'},
+                }
+            ],
+        ]
+
+        filled_manifest = deepcopy(self.mock_filter_manifest.return_value)
+        filled_manifest[0].pop('X5678', None)
+        filled_manifest[0]['X1234']['tests'] = [['R208.1']]
+        filled_manifest[0]['X1234']['panels'] = [
+            ['Inherited ovarian cancer (without breast cancer)_4.0'],
+        ]
+        filled_manifest[0]['X1234']['indications'] = [
+            ['R208.1_Inherited ovarian cancer (without breast cancer)_P'],
+        ]
+        self.mock_filter_manifest.return_value = filled_manifest
+        self.mock_static_beds.return_value = {'available': 'beds'}
+        mock_select_static_beds.return_value = StaticBedSelection(
+            vep_bed={'id': 'file-vep', 'project': 'project-vep'},
+            athena_bed={'id': 'file-athena', 'project': 'project-athena'},
+        )
+        mock_add_dynamic_inputs.side_effect = lambda config, **kwargs: config
+
+        DXExecute().reports_workflow(
+            mode='SNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=filled_manifest[0],
+            config=self.assay_config['modes']['snv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns'],
+        )
+
+        self.mock_static_beds.assert_called_once_with(
+            path='project-xxx:/static_beds/'
+        )
+        self.assertEqual(len(mock_select_static_beds.call_args_list), 1)
+
+        self.assertEqual(
+            mock_select_static_beds.call_args_list[0].kwargs,
+            {
+                'mode': 'SNV',
+                'test_code': 'R208.1',
+                'static_beds': {'available': 'beds'},
+            },
+        )
+        self.assertEqual(
+            mock_add_dynamic_inputs.call_args_list[0].kwargs['vep_panel_bed'],
+            {
+                '$dnanexus_link': {
+                    'project': 'project-vep',
+                    'id': 'file-vep',
+                }
+            },
+        )
+        self.assertEqual(
+            mock_add_dynamic_inputs.call_args_list[0].kwargs[
+                'athena_panel_bed'
+            ],
+            {
+                '$dnanexus_link': {
+                    'project': 'project-athena',
+                    'id': 'file-athena',
+                }
+            },
+        )
+        self.assertIsNone(
+            mock_add_dynamic_inputs.call_args_list[0].kwargs[
+                'excluded_static_bed'
+            ]
+        )
+
+    @patch('utils.dx_requests.DXManage.select_static_beds')
+    @patch('utils.dx_requests.add_dynamic_inputs')
+    def test_cnv_static_beds_are_converted_to_dxlinks(
+        self, mock_add_dynamic_inputs, mock_select_static_beds
+    ):
+        """
+        CNV static beds should be selected per workflow launch when a sample
+        has multiple single-code test lists from the parsed manifest.
+        """
+        self.mock_find.side_effect = [
+            [],
+            [{'project': 'project-xxx', 'id': 'file-xxx'}],
+            [
+                {
+                    'project': 'project-xxx',
+                    'id': 'file-xxx',
+                    'describe': {'name': 'X1234_markdup.vcf'},
+                }
+            ],
+        ]
+
+        filled_manifest = deepcopy(self.mock_filter_manifest.return_value)
+        filled_manifest[0].pop('X5678', None)
+        filled_manifest[0]['X1234']['tests'] = [['R151.1'], ['R208.1']]
+        filled_manifest[0]['X1234']['panels'] = [
+            ['Familial hyperparathyroidism'],
+            ['Inherited ovarian cancer (without breast cancer)_4.0'],
+        ]
+        filled_manifest[0]['X1234']['indications'] = [
+            ['R151.1_Familial hyperparathyroidism_P'],
+            ['R208.1_Inherited ovarian cancer (without breast cancer)_P'],
+        ]
+        self.mock_filter_manifest.return_value = filled_manifest
+        self.mock_static_beds.return_value = {'available': 'beds'}
+        mock_select_static_beds.return_value = StaticBedSelection(
+            vep_bed={'id': 'file-vep', 'project': 'project-vep'},
+            athena_bed={'id': 'file-athena', 'project': 'project-athena'},
+            excluded_bed={
+                'id': 'file-excluded',
+                'project': 'project-excluded',
+            },
+        )
+        mock_add_dynamic_inputs.side_effect = lambda config, **kwargs: config
+
+        DXExecute().reports_workflow(
+            mode='CNV',
+            workflow_id='workflow-GXzvJq84XZB1fJk9fBfG88XJ',
+            single_output_dir='/path_to_single/',
+            manifest=filled_manifest[0],
+            config=self.assay_config['modes']['cnv_reports'],
+            start='230925_0943',
+            name_patterns=self.assay_config['name_patterns'],
+            call_job_id='job-QaTZ9qEwkEsovKLs14DSdNqb',
+        )
+
+        self.mock_static_beds.assert_called_once_with(
+            path='project-xxx:/static_beds/'
+        )
+        self.assertEqual(len(mock_select_static_beds.call_args_list), 2)
+        self.assertEqual(
+            mock_select_static_beds.call_args_list[0].kwargs,
+            {
+                'mode': 'CNV',
+                'test_code': 'R151.1',
+                'static_beds': {'available': 'beds'},
+            },
+        )
+        self.assertEqual(
+            mock_select_static_beds.call_args_list[1].kwargs,
+            {
+                'mode': 'CNV',
+                'test_code': 'R208.1',
+                'static_beds': {'available': 'beds'},
+            },
+        )
+        self.assertEqual(
+            mock_add_dynamic_inputs.call_args_list[0].kwargs['vep_panel_bed'],
+            {
+                '$dnanexus_link': {
+                    'project': 'project-vep',
+                    'id': 'file-vep',
+                }
+            },
+        )
+        self.assertEqual(
+            mock_add_dynamic_inputs.call_args_list[0].kwargs[
+                'athena_panel_bed'
+            ],
+            {
+                '$dnanexus_link': {
+                    'project': 'project-athena',
+                    'id': 'file-athena',
+                }
+            },
+        )
+        self.assertEqual(
+            mock_add_dynamic_inputs.call_args_list[0].kwargs[
+                'excluded_static_bed'
+            ],
+            {
+                '$dnanexus_link': {
+                    'project': 'project-excluded',
+                    'id': 'file-excluded',
+                }
+            },
+        )
+        self.assertEqual(
+            mock_add_dynamic_inputs.call_args_list[1].kwargs[
+                'excluded_static_bed'
+            ],
+            {
+                '$dnanexus_link': {
+                    'project': 'project-excluded',
+                    'id': 'file-excluded',
+                }
+            },
         )
 
 
@@ -2396,10 +2669,10 @@ class TestDXExecuteTerminate(unittest.TestCase):
         self.mock_analysis_terminate = self.analysis_terminate_patch.start()
 
     def tearDown(self):
-        self.mock_job.stop()
-        self.mock_job_terminate.stop()
-        self.mock_analysis.stop()
-        self.mock_analysis_terminate.stop()
+        self.job_patch.stop()
+        self.job_terminate_patch.stop()
+        self.analysis_patch.stop()
+        self.analysis_terminate_patch.stop()
 
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
@@ -2452,6 +2725,22 @@ class TestDXExecuteTerminate(unittest.TestCase):
 class TestDXManageGetStaticBeds:
     """Tests for DXManage.get_static_beds()"""
 
+    # Initialise and get dias_batch_example_config.json
+    def setup_class(self):
+        # path is /home/rswilson1/Documents/eggd_dias_batch/example/dias_batch_example_config.json
+        config_path = (
+            Path(__file__).resolve().parents[5]
+            / 'example'
+            / 'dias_batch_example_config.json'
+        )
+        self.assay_config = json.load(open(config_path))
+        self.version_regex_pattern = self.assay_config['version_regex']
+        self.header_version_regex_pattern = self.assay_config[
+            'header_version_regex'
+        ]
+
+        print(self.assay_config)
+
     def setup_method(self):
         self.find_patch = mock.patch(
             'utils.dx_requests.dxpy.find_data_objects'
@@ -2474,10 +2763,6 @@ class TestDXManageGetStaticBeds:
     def teardown_method(self):
         self.find_patch.stop()
         self.dxfile_patch.stop()
-
-    @pytest.fixture(autouse=True)
-    def capsys(self, capsys):
-        self.capsys = capsys
 
     def test_invalid_path_raises_assertion(self):
         expected_error = 'Path to bed files appears invalid: invalid_path'
@@ -2553,6 +2838,68 @@ class TestDXManageGetStaticBeds:
         with pytest.raises(RuntimeError, match=expected_error):
             DXManage().get_static_beds(path='project-xxx:/beds')
 
+    def test_non_live_files_are_skipped(self):
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-1',
+                'describe': {
+                    'name': 'v1.0_suffixA.bed',
+                    'archivalState': 'archived',
+                },
+            },
+            {
+                'project': 'project-xxx',
+                'id': 'file-2',
+                'describe': {
+                    'name': 'v1.1_suffixA.bed',
+                    'archivalState': 'live',
+                },
+            },
+        ]
+
+        self.file_contents['file-1'] = '# v1.0\nchr1\t1\t2\n'
+        self.file_contents['file-2'] = '# v1.1\nchr1\t1\t2\n'
+
+        beds = DXManage().get_static_beds(path='project-xxx:/beds')
+
+        assert beds == {
+            'suffixA.bed': {
+                'dxid': 'file-2',
+                'project': 'project-xxx',
+                'name': 'v1.1_suffixA.bed',
+                'version': '1.1',
+            }
+        }
+        # Only the live file should reach the header version reader.
+        assert self.mock_dxfile.call_count == 1
+        self.mock_dxfile.assert_called_once_with(
+            project='project-xxx', dxid='file-2'
+        )
+
+    def test_unparseable_filename_is_skipped(self):
+        self.mock_find.return_value = [
+            {
+                'project': 'project-xxx',
+                'id': 'file-1',
+                'describe': {
+                    'name': 'not_a_versioned_bed.bed',
+                    'archivalState': 'live',
+                },
+            }
+        ]
+
+        self.file_contents['file-1'] = '# v1.0\nchr1\t1\t2\n'
+
+        with pytest.raises(
+            AssertionError,
+            match='No valid versioned bed files found in: project-xxx:/beds',
+        ):
+            DXManage().get_static_beds(path='project-xxx:/beds')
+
+        # No valid filename means we should never try to open the file.
+        self.mock_dxfile.assert_not_called()
+
     def test_correct_list_for_static_beds(self):
         """
         Test returned structure for a valid static bed query response.
@@ -2584,6 +2931,392 @@ class TestDXManageGetStaticBeds:
             assert bed_info['dxid'].startswith('file-'), (
                 f'Invalid dxid format for {bed_name}'
             )
+
+    def test_read_header_version_returns_none_when_no_header_version(self):
+        """No matching header comment version should return None."""
+        self.file_contents['file-1'] = (
+            '# no version here\n# still no version\nchr1\t1\t2\n'
+        )
+
+        header_version = DXManage()._read_header_version(
+            project='project-xxx',
+            dxid='file-1',
+            pattern=re.compile(r'^#\s*v?(?P<header_version>\d+(?:\.\d+)*)'),
+        )
+
+        assert header_version is None
+
+    def test_read_header_version_stops_on_first_non_comment_line(self):
+        """Function should break at first non-comment and ignore later comments."""
+        self.file_contents['file-1'] = 'chr1\t1\t2\n# v9.9\n'
+
+        header_version = DXManage()._read_header_version(
+            project='project-xxx',
+            dxid='file-1',
+            pattern=re.compile(r'^#\s*v?(?P<header_version>\d+(?:\.\d+)*)'),
+        )
+
+        assert header_version is None
+
+    @pytest.mark.parametrize(
+        'filename,expected_version,expected_suffix',
+        [
+            ('v1_suffixA.bed', '1', 'suffixA.bed'),
+            ('v1.2_suffixB.bed', '1.2', 'suffixB.bed'),
+            ('v10.4.3_CNV_vep_b38.bed', '10.4.3', 'CNV_vep_b38.bed'),
+        ],
+    )
+    def test_version_regex_matches_expected_parts(
+        self, filename, expected_version, expected_suffix
+    ):
+        # Regex  101 Test page
+        # https://regex101.com/r/4nt2PY/1
+        version_pattern = self.version_regex_pattern
+        version_regex = re.compile(version_pattern)
+
+        match = version_regex.match(filename)
+
+        assert match is not None
+        assert match.group('version') == expected_version
+        assert match.group('suffix') == expected_suffix
+
+    @pytest.mark.parametrize(
+        'filename',
+        [
+            '1_suffixA.bed',
+            'v1suffixA.bed',
+            'v1_',
+            'vv1_suffixA.bed',
+        ],
+    )
+    def test_version_regex_rejects_invalid_names(self, filename):
+        # Regex 101 link
+        # https://regex101.com/r/SDMDCh/1
+
+        version_pattern = self.version_regex_pattern
+        version_regex = re.compile(version_pattern)
+
+        assert version_regex.match(filename) is None
+
+    @pytest.mark.parametrize(
+        'header_line,expected_version',
+        [
+            ('#1.2.3', '1.2.3'),
+            ('# v1.2.3', '1.2.3'),
+            ('#    v2', '2'),
+            ('# 10.0', '10.0'),
+            ('#v10.3.20', '10.3.20'),
+            ('# v1.2.3_extra_info', '1.2.3'),
+            ('# v1.2.3\n# v9.9', '1.2.3'),
+            ('# v1.2.3\nnot a comment\n# v9.9', '1.2.3'),
+        ],
+    )
+    def test_header_version_regex_matches_expected_versions(
+        self, header_line, expected_version
+    ):
+        header_pattern = self.header_version_regex_pattern
+        header_version_regex = re.compile(header_pattern)
+
+        match = header_version_regex.match(header_line)
+
+        assert match is not None
+        assert match.group('header_version') == expected_version
+
+    @pytest.mark.parametrize(
+        'header_line',
+        [
+            '## v1.2.3',
+            '# version 1',
+            '# v',
+        ],
+    )
+    def test_header_version_regex_rejects_invalid_lines(self, header_line):
+        header_pattern = self.header_version_regex_pattern
+        header_version_regex = re.compile(header_pattern)
+
+        assert header_version_regex.match(header_line) is None
+
+
+class TestDXExecuteCNVCalling(unittest.TestCase):
+    """
+    Tests for DXExecute.cnv_calling
+
+    This is the main function that calls all others to set up inputs for
+    CNV calling and runs the app. The majority of what is called here is
+    already covered by other unit tests, and therefore a lot will be
+    mocked where called functions make dx requests etc themselves.
+
+    We will mostly be testing that where the different inputs are given,
+    that expected prints go to stdout since that is the most we can test
+    """
+
+    config = {
+        'modes': {
+            'cnv_call': {
+                'inputs': {
+                    'bambais': {
+                        'folder': '/sentieon-dnaseq',
+                        'name': '.bam$|.bam.bai$',
+                    }
+                }
+            }
+        }
+    }
+
+    def setUp(self):
+        """
+        Set up test class wide patches
+        """
+        # set up patches for each sub function call in DXExecute.cnv_calling
+        self.path_patch = mock.patch('utils.dx_requests.make_path')
+        self.find_patch = mock.patch('utils.dx_requests.DXManage.find_files')
+        self.check_archival_state_patch = mock.patch(
+            'utils.dx_requests.DXManage.check_archival_state'
+        )
+        self.describe_patch = mock.patch('utils.dx_requests.dxpy.describe')
+        self.dxapp_patch = mock.patch('utils.dx_requests.dxpy.DXApp')
+        self.run_patch = mock.patch('utils.dx_requests.dxpy.run')
+        self.job_patch = mock.patch('utils.dx_requests.dxpy.DXJob')
+        self.wait_patch = mock.patch(
+            'utils.dx_requests.dxpy.bindings.DXJob.wait_on_done'
+        )
+
+        # create our mocks to reference
+        self.mock_path = self.path_patch.start()
+        self.mock_find = self.find_patch.start()
+        self.mock_archive = self.check_archival_state_patch.start()
+        self.mock_describe = self.describe_patch.start()
+        self.mock_dxapp = self.dxapp_patch.start()
+        self.mock_run = self.run_patch.start()
+        self.mock_job = self.job_patch.start()
+        self.mock_wait = self.wait_patch.start()
+
+        # Below we define some returns in expected format to use for the mocks
+
+        # utils.make_path called twice, once to get path for searching for
+        # BAM files then again for setting app output
+        self.mock_path.side_effect = [
+            'project-GZ025k04VjykZx3bJ7YP837:/output/CEN-230719_1604/sentieon',
+            (
+                'project-GZ025k04VjykZx3bJ7YP837:/output/CEN-230719_1604/'
+                'GATK_gCNV_call-1.2.3/0925-17'
+            ),
+        ]
+
+        # mocked return of calling DXManage.find_files to search for input BAMs
+        self.mock_find.return_value = [
+            {'id': 'file-xxx', 'describe': {'name': 'sample1.bam'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample1.bam.bai'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample2.bam'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample2.bam.bai'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample3.bam'}},
+            {'id': 'file-xxx', 'describe': {'name': 'sample3.bam.bai'}},
+        ]
+
+        # first dxpy.describe call is on the project ID to get the project
+        # name, second is on app ID and third is on job ID
+        # patch in minimal responses with required keys
+        self.mock_describe.side_effect = [
+            {'name': '002_test_project'},
+            {'name': 'GATK_gCNV_call', 'version': '1.2.3'},
+            {'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'},
+        ]
+
+    def tearDown(self):
+        """
+        Remove test class wide patches
+        """
+        self.mock_path.stop()
+        self.mock_find.stop()
+        self.mock_archive.stop()
+        self.mock_describe.stop()
+        self.mock_dxapp.stop()
+        self.mock_run.stop()
+        self.mock_job.stop()
+        self.mock_wait.stop()
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        self.capsys = capsys
+
+    def test_cnv_call(self):
+        """
+        Test with everything patched that no errors are raised
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=[],
+            start='',
+            wait=False,
+            unarchive=False,
+        )
+
+    def test_wait_on_done(self):
+        """
+        Test if wait=True is specified that the app will be held until
+        calling completes
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=[],
+            start='',
+            wait=True,
+            unarchive=False,
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        assert 'Holding app until CNV calling completes...' in stdout, (
+            'App not waiting with wait=True specified'
+        )
+
+    def test_exclude(self):
+        """
+        Test when exclude samples is specified that these are used
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=['sample2', 'sample3'],
+            start='',
+            wait=False,
+            unarchive=False,
+        )
+
+        stdout = self.capsys.readouterr().out
+
+        correct_exclude = '2 .bam/.bai files after excluding:\n\tsample1.bam\n\tsample1.bam.bai'
+
+        assert correct_exclude in stdout, 'exclude samples incorrect'
+
+    def test_exclude_invalid_sample(self):
+        """
+        Test when exclude samples is specified with an sample name that
+        has no BAM file present a RuntimeError is correctly raised from
+        the call to utils.check_exclude_samples
+        """
+        correct_error = (
+            'samples provided to exclude from CNV calling not valid: '
+            r"\['sample1000'\]"
+        )
+
+        with pytest.raises(RuntimeError, match=correct_error):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=['sample1000'],
+                start='',
+                wait=False,
+                unarchive=False,
+            )
+
+    def test_excluded_files_returned_correct_format(self):
+        """
+        Test that the files excluded from CNV calling are returned as a
+        list of file name strings
+        """
+        _, excluded = DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=['sample2', 'sample3'],
+            start='',
+            wait=False,
+            unarchive=False,
+        )
+
+        correct_exclude = [
+            'sample2.bam',
+            'sample2.bam.bai',
+            'sample3.bam',
+            'sample3.bam.bai',
+        ]
+
+        self.assertEqual(excluded, correct_exclude)
+
+    def test_correct_error_raised_on_calling_failing(self):
+        """
+        If error raised during CNV calling whilst waiting to complete,
+        test this is caught and exits the app
+        """
+        # patch return of DXJob to be an empty DXJob object, and set the
+        # error to be raised from DXJob.wait_on_done()
+        self.mock_job.return_value = dxpy.bindings.DXJob(dxid='localjob-')
+        self.mock_wait.side_effect = dxpy.exceptions.DXJobFailureError(
+            'oh no :sadpanda:'
+        )
+
+        with pytest.raises(
+            dxpy.exceptions.DXJobFailureError, match='oh no :sadpanda:'
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[],
+                start='',
+                wait=True,
+                unarchive=False,
+            )
+
+    def test_assertion_error_raised_on_no_files_found(self):
+        """
+        If no BAM files are found after searching the given directory
+        an AssertionError should be raised, test this happens
+        """
+        self.mock_find.return_value = []
+
+        with pytest.raises(
+            AssertionError, match='No BAM files found for CNV calling'
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[],
+                start='',
+                wait=False,
+                unarchive=False,
+            )
+
+    def test_project_name_uses_remote_project_from_output_path(self):
+        self.mock_describe.side_effect = [
+            {'name': 'remote-project-name'},
+            {'name': 'GATK_gCNV_call', 'version': '1.2.3'},
+            {'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'},
+        ]
+
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='project-remote123:/output/CEN-230719_1604',
+            exclude=[],
+            start='',
+            wait=False,
+            unarchive=False,
+        )
+
+        assert self.mock_describe.call_args_list[0].args == (
+            'project-remote123',
+        )
+
+    def test_project_name_falls_back_to_current_project_context(self):
+        self.mock_describe.side_effect = [
+            {'name': 'current-project-name'},
+            {'name': 'GATK_gCNV_call', 'version': '1.2.3'},
+            {'id': 'job-GXvQjz04YXKx5ZPjk36B17j2'},
+        ]
+
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='/output/CEN-230719_1604',
+            exclude=[],
+            start='',
+            wait=False,
+            unarchive=False,
+        )
+
+        assert self.mock_describe.call_args_list[0].args == (
+            os.environ.get('DX_PROJECT_CONTEXT_ID'),
+        )
 
 
 class TestDXManageSelectStaticBeds:
