@@ -241,10 +241,8 @@ The definitions of inputs for CNV calling and each reports workflow should be de
             },
             "GATK_docker": {
                 "$dnanexus_link": {
-                    "$dnanexus_link": {
-                        "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
-                        "id": "file-GBBP9JQ433GxV97xBpQkzYZx"
-                    }
+                    "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                    "id": "file-GBBP9JQ433GxV97xBpQkzYZx"
                 }
             },
             "annotation_tsv": {
