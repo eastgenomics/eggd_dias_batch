@@ -201,7 +201,7 @@
         "interpreter": "python3",
         "file": "resources/home/dnanexus/dias_batch/dias_batch.py",
         "distribution": "Ubuntu",
-        "release": "20.04",
+        "release": "24.04",
         "version": "0",
         "headJobOnDemand": true
     },
