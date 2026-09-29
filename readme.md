@@ -321,5 +321,5 @@ The definitions of inputs for CNV calling and each reports workflow should be de
 ## What does this app output
 
 - `summary_report` (`file`) - text summary file with details on jobs run and any samples / tests excluded from analysis
-
+- `launched_jobs` (`string`) - comma separated string of all jobs/workflows launched by batch
 ---
