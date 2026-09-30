@@ -114,6 +114,24 @@ class TestCheckInputs():
             'Error not raised for empty single directory'
         )
 
+    def test_check_single_output_dir_empty_string_raises_error(self, mocker):
+        """
+        Test that error is raised when single_output_dir is passed as an
+        empty string
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        check = CheckInputs()
+        check.errors = []
+        check.inputs = {
+            'single_output_dir': ''
+        }
+
+        check.check_single_output_dir()
+
+        assert check.errors == [
+            'single_output_dir input must be specified and non-empty'
+        ], 'Error not raised for empty string single_output_dir'
+
     def test_check_no_mode_set(self, mocker):
         """
         Check correct error raised if no mode set
