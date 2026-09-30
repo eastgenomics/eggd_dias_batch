@@ -322,4 +322,40 @@ The definitions of inputs for CNV calling and each reports workflow should be de
 
 - `summary_report` (`file`) - text summary file with details on jobs run and any samples / tests excluded from analysis
 - `launched_jobs` (`string`) - comma separated string of all jobs/workflows launched by batch
+
+---
+
+## Local development setup
+
+This repo uses [`uv`](https://docs.astral.sh/uv/) to manage the local development/test environment, configured via [`pyproject.toml`](pyproject.toml) and [`uv.lock`](uv.lock) (Python version pinned in [`.python-version`](.python-version)). This is separate from how the app actually installs its dependencies when running on DNAnexus - with dependencies installed at runtime via pip (see [`dias_batch.py`](resources/home/dnanexus/dias_batch/dias_batch.py)'s `pip install --no-index --no-deps`) using the wheels in [`resources/home/dnanexus/packages/`](resources/home/dnanexus/packages/). `uv`/`pyproject.toml` are only used when setting up local dev and CI environment.
+
+To set up a local dev environment:
+
+1. Install `uv` (see [uv's installation docs](https://docs.astral.sh/uv/getting-started/installation/))
+2. From the repo root, create the local environment:
+   ```
+   uv sync
+   ```
+- This provisions the pinned Python version if not already available, and installs both runtime and development dependencies as declared in `pyproject.toml`.
+
+[`pyproject.toml`](pyproject.toml) splits dependencies into two groups, depending on what they're for:
+- `[project.dependencies]` - packages the app itself imports/needs at runtime. Anything added here should also be reflected in the vendored wheels at [`resources/home/dnanexus/packages/`](resources/home/dnanexus/packages/) and `[tool.uv.sources]`
+- `[dependency-groups].dev` - tooling only used for local development/CI (e.g. `pytest` and its plugins, `ruff`).
+
+When adding a new dependency, add it to whichever group matches its purpose.
+
+## Running tests and linting
+
+Run the test suite:
+```
+uv run pytest -vv --cov resources/home/dnanexus/dias_batch/
+```
+
+Run linting/formatting checks:
+```
+uv run ruff check .
+uv run ruff format --check .
+```
+(drop `--check` from the second command to have `ruff` apply formatting fixes)
+
 ---
