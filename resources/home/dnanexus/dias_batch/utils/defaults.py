@@ -10,7 +10,7 @@ default_mode_file_patterns = {
     },
     'snv_reports': {
         'sample': [
-            '_markdup_recalibrated_Haplotyper.vcf.gz$',
+            '_markdup_additional_regions.vcf.gz$',
             'per-base.bed.gz$',
             'reference_build.txt$'
         ],
