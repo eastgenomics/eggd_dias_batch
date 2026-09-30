@@ -29,6 +29,9 @@ line-length = 79
 [tool.ruff.format]
 quote-style = "double"
 
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
 [dependency-groups]
 dev = [
     "pytest==9.1.1",
