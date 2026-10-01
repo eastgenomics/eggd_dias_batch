@@ -763,13 +763,16 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
         # each call to dx_requests.find_files for each running mode
         expected_called_patterns = {
             'cnv_reports_sample': (
-                    'sample_1.*_segments.vcf$|sample_2.*_segments.vcf$'
+                    'sample_1.*_segments.vcf$|'
+                    'sample_1.*_segments_annotated.seg$|'
+                    'sample_2.*_segments.vcf$|'
+                    'sample_2.*_segments_annotated.seg$'
             ),
             'cnv_reports_run': '_excluded_intervals.bed$',
             'snv_reports': (
-                'sample_1.*_markdup_recalibrated_Haplotyper.vcf.gz$|'
+                'sample_1.*_markdup_additional_regions.vcf.gz$|'
                 'sample_1.*per-base.bed.gz$|sample_1.*reference_build.txt$|'
-                'sample_2.*_markdup_recalibrated_Haplotyper.vcf.gz$|'
+                'sample_2.*_markdup_additional_regions.vcf.gz$|'
                 'sample_2.*per-base.bed.gz$|sample_2.*reference_build.txt$'
                 ),
             'mosaic_reports': (

@@ -118,6 +118,9 @@ class CheckInputs():
     def check_single_output_dir(self):
         """Check single output dir is not empty"""
         if not self.inputs.get('single_output_dir'):
+            self.errors.append(
+                'single_output_dir input must be specified and non-empty'
+            )
             return
 
         if self.inputs['single_output_dir'].startswith('project-'):

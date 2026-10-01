@@ -1,7 +1,8 @@
 default_mode_file_patterns = {
     'cnv_reports': {
         'sample': [
-            '_segments.vcf$'
+            '_segments.vcf$',
+            '_segments_annotated.seg$'
         ],
         'run': [
             '_excluded_intervals.bed$'
@@ -9,7 +10,7 @@ default_mode_file_patterns = {
     },
     'snv_reports': {
         'sample': [
-            '_markdup_recalibrated_Haplotyper.vcf.gz$',
+            '_markdup_additional_regions.vcf.gz$',
             'per-base.bed.gz$',
             'reference_build.txt$'
         ],
