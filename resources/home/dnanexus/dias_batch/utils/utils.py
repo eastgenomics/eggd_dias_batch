@@ -1136,10 +1136,9 @@ def add_dynamic_inputs(config, **kwargs) -> dict:
         print(
             "Filled config still has placeholders in it, this likely means "
             "one or more required inputs were not provided to the script, "
-            "please check the config and your inputs:\n"
-            f"{prettier_print(filled_config)}\n"
-            f"{filled_config}"
+            "please check the config and your inputs:"
         )
+        prettier_print(filled_config)
     assert not any([
         x.startswith('INPUT-') if isinstance(x, str) else False
         for x in filled_config.values()
