@@ -4,3 +4,4 @@ test.py
 /*.tsv
 *.coverage
 htmlcov/*
+.vscode

@@ -1,7 +1,7 @@
 {
     "name": "eggd_dias_batch",
     "title": "eggd_dias_batch",
-    "version": "3.3.0",
+    "version": "3.4.0",
     "summary": "Launches downstream analyses for Dias",
     "dxapi": "1.0.0",
     "inputSpec": [
@@ -201,7 +201,7 @@
         "interpreter": "python3",
         "file": "resources/home/dnanexus/dias_batch/dias_batch.py",
         "distribution": "Ubuntu",
-        "release": "20.04",
+        "release": "24.04",
         "version": "0",
         "headJobOnDemand": true
     },
