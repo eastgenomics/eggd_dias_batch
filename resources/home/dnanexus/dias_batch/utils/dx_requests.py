@@ -357,19 +357,13 @@ class DXManage():
             project=project, dxid=file_id).read().rstrip('\n').split('\n')
 
 
-    def check_all_files_archival_state(
-        self,
-        patterns,
-        samples,
-        path,
-        modes,
-        unarchive,
-        unarchive_only=False
-        ):
+    def check_files_are_present(
+        self, patterns, samples, path, modes, cnv_call_job_id, exclude=None
+    ) -> tuple:
         """
-        Checks for all specified file patterns and samples for each
-        running mode to ensure they are unarchived before attempting
-        to launch any jobs
+        Find all sample and run level files for each selected running
+        mode, and check every sample has the files it requires, before
+        attempting to launch any jobs
 
         Parameters
         ----------
@@ -381,14 +375,31 @@ class DXManage():
             path to search for files
         modes: dict
             mapping of running modes to booleans if they are being run
-        unarchive : bool
-            if to automatically unarchive files, will be passed through
-            to self.check_archival_state
-        unarchive_only : bool
-            if to only check file archival status and exit without
-            returning to launch any jobs
+        cnv_call_job_id : str
+            job ID of a pre-existing CNV calling job being used for CNV
+            reports, if given CNV reports file check is skipped since
+            calling has not yet run / files are not yet in `path`
+        exclude : list (optional)
+            list of sample name regex patterns excluded from CNV calling
+            - these samples will never have CNV output files, so are left
+            out of the missing-files check for cnv_reports
+
+        Returns
+        -------
+        list
+            DXFile objects found matching per-sample patterns
+        list
+            DXFile objects found matching per-run patterns
+
+        Raises
+        ------
+        RuntimeError
+            Raised when one or more samples are missing one or more
+            required files for a selected running mode
         """
-        print("\nChecking archival states for selected running modes:")
+        print(
+            "\nGathering required files for selected running modes:"
+        )
         prettier_print(modes)
 
         if not patterns:
@@ -406,32 +417,77 @@ class DXManage():
 
         sample_files_to_check = []
         run_files_to_check = []
+        missing = {}
 
         for mode, selected in modes.items():
             if not selected:
                 print(f'Running mode {mode} not selected, skipping file check')
                 continue
 
+            if not cnv_call_job_id and mode == 'cnv_reports':
+                # CNV call job not provided but cnv_reports selected, therefore
+                # cnv_call must be True (see
+                # CheckInputs.check_cnv_calling_for_cnv_reports) - CNV files do
+                # not exist yet, skip CNV reports file check
+                print(
+                    "Skipping CNV reports file check as CNV calling is yet "
+                    "to be run"
+                )
+                continue
+
             mode_sample_patterns = patterns.get(mode, {}).get('sample')
             mode_run_patterns = patterns.get(mode, {}).get('run')
+
+            if mode == 'cnv_reports' and exclude:
+                # samples excluded from CNV calling will never have CNV output
+                # files, so cnv_reports' missing-files check is run against just
+                # the non-excluded samples instead of the full sample list
+                samples_to_check = [
+                    x for x in samples
+                    if not any(re.match(pattern, x) for pattern in exclude)
+                ]
+            else:
+                samples_to_check = samples
 
             if mode_sample_patterns:
                 # generate regex pattern per sample for each file pattern,
                 # then join it as one big chongus pattern for a single query
                 # because its not our API server load to worry about
-                sample_patterns = '|'.join([
-                    f"{x}.*{y}" for x in samples for y in mode_sample_patterns
-                ])
+                sample_patterns = [
+                    f"{x}.*{y}"
+                    for x in samples_to_check for y in mode_sample_patterns
+                ]
+
                 print(
                     f"Searching per sample files for {mode} with "
-                    f"{len(mode_sample_patterns)} patterns for {len(samples)} "
-                    "samples"
+                    f"{len(mode_sample_patterns)} patterns for "
+                    f"{len(samples_to_check)} samples"
                 )
 
-                sample_files_to_check.extend(self.find_files(
+                sample_files = self.find_files(
                     path=path,
-                    pattern=sample_patterns
-                ))
+                    pattern='|'.join(sample_patterns)
+                )
+                sample_files_to_check.extend(sample_files)
+
+                if mode != 'artemis':
+                    # artemis finds and validates its own required files
+                    # when it runs, so leave it to handle its own file checking
+                    # files are still searched for above so
+                    # they get included in the unarchive check, but are
+                    # not checked for being missing
+                    # also more complex to check for missing artemis files
+                    # as some are only required if cnv calling output is
+                    # present
+                    missing_patterns = [
+                        sample_pattern for sample_pattern in sample_patterns
+                        if not any(
+                            re.search(sample_pattern, f['describe']['name'])
+                            for f in sample_files
+                        )
+                    ]
+                    if missing_patterns:
+                        missing[mode] = missing_patterns
 
             if mode_run_patterns:
                 print(
@@ -448,10 +504,49 @@ class DXManage():
             f"{len(run_files_to_check)} run level files to check status of"
         )
 
-        if sample_files_to_check or run_files_to_check:
+        # Only raise error for missing files once all running modes have been
+        # checked, so that we can report all missing files
+        if missing:
+            raise RuntimeError(
+                "One or more samples missing required files: "
+                f"{json.dumps(missing, indent='⠀⠀')}"
+            )
+
+        return sample_files_to_check, run_files_to_check
+
+
+    def check_and_unarchive_files(
+        self, sample_files, run_files, unarchive, unarchive_only=False
+    ) -> None:
+        """
+        Check archival state of the given files, unarchiving
+        them if required.
+
+        Parameters
+        ----------
+        sample_files : list
+            DXFile objects found matching per-sample patterns
+        run_files : list
+            DXFile objects found matching per-run patterns
+        unarchive : bool
+            if to automatically unarchive files, will be passed through
+            to self.check_archival_state
+        unarchive_only : bool
+            if to only check file archival status and exit without
+            returning to launch any jobs
+
+        Raises
+        ------
+        RuntimeError
+            Raised when one or more files found that are in state
+            'unarchiving' and unarchive=True specified
+        RuntimeError
+            Raised when required files are archived and -iunarchive=False
+        """
+        if sample_files or run_files:
             self.check_archival_state(
-                sample_files=sample_files_to_check,
-                non_sample_files=run_files_to_check,
+                sample_files=sample_files,
+                non_sample_files=run_files,
                 unarchive=unarchive
             )
 
