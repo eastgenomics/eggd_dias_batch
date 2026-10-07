@@ -402,6 +402,12 @@ def check_manifest_valid_test_codes(manifest, genepanels, cnv_indications) -> di
     else:
         print("All sample test codes valid!")
 
+    formatted_stripped = "\n".join(f"\t{k}: {v}" for k, v in stripped_samples.items())
+    if stripped_samples:
+        print(f"One or more samples had CNV indications stripped:\n{formatted_stripped}")
+    else:
+        print("No samples with CNV indications found in manifest")
+
     return valid
 
 
