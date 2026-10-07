@@ -410,6 +410,12 @@ def main(
     )
     genepanels = parse_genepanels(genepanels_data)
 
+    cnv_indications = DXManage().read_dxfile(
+        file=assay_config.get('reference_files', {}).get('cnv_indications'),
+    ) or []
+    cnv_indications = [x.strip() for x in cnv_indications if x.strip()]
+
+
     if manifest_files:
         # one or more manifest files specified => parse manifest(s)
         # and format into a mapping of sampleID -> test codes
@@ -440,7 +446,8 @@ def main(
         # requested are test codes or HGNC IDs we recognise
         manifest = check_manifest_valid_test_codes(
             manifest=manifest,
-            genepanels=genepanels
+            genepanels=genepanels,
+            cnv_indications=cnv_indications
         )
 
         # add in panel and clinical indication strings to manifest dict

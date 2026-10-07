@@ -320,7 +320,7 @@ def filter_manifest_samples_by_files(
     return manifest_with_files, manifest_no_match, manifest_no_files
 
 
-def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
+def check_manifest_valid_test_codes(manifest, genepanels, cnv_indications) -> dict:
     """
     Parse through manifest dict of sampleID -> test codes to check
     all codes are valid and exclude those that are invalid against
@@ -332,6 +332,8 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
         mapping of sampleID -> test codes
     genepanels : pd.DataFrame
         dataframe of genepanels file
+    cnv_indications : list
+        list of CNV indications to strip from test codes in manifest
 
     Returns
     -------
@@ -346,6 +348,7 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
     print("\n \nChecking test codes in manifest are valid...")
     invalid = defaultdict(list)
     valid = defaultdict(lambda: defaultdict(list))
+    stripped_samples = defaultdict(list)
 
     genepanels_test_codes = sorted(set(genepanels['test_code'].tolist()))
 
@@ -365,7 +368,10 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
             valid_tests = []
 
             for test in test_list:
-                if test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
+                if test in cnv_indications:
+                    # CNV-only indication, not in genepanels => drop and record
+                    stripped_samples[sample].append(test)
+                elif test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
                     valid_tests.append(test)
                 elif test.lower().replace(' ', '') == 'researchuse':
                     # more Epic weirdness, chuck these out but don't break
@@ -378,6 +384,10 @@ def check_manifest_valid_test_codes(manifest, genepanels) -> dict:
             if valid_tests:
                 # one or more requested test is in genepanels
                 valid[sample]['tests'].append(sorted(set(valid_tests)))
+
+        if stripped_samples.get(sample) and sample not in valid:
+            # sample had CNV indications stripped and no valid tests left
+            invalid[sample].append(stripped_samples[sample])
 
         if sample_invalid_test:
             # sample had one or more invalid test code
