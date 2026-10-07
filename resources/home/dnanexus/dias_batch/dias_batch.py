@@ -12,28 +12,26 @@ if os.path.exists('/home/dnanexus'):
     ] + glob("packages/*"))
 
     from dias_batch.utils.dx_requests import DXExecute, DXManage
-    from dias_batch.utils.utils import (
+    from dias_batch.utils.config import fill_config_reference_inputs
+    from dias_batch.utils.formatting import make_path, time_stamp
+    from dias_batch.utils.genepanels import parse_genepanels
+    from dias_batch.utils.manifest import (
         add_panels_and_indications_to_manifest,
         check_manifest_valid_test_codes,
-        fill_config_reference_inputs,
-        make_path,
         parse_manifest,
-        parse_genepanels,
-        time_stamp,
-        write_summary_report
     )
+    from dias_batch.utils.reports import write_summary_report
 else:
     from .utils.dx_requests import DXExecute, DXManage
-    from .utils.utils import (
+    from .utils.config import fill_config_reference_inputs
+    from .utils.formatting import make_path, time_stamp
+    from .utils.genepanels import parse_genepanels
+    from .utils.manifest import (
         add_panels_and_indications_to_manifest,
         check_manifest_valid_test_codes,
-        fill_config_reference_inputs,
-        make_path,
         parse_manifest,
-        parse_genepanels,
-        time_stamp,
-        write_summary_report
     )
+    from .utils.reports import write_summary_report
 
 import dxpy
 import pandas as pd

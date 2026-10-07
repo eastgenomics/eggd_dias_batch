@@ -19,14 +19,11 @@ import pandas as pd
 
 from .defaults import default_mode_file_patterns
 
-from .utils import (
-    add_dynamic_inputs,
-    check_exclude_samples,
-    check_report_index,
-    filter_manifest_samples_by_files,
-    make_path,
-    prettier_print
-)
+from .config import add_dynamic_inputs
+from .formatting import make_path, prettier_print
+from .manifest import filter_manifest_samples_by_files
+from .reports import check_report_index
+from .samples import check_exclude_samples
 
 # for prettier viewing in the logs
 pd.set_option('display.max_rows', 100)
