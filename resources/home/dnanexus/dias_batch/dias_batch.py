@@ -69,6 +69,7 @@ class CheckInputs():
         self.check_artemis_inputs()
         self.check_exclude_str_and_file()
         self.check_exclude_samples_file_id()
+        self.check_exclude_requires_cnv_call_or_reports()
         self.check_qc_file()
 
         if self.errors:
@@ -279,6 +280,28 @@ class CheckInputs():
                     "rerun and provide this as -iexclude_samples_file="
                     f"{self.inputs.get('exclude_samples')}"
                 )
+
+    def check_exclude_requires_cnv_call_or_reports(self):
+        """
+        Check that if any exclude input is given, either cnv_call or
+        cnv_reports is selected, since exclude is only ever applied to
+        CNV calling / CNV reports and would otherwise never be used
+        """
+        if (
+            any([
+                self.inputs.get('exclude_samples'),
+                self.inputs.get('exclude_samples_file'),
+                self.inputs.get('exclude_controls')
+            ])
+            and not self.inputs.get('cnv_call')
+            and not self.inputs.get('cnv_reports')
+        ):
+            self.errors.append(
+                'Samples specified to exclude but neither cnv_call nor '
+                'cnv_reports selected, exclude would never be used. '
+                'Please rerun with -icnv_call=true and/or '
+                '-icnv_reports=true, or remove the exclude input'
+            )
 
     def strip_string_inputs(self):
         """
