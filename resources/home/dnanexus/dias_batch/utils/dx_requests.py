@@ -449,6 +449,12 @@ class DXManage():
             else:
                 samples_to_check = samples
 
+            if not samples_to_check:
+                print(
+                    f"All samples excluded from {mode}, skipping file check"
+                )
+                continue
+
             if mode_sample_patterns:
                 # generate regex pattern per sample for each file pattern,
                 # then join it as one big chongus pattern for a single query
