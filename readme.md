@@ -24,6 +24,9 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 - `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
 - `-imanifest_subset` (`str`): comma separated string of Epic samples in manifest on which to ONLY run jobs (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`)). This option is to be used if an Epic batch had mistakes in the manifest, which have now been corrected. This will filter the updated batch so that reports jobs are only run for the corrected samples and not the whole batch.
 
+**Integers**
+- `-icnv_min_samples` (`int`): minimum number of samples (BAMs, counted after any `-iexclude` samples are removed) required to launch CNV calling, below which an error is raised. If not specified, no minimum is enforced. Can also be set as a per-assay default via `min_samples` in the config's `cnv_call` mode; the runtime input takes precedence if both are given
+
 **Files**
 - `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and should only be specified with `-iartemis=true`_)
 - `-imultiqc_report` (`file`): HTML MultiQC report (_this is an optional input file for eggd\_artemis and should only be specified with `-iartemis=true`, it will pass the file as input to suppress searching for a MultiQC job in the project_)
