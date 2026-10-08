@@ -282,6 +282,59 @@ class TestCheckInputs():
                 'Error incorrectly raised when cnv_call_job_id not given'
             )
 
+    def test_error_raised_cnv_min_samples_without_cnv_call(self, mocker):
+        """
+        Test error is raised when cnv_min_samples is specified without
+        cnv_call, since the minimum would otherwise never be used
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        mocker.return_value = None
+
+        correct_error = ([
+            'cnv_min_samples specified but cnv_call not selected, '
+            'the given minimum would never be used. Please rerun with '
+            '-icnv_call=true or remove -icnv_min_samples'
+        ])
+
+        with unittest.TestCase().subTest('cnv_call not selected'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'cnv_min_samples': 5,
+                'cnv_call': False
+            }
+            check.check_cnv_min_samples_requires_cnv_call()
+
+            assert check.errors == correct_error, (
+                'Error not raised for cnv_min_samples without cnv_call'
+            )
+
+        with unittest.TestCase().subTest('cnv_call selected'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'cnv_min_samples': 5,
+                'cnv_call': True
+            }
+            check.check_cnv_min_samples_requires_cnv_call()
+
+            assert check.errors == [], (
+                'Error incorrectly raised when cnv_call also selected'
+            )
+
+        with unittest.TestCase().subTest('cnv_min_samples not given'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'cnv_min_samples': None,
+                'cnv_call': False
+            }
+            check.check_cnv_min_samples_requires_cnv_call()
+
+            assert check.errors == [], (
+                'Error incorrectly raised when cnv_min_samples not given'
+            )
+
     def test_error_raised_for_cnv_reports_invalid(self, mocker):
         """
         Test when CNV reports is to be run that an error is raised if

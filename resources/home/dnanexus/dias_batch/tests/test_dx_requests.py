@@ -1961,6 +1961,128 @@ class TestDXExecuteCNVCalling(unittest.TestCase):
             )
 
 
+    def test_error_raised_for_odd_number_of_bam_bai_files(self):
+        """
+        Test that a RuntimeError is raised if an odd number of bam/bai
+        files are found, since pairing is assumed to be exactly one
+        .bam and one .bam.bai per sample
+        """
+        self.mock_find.return_value = self.mock_find.return_value[:-1]
+
+        with pytest.raises(
+            RuntimeError, match='Odd number of bam/bai files found'
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[],
+                start='',
+                wait=False,
+                unarchive=False
+            )
+
+
+    def test_error_raised_for_odd_number_of_bam_bai_files_after_excluding(
+        self
+    ):
+        """
+        Test that a RuntimeError is raised if excluding unevenly matches
+        a sample's .bam/.bam.bai pair, leaving an odd number of files
+        """
+        # matches only sample2.bam, not sample2.bam.bai
+        with pytest.raises(
+            RuntimeError, match='Odd number of bam/bai files found'
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[r'sample2\.bam$'],
+                start='',
+                wait=False,
+                unarchive=False
+            )
+
+
+    def test_error_raised_when_fewer_samples_than_min_samples(self):
+        """
+        Test that a RuntimeError is raised when fewer samples are found
+        than the given min_samples
+        """
+        # default mock_find.return_value has 3 samples (6 bam/bai files)
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r'Only 3 sample\(s\) remain to launch CNV calling for, '
+                r'fewer than the minimum of 4 required'
+            )
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=[],
+                start='',
+                wait=False,
+                unarchive=False,
+                min_samples=4
+            )
+
+
+    def test_no_error_when_samples_equal_min_samples(self):
+        """
+        Test that no error is raised when the number of samples found
+        exactly equals min_samples
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=[],
+            start='',
+            wait=False,
+            unarchive=False,
+            min_samples=3
+        )
+
+
+    def test_no_error_when_samples_exceed_min_samples(self):
+        """
+        Test that no error is raised when the number of samples found
+        exceeds min_samples
+        """
+        DXExecute().cnv_calling(
+            config=deepcopy(self.config),
+            single_output_dir='',
+            exclude=[],
+            start='',
+            wait=False,
+            unarchive=False,
+            min_samples=2
+        )
+
+
+    def test_min_samples_counted_after_excluding(self):
+        """
+        Test that min_samples is checked against the sample count after
+        excluding, not the full count found before excluding
+        """
+        # 3 samples found, 2 excluded, leaving 1 - below min_samples=2
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r'Only 1 sample\(s\) remain to launch CNV calling for, '
+                r'fewer than the minimum of 2 required'
+            )
+        ):
+            DXExecute().cnv_calling(
+                config=deepcopy(self.config),
+                single_output_dir='',
+                exclude=['sample2', 'sample3'],
+                start='',
+                wait=False,
+                unarchive=False,
+                min_samples=2
+            )
+
+
     def test_excluded_files_returned_correct_format(self):
         """
         Test that the files excluded from CNV calling are returned as a
