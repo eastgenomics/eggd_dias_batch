@@ -229,6 +229,59 @@ class TestCheckInputs():
             'Incorrect error raised for checking cnv call mode'
         )
 
+    def test_error_raised_cnv_call_job_id_without_cnv_reports(self, mocker):
+        """
+        Test error is raised when cnv_call_job_id is specified without
+        cnv_reports, since the job ID would otherwise never be used
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        mocker.return_value = None
+
+        correct_error = ([
+            'cnv_call_job_id specified but cnv_reports not selected, '
+            'the given job ID would never be used. Please rerun with '
+            '-icnv_reports=true or remove -icnv_call_job_id'
+        ])
+
+        with unittest.TestCase().subTest('cnv_reports not selected'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'cnv_call_job_id': 'job-xxx',
+                'cnv_reports': False
+            }
+            check.check_cnv_call_job_id_requires_cnv_reports()
+
+            assert check.errors == correct_error, (
+                'Error not raised for cnv_call_job_id without cnv_reports'
+            )
+
+        with unittest.TestCase().subTest('cnv_reports selected'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'cnv_call_job_id': 'job-xxx',
+                'cnv_reports': True
+            }
+            check.check_cnv_call_job_id_requires_cnv_reports()
+
+            assert check.errors == [], (
+                'Error incorrectly raised when cnv_reports also selected'
+            )
+
+        with unittest.TestCase().subTest('cnv_call_job_id not given'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'cnv_call_job_id': None,
+                'cnv_reports': False
+            }
+            check.check_cnv_call_job_id_requires_cnv_reports()
+
+            assert check.errors == [], (
+                'Error incorrectly raised when cnv_call_job_id not given'
+            )
+
     def test_error_raised_for_cnv_reports_invalid(self, mocker):
         """
         Test when CNV reports is to be run that an error is raised if
@@ -276,6 +329,119 @@ class TestCheckInputs():
         assert check.errors == correct_error, (
             "Error not raised when file ID provided to exclude_samples"
         )
+
+    def test_error_raised_exclude_without_cnv_call_or_reports(self, mocker):
+        """
+        Test error is raised when any exclude input is given but neither
+        cnv_call nor cnv_reports is selected, since exclude would
+        otherwise never be used
+        """
+        mocker.patch.object(CheckInputs, "__init__", return_value=None)
+        mocker.return_value = None
+
+        correct_error = ([
+            'Samples specified to exclude but neither cnv_call nor '
+            'cnv_reports selected, exclude would never be used. '
+            'Please rerun with -icnv_call=true and/or '
+            '-icnv_reports=true, or remove the exclude input'
+        ])
+
+        with unittest.TestCase().subTest('exclude_samples given'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'exclude_samples': 'sample1,sample2',
+                'exclude_samples_file': None,
+                'exclude_controls': False,
+                'cnv_call': False,
+                'cnv_reports': False
+            }
+            check.check_exclude_requires_cnv_call_or_reports()
+
+            assert check.errors == correct_error, (
+                'Error not raised for exclude_samples without cnv_call/reports'
+            )
+
+        with unittest.TestCase().subTest('exclude_samples_file given'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'exclude_samples': None,
+                'exclude_samples_file': {'$dnanexus_link': 'file-xxx'},
+                'exclude_controls': False,
+                'cnv_call': False,
+                'cnv_reports': False
+            }
+            check.check_exclude_requires_cnv_call_or_reports()
+
+            assert check.errors == correct_error, (
+                'Error not raised for exclude_samples_file without '
+                'cnv_call/reports'
+            )
+
+        with unittest.TestCase().subTest('exclude_controls given'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'exclude_samples': None,
+                'exclude_samples_file': None,
+                'exclude_controls': True,
+                'cnv_call': False,
+                'cnv_reports': False
+            }
+            check.check_exclude_requires_cnv_call_or_reports()
+
+            assert check.errors == correct_error, (
+                'Error not raised for exclude_controls without cnv_call/reports'
+            )
+
+        with unittest.TestCase().subTest('cnv_call selected, no error'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'exclude_samples': 'sample1',
+                'exclude_samples_file': None,
+                'exclude_controls': False,
+                'cnv_call': True,
+                'cnv_reports': False
+            }
+            check.check_exclude_requires_cnv_call_or_reports()
+
+            assert check.errors == [], (
+                'Error incorrectly raised when cnv_call selected'
+            )
+
+        with unittest.TestCase().subTest('cnv_reports selected, no error'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'exclude_samples': 'sample1',
+                'exclude_samples_file': None,
+                'exclude_controls': False,
+                'cnv_call': False,
+                'cnv_reports': True
+            }
+            check.check_exclude_requires_cnv_call_or_reports()
+
+            assert check.errors == [], (
+                'Error incorrectly raised when cnv_reports selected'
+            )
+
+        with unittest.TestCase().subTest('no exclude given, no error'):
+            check = CheckInputs()
+            check.errors = []
+            check.inputs = {
+                'exclude_samples': None,
+                'exclude_samples_file': None,
+                'exclude_controls': False,
+                'cnv_call': False,
+                'cnv_reports': False
+            }
+            check.check_exclude_requires_cnv_call_or_reports()
+
+            assert check.errors == [], (
+                'Error incorrectly raised when no exclude input given'
+            )
 
     @patch('utils.dx_requests.dxpy.DXFile')
     def test_qc_status_file_is_valid(self, mock_file, mocker):

@@ -65,9 +65,11 @@ class CheckInputs():
         self.check_single_output_dir()
         self.check_cnv_call_and_cnv_call_job_id_mutually_exclusive()
         self.check_cnv_calling_for_cnv_reports()
+        self.check_cnv_call_job_id_requires_cnv_reports()
         self.check_artemis_inputs()
         self.check_exclude_str_and_file()
         self.check_exclude_samples_file_id()
+        self.check_exclude_requires_cnv_call_or_reports()
         self.check_qc_file()
 
         if self.errors:
@@ -208,6 +210,21 @@ class CheckInputs():
                     "'-icnv_call=true or specify a job ID with '-icnv_call_job_id'"
                 )
 
+    def check_cnv_call_job_id_requires_cnv_reports(self):
+        """
+        Check that if cnv_call_job_id is given, cnv_reports is also
+        selected, since the job ID would otherwise never be used
+        """
+        if (
+            self.inputs.get('cnv_call_job_id')
+            and not self.inputs.get('cnv_reports')
+        ):
+            self.errors.append(
+                'cnv_call_job_id specified but cnv_reports not selected, '
+                'the given job ID would never be used. Please rerun with '
+                '-icnv_reports=true or remove -icnv_call_job_id'
+            )
+
     def check_artemis_inputs(self):
         """Check if running artemis that the required inputs are set"""
         if self.inputs.get('artemis'):
@@ -263,6 +280,28 @@ class CheckInputs():
                     "rerun and provide this as -iexclude_samples_file="
                     f"{self.inputs.get('exclude_samples')}"
                 )
+
+    def check_exclude_requires_cnv_call_or_reports(self):
+        """
+        Check that if any exclude input is given, either cnv_call or
+        cnv_reports is selected, since exclude is only ever applied to
+        CNV calling / CNV reports and would otherwise never be used
+        """
+        if (
+            any([
+                self.inputs.get('exclude_samples'),
+                self.inputs.get('exclude_samples_file'),
+                self.inputs.get('exclude_controls')
+            ])
+            and not self.inputs.get('cnv_call')
+            and not self.inputs.get('cnv_reports')
+        ):
+            self.errors.append(
+                'Samples specified to exclude but neither cnv_call nor '
+                'cnv_reports selected, exclude would never be used. '
+                'Please rerun with -icnv_call=true and/or '
+                '-icnv_reports=true, or remove the exclude input'
+            )
 
     def strip_string_inputs(self):
         """
@@ -398,20 +437,25 @@ def main(
             for sample in manifest
         }
 
-    # check up front if any files for any of the selected running modes
-    # are in an archived state which would cause jobs to fail to launch
-    DXManage().check_all_files_archival_state(
+    sample_files, run_files = DXManage().check_files_are_present(
         patterns=assay_config.get('mode_file_patterns'),
         samples=manifest.keys(),
         path=single_output_dir,
-        unarchive=unarchive,
-        unarchive_only=unarchive_only,
         modes={
             'cnv_reports': cnv_reports,
             'snv_reports': snv_reports,
             'mosaic_reports': mosaic_reports,
             'artemis': artemis
-        }
+        },
+        cnv_call_job_id=cnv_call_job_id,
+        exclude=exclude_samples
+    )
+
+    DXManage().check_and_unarchive_files(
+        sample_files=sample_files,
+        run_files=run_files,
+        unarchive=unarchive,
+        unarchive_only=unarchive_only
     )
 
     launched_jobs = {}

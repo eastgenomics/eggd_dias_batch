@@ -662,37 +662,98 @@ class TestDXManageReadDXfile():
 
 
 @patch('utils.dx_requests.DXManage.find_files')
-@patch('utils.dx_requests.DXManage.check_archival_state')
-class TestCheckAllFilesArchivalState(unittest.TestCase):
+class TestCheckFilesArePresent(unittest.TestCase):
     """
-    Tests for dx_requests.check_all_files_archival_state
+    Tests for dx_requests.check_files_are_present
 
-    Function takes patterns per running mode of required file types to
-    check archival state of, and queries the given path for all files
-    and then checks the archival state.
+    Function takes patterns per running mode of required file types,
+    queries the given path for all matching files, checks every sample
+    has all of its required files, and returns the sample / run level
+    files found.
     """
     @pytest.fixture(autouse=True)
     def capsys(self, capsys):
         """Capture stdout to provide it to tests"""
         self.capsys = capsys
 
+    @staticmethod
+    def files_matching_every_pattern(path=None, pattern=None, **kwargs):
+        """
+        find_files side_effect that fabricates one file matching each
+        '|' separated component of the given pattern, so the per-sample
+        per-pattern missing-files check never spuriously fails for tests
+        that aren't themselves testing that behaviour
+        """
+        return [
+            {'describe': {'name': p.replace('.*', '').rstrip('$')}}
+            for p in pattern.split('|')
+        ]
+
+    @staticmethod
+    def get_test_patterns():
+        """
+        A fixed copy of utils.defaults.default_mode_file_patterns'
+        current content, hardcoded here so tests don't depend on (or
+        break from unrelated changes to) defaults.py. Returns a fresh
+        dict each call since callers may mutate / subset it. Passed as
+        `patterns` to check_files_are_present in place of None for
+        every test except test_default_patterns_used_if_no_default_provided,
+        which specifically tests the real defaults.py fallback.
+        """
+        return {
+            'cnv_reports': {
+                'sample': [
+                    '_segments.vcf$',
+                    '_segments_annotated.seg$'
+                ],
+                'run': [
+                    '_excluded_intervals.bed$'
+                ]
+            },
+            'snv_reports': {
+                'sample': [
+                    '_markdup_additional_regions.vcf.gz$',
+                    'per-base.bed.gz$',
+                    'reference_build.txt$'
+                ],
+                'run': []
+            },
+            'mosaic_reports': {
+                'sample': [
+                    '_markdup_recalibrated_tnhaplotyper2.vcf.gz',
+                    'per-base.bed.gz$',
+                    'reference_build.txt$'
+                ],
+                'run': []
+            },
+            'artemis': {
+                'sample': [
+                    'bam$',
+                    'bam.bai$',
+                    '_copy_ratios.gcnv.bed.gz$',
+                    '_copy_ratios.gcnv.bed.gz.tbi$'
+                ],
+                'run': [
+                    '-multiqc.html'
+                ]
+            }
+        }
+
 
     def test_default_patterns_used_if_no_default_provided(
-        self, mock_archive, mock_find
+        self, mock_find
     ):
         """
         Test if no pattern is provided from the config that the default
         patterns from utils.defaults is used.
-
-        We will use calls to dx_requests.find_files as a proxy for the
-        config patterns being used, as we expected 6 calls for the 4
-        running modes to be made (4x per sample and 2x per run patterns).
         """
-        DXManage().check_all_files_archival_state(
+        mock_find.side_effect = self.files_matching_every_pattern
+
+        DXManage().check_files_are_present(
             patterns=None,
             samples=['sample_1', 'sample_2'],
             path='project-xxx:/',
-            unarchive=False,
+            cnv_call_job_id='job-xxx',
             modes={
                 'cnv_reports': True,
                 'snv_reports': True,
@@ -701,24 +762,47 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
             }
         )
 
-        assert mock_find.call_count == 6, (
-            'incorrect number of calls to dx_requests.find_files'
+        expected_stdout = (
+            "No mode file patterns defined in assay config, using "
+            "default values from utils.defaults"
         )
+        assert expected_stdout in self.capsys.readouterr().out
 
 
     def test_running_mode_check_skipped_if_not_selected(
-        self, mock_archive, mock_find
+        self, mock_find
     ):
         """
         Test if when a running mode has not been selected (i.e. not
         running CNV reports) that the checks for these file types are
         not run.
         """
-        DXManage().check_all_files_archival_state(
-            patterns=None,
+        mock_find.side_effect = self.files_matching_every_pattern
+
+        patterns = {
+            'cnv_reports': {
+                'sample': ['cnv_sample_pattern'],
+                'run': ['cnv_run_pattern']
+            },
+            'snv_reports': {
+                'sample': ['snv_sample_pattern'],
+                'run': []
+            },
+            'mosaic_reports': {
+                'sample': ['mosaic_sample_pattern'],
+                'run': []
+            },
+            'artemis': {
+                'sample': ['artemis_sample_pattern'],
+                'run': ['artemis_run_pattern']
+            }
+        }
+
+        DXManage().check_files_are_present(
+            patterns=patterns,
             samples=['sample_1', 'sample_2'],
             path='project-xxx:/',
-            unarchive=False,
+            cnv_call_job_id='job-xxx',
             modes={
                 'cnv_reports': False,
                 'snv_reports': True,
@@ -727,6 +811,8 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
             }
         )
 
+        called_patterns = [x[1]['pattern'] for x in mock_find.call_args_list]
+
         with self.subTest('expected message not in stdout'):
             expected_stdout = (
                 "Running mode cnv_reports not selected, skipping file check"
@@ -734,22 +820,86 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
 
             assert expected_stdout in self.capsys.readouterr().out
 
-        with self.subTest('incorrect calls made to dx_requests.find_files'):
-            assert mock_find.call_count == 4
+        with self.subTest('cnv_reports sample and run search both skipped'):
+            assert not any(
+                'cnv_sample_pattern' in p or 'cnv_run_pattern' in p
+                for p in called_patterns
+            )
+
+        with self.subTest('other modes still searched'):
+            assert any('snv_sample_pattern' in p for p in called_patterns)
+            assert any('mosaic_sample_pattern' in p for p in called_patterns)
+            assert any('artemis_sample_pattern' in p for p in called_patterns)
+
+
+    def test_cnv_reports_skipped_when_no_cnv_call_job_id(
+        self, mock_find
+    ):
+        """
+        Test that the CNV reports file check is skipped when no
+        cnv_call_job_id is given, since CNV calling is yet to run so
+        the files won't exist yet
+        """
+        mock_find.side_effect = self.files_matching_every_pattern
+
+        patterns = {
+            'cnv_reports': {
+                'sample': ['cnv_sample_pattern'],
+                'run': ['cnv_run_pattern']
+            },
+            'snv_reports': {
+                'sample': ['snv_sample_pattern'],
+                'run': []
+            }
+        }
+
+        DXManage().check_files_are_present(
+            patterns=patterns,
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            # implies cnv_call=True (see
+            # CheckInputs.check_cnv_calling_for_cnv_reports)
+            cnv_call_job_id=None,
+            modes={
+                'cnv_reports': True,
+                'snv_reports': True
+            }
+        )
+
+        called_patterns = [x[1]['pattern'] for x in mock_find.call_args_list]
+
+        with self.subTest('expected message in stdout'):
+            expected_stdout = (
+                "Skipping CNV reports file check as CNV calling is yet "
+                "to be run"
+            )
+
+            assert expected_stdout in self.capsys.readouterr().out
+
+        with self.subTest('cnv_reports sample and run search both skipped'):
+            assert not any(
+                'cnv_sample_pattern' in p or 'cnv_run_pattern' in p
+                for p in called_patterns
+            )
+
+        with self.subTest('snv_reports still searched'):
+            assert any('snv_sample_pattern' in p for p in called_patterns)
 
 
     def test_correct_patterns_provided_for_each_mode(
-        self, mock_archive, mock_find
+        self, mock_find
     ):
         """
         Test that for each running mode the correct patterns are provided
         when doing the searching
         """
-        DXManage().check_all_files_archival_state(
-            patterns=None,
+        mock_find.side_effect = self.files_matching_every_pattern
+
+        DXManage().check_files_are_present(
+            patterns=self.get_test_patterns(),
             samples=['sample_1', 'sample_2'],
             path='project-xxx:/',
-            unarchive=False,
+            cnv_call_job_id='job-xxx',
             modes={
                 'cnv_reports': True,
                 'snv_reports': True,
@@ -798,141 +948,325 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
         )
 
 
-    def test_call_to_check_archival_state_correct(
-        self, mock_archive, mock_find
+    def test_error_raised_when_sample_missing_a_file(
+        self, mock_find
     ):
         """
-        Test that when we've found files for samples for each running mode,
-        that these are all correctly passed to
-        dx_requests.check_archival_state to actually check if they're archived
+        Test that a RuntimeError is raised when one or more samples is
+        missing one or more of its required files for a selected mode
         """
-        # define what files each call to dx_requests.find_files should
-        # return, will be called twice for CNV reports (per sample then
-        # per run), then once for each other mode
-        mock_find.side_effect = [
-            ['sample1_segments.vcf', 'sample2_segments.vcf'],
-            ['myRun_excluded_intervals.bed'],
-            [
-                'sample1_markdup_recalibrated_Haplotyper.vcf.gz',
-                'sample2_markdup_recalibrated_Haplotyper.vcf.gz',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt'
-            ],
-            [
-                'sample1_markdup_recalibrated_tnhaplotyper2.vcf.gz',
-                'sample2_markdup_recalibrated_tnhaplotyper2.vcf.gz',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt'
-            ],
-            [
-                'sample1_bam$',
-                'sample1_bam.bai$',
-                'sample1_copy_ratios.gcnv.bed$',
-                'sample1_copy_ratios.gcnv.bed.tbi$',
-                'sample2_bam$',
-                'sample2_bam.bai$',
-                'sample2_copy_ratios.gcnv.bed$',
-                'sample2_copy_ratios.gcnv.bed.tbi$'
-            ],
-            ['002_myRun-multiqc.html']
+        # sample_2 is missing a file matching _segments_annotated.seg$
+        mock_find.return_value = [
+            {'describe': {'name': 'sample_1_segments.vcf'}},
+            {'describe': {'name': 'sample_1_segments_annotated.seg'}},
+            {'describe': {'name': 'sample_2_segments.vcf'}},
         ]
 
-        DXManage().check_all_files_archival_state(
-            patterns=None,
+        with pytest.raises(
+            RuntimeError, match='One or more samples missing required files'
+        ):
+            DXManage().check_files_are_present(
+                patterns=self.get_test_patterns(),
+                samples=['sample_1', 'sample_2'],
+                path='project-xxx:/',
+                cnv_call_job_id='job-xxx',
+                modes={
+                    'cnv_reports': True
+                }
+            )
+
+
+    def test_error_raised_when_multiple_modes_missing_files(
+        self, mock_find
+    ):
+        """
+        Test that when multiple selected modes are each missing a file
+        for a sample, all of them are reported together in the one
+        RuntimeError
+        """
+        # sample_2 is missing a file for cnv_reports, snv_reports and
+        # mosaic_reports
+        missing_patterns = (
+            'sample_2.*_segments.vcf$',
+            'sample_2.*_markdup_additional_regions.vcf.gz$',
+            'sample_2.*_markdup_recalibrated_tnhaplotyper2.vcf.gz',
+        )
+
+        def find_files_missing_sample_2(path=None, pattern=None, **kwargs):
+            return [
+                {'describe': {'name': p.replace('.*', '').rstrip('$')}}
+                for p in pattern.split('|')
+                if p not in missing_patterns
+            ]
+
+        mock_find.side_effect = find_files_missing_sample_2
+
+        modes = {
+            'cnv_reports': True,
+            'snv_reports': True,
+            'mosaic_reports': True
+        }
+
+        with pytest.raises(RuntimeError) as exc_info:
+            DXManage().check_files_are_present(
+                patterns=self.get_test_patterns(),
+                samples=['sample_1', 'sample_2'],
+                path='project-xxx:/',
+                cnv_call_job_id='job-xxx',
+                modes=modes
+            )
+
+        error_message = str(exc_info.value)
+
+        for mode in modes:
+            with self.subTest(f'{mode} missing file included in error'):
+                assert f'"{mode}"' in error_message
+
+
+    def test_artemis_excluded_from_missing_files_error(
+        self, mock_find
+    ):
+        """
+        Test that artemis is never included in the missing files
+        RuntimeError, even when it is missing a file alongside another
+        mode that is also missing a file.
+        """
+        # sample_2 is missing a file for both cnv_reports and artemis
+        missing_patterns = (
+            'sample_2.*_segments.vcf$',
+            'sample_2.*bam$',
+        )
+
+        def find_files_missing_sample_2(path=None, pattern=None, **kwargs):
+            return [
+                {'describe': {'name': p.replace('.*', '').rstrip('$')}}
+                for p in pattern.split('|')
+                if p not in missing_patterns
+            ]
+
+        mock_find.side_effect = find_files_missing_sample_2
+
+        with pytest.raises(RuntimeError) as exc_info:
+            DXManage().check_files_are_present(
+                patterns=self.get_test_patterns(),
+                samples=['sample_1', 'sample_2'],
+                path='project-xxx:/',
+                cnv_call_job_id='job-xxx',
+                modes={
+                    'cnv_reports': True,
+                    'artemis': True
+                }
+            )
+
+        error_message = str(exc_info.value)
+
+        with self.subTest('cnv_reports missing file included in error'):
+            assert '"cnv_reports"' in error_message
+
+        with self.subTest('artemis excluded from missing files error'):
+            assert '"artemis"' not in error_message
+
+
+    def test_artemis_files_still_returned_for_archival_check(
+        self, mock_find
+    ):
+        """
+        Test that artemis's found sample and run files are still
+        returned (to be included in the unarchive check) even though
+        they are not checked for being missing
+        """
+        # find_files is called twice (sample search, then run search) -
+        # return a fixed, literal response for each, regardless of what
+        # pattern it was called with, since all we're testing here is
+        # that find_files's return value passes through unchanged
+        expected_sample_files = [
+            {'describe': {'name': 'sample_1.bam'}},
+            {'describe': {'name': 'sample_2.bam'}},
+        ]
+        expected_run_files = [{'describe': {'name': '-multiqc.html'}}]
+
+        mock_find.side_effect = [expected_sample_files, expected_run_files]
+
+        sample_files, run_files = DXManage().check_files_are_present(
+            patterns=self.get_test_patterns(),
             samples=['sample_1', 'sample_2'],
             path='project-xxx:/',
-            unarchive=False,
+            cnv_call_job_id='job-xxx',
             modes={
-                'cnv_reports': True,
-                'snv_reports': True,
-                'mosaic_reports': True,
                 'artemis': True
             }
         )
 
-        # we expect to pass a single level list of all above files to
-        # dx_requests.check_archival_state
-        expected_sample_files = [
-                'sample1_segments.vcf', 'sample2_segments.vcf',
-                'sample1_markdup_recalibrated_Haplotyper.vcf.gz',
-                'sample2_markdup_recalibrated_Haplotyper.vcf.gz',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_markdup_recalibrated_tnhaplotyper2.vcf.gz',
-                'sample2_markdup_recalibrated_tnhaplotyper2.vcf.gz',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_per-base.bed.gz',
-                'sample2_reference_build.txt',
-                'sample1_bam$',
-                'sample1_bam.bai$',
-                'sample1_copy_ratios.gcnv.bed$',
-                'sample1_copy_ratios.gcnv.bed.tbi$',
-                'sample2_bam$',
-                'sample2_bam.bai$',
-                'sample2_copy_ratios.gcnv.bed$',
-                'sample2_copy_ratios.gcnv.bed.tbi$'
-        ]
+        with self.subTest('sample files returned'):
+            assert sample_files == expected_sample_files
 
-        expected_run_files = [
-            '002_myRun-multiqc.html',
-            'myRun_excluded_intervals.bed'
-        ]
-
-        with self.subTest('wrong sample files passed to check archival state'):
-            assert sorted(mock_archive.call_args[1]['sample_files']) == \
-                sorted(expected_sample_files)
-
-        with self.subTest('wrong run files passed to check archival state'):
-            assert sorted(mock_archive.call_args[1]['non_sample_files']) == \
-                expected_run_files
+        with self.subTest('run files returned'):
+            assert run_files == expected_run_files
 
 
-    def test_unarchive_passed_to_check_archival_state(
-        self, mock_archive, mock_find
+    def test_cnv_reports_missing_files_check_is_exclude_aware(
+        self, mock_find
     ):
         """
-        Test that the unarchive param passed to check_all_files_archival_
-        state is passed through to dx_requests.check_archival_state
+        Test that cnv_reports' missing-files check is filtered to just
+        the non-excluded samples, since samples excluded from CNV
+        calling will never have CNV output files, while every other
+        mode still checks against the full sample list
         """
-        # set some return value so check_archival_state will get called
-        mock_find.return_value = ['foo']
+        mock_find.side_effect = self.files_matching_every_pattern
 
+        DXManage().check_files_are_present(
+            patterns=self.get_test_patterns(),
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            cnv_call_job_id='job-xxx',
+            exclude=['sample_2'],
+            modes={
+                'cnv_reports': True,
+                'snv_reports': True
+            }
+        )
+
+        # cnv_reports and snv_reports are the only modes selected, in
+        # that order - cnv_reports has both a sample and run search,
+        # snv_reports has no run patterns so only a sample search -
+        # call_args_list therefore has a predictable, fixed order:
+        # [cnv_reports sample, cnv_reports run, snv_reports sample]
+        called_patterns = [x[1]['pattern'] for x in mock_find.call_args_list]
+
+        with self.subTest('cnv_reports sample search excludes sample_2'):
+            assert 'sample_1' in called_patterns[0]
+            assert 'sample_2' not in called_patterns[0]
+
+        with self.subTest('snv_reports sample search still includes sample_2'):
+            assert 'sample_1' in called_patterns[2]
+            assert 'sample_2' in called_patterns[2]
+
+
+    def test_cnv_reports_file_check_skipped_when_all_samples_excluded(
+        self, mock_find
+    ):
+        """
+        Test that if exclude removes every sample from cnv_reports, the
+        file search is skipped entirely rather than building an empty
+        search pattern that would match every file in path
+        """
+        mock_find.side_effect = self.files_matching_every_pattern
+
+        patterns = {
+            'cnv_reports': {
+                'sample': ['cnv_sample_pattern'],
+                'run': ['cnv_run_pattern']
+            },
+            'snv_reports': {
+                'sample': ['snv_sample_pattern'],
+                'run': []
+            }
+        }
+
+        DXManage().check_files_are_present(
+            patterns=patterns,
+            samples=['sample_1', 'sample_2'],
+            path='project-xxx:/',
+            cnv_call_job_id='job-xxx',
+            exclude=['sample_1', 'sample_2'],
+            modes={
+                'cnv_reports': True,
+                'snv_reports': True
+            }
+        )
+
+        with self.subTest('expected message in stdout'):
+            expected_stdout = (
+                "All samples excluded from cnv_reports, skipping file check"
+            )
+            assert expected_stdout in self.capsys.readouterr().out
+
+        with self.subTest('cnv_reports run-level search also skipped'):
+            # proves the whole mode was skipped (continue), not just the
+            # sample-level search - cnv_reports' run pattern is unrelated
+            # to samples_to_check, so it would still be searched for if
+            # only the sample-level block had been guarded instead
+            called_patterns = [
+                x[1]['pattern'] for x in mock_find.call_args_list
+            ]
+            assert not any(
+                'cnv_run_pattern' in pattern for pattern in called_patterns
+            )
+
+
+@patch('utils.dx_requests.DXManage.check_archival_state')
+class TestCheckAndUnarchiveFiles(unittest.TestCase):
+    """
+    Tests for dx_requests.check_and_unarchive_files
+
+    Function takes the sample / run level files found by
+    check_files_are_present, checks their archival state (and
+    unarchives if specified), and handles exiting early if
+    unarchive_only is set.
+    """
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Capture stdout to provide it to tests"""
+        self.capsys = capsys
+
+
+    def test_check_archival_state_called_with_given_files(self, mock_archive):
+        """
+        Test that the given sample_files / run_files are correctly passed
+        through to dx_requests.check_archival_state
+        """
+        DXManage().check_and_unarchive_files(
+            sample_files=['sample1.vcf'],
+            run_files=['run1-multiqc.html'],
+            unarchive=False
+        )
+
+        with self.subTest('wrong sample files passed to check archival state'):
+            assert mock_archive.call_args[1]['sample_files'] == ['sample1.vcf']
+
+        with self.subTest('wrong run files passed to check archival state'):
+            assert mock_archive.call_args[1]['non_sample_files'] == [
+                'run1-multiqc.html'
+            ]
+
+
+    def test_check_archival_state_not_called_when_no_files_found(
+        self, mock_archive
+    ):
+        """
+        Test that dx_requests.check_archival_state is not called when
+        no sample or run files are given
+        """
+        DXManage().check_and_unarchive_files(
+            sample_files=[],
+            run_files=[],
+            unarchive=False
+        )
+
+        assert not mock_archive.called
+
+
+    def test_unarchive_passed_to_check_archival_state(self, mock_archive):
+        """
+        Test that the unarchive param is passed through to
+        dx_requests.check_archival_state
+        """
         with self.subTest('check unarchive False'):
-            DXManage().check_all_files_archival_state(
-                patterns=None,
-                samples=['sample_1', 'sample_2'],
-                path='project-xxx:/',
-                unarchive=False,
-                modes={
-                    'cnv_reports': True,
-                    'snv_reports': True,
-                    'mosaic_reports': True,
-                    'artemis': True
-                }
+            DXManage().check_and_unarchive_files(
+                sample_files=['foo'],
+                run_files=[],
+                unarchive=False
             )
 
             # should be passed through as False
             assert mock_archive.call_args[1]['unarchive'] == False
 
-        with self.subTest('check unarchive False'):
-            DXManage().check_all_files_archival_state(
-                patterns=None,
-                samples=['sample_1', 'sample_2'],
-                path='project-xxx:/',
-                unarchive=True,
-                modes={
-                    'cnv_reports': True,
-                    'snv_reports': True,
-                    'mosaic_reports': True,
-                    'artemis': True
-                }
+        with self.subTest('check unarchive True'):
+            DXManage().check_and_unarchive_files(
+                sample_files=['foo'],
+                run_files=[],
+                unarchive=True
             )
 
             # should be passed through as True
@@ -941,25 +1275,18 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
     @patch('utils.dx_requests.exit')
     @patch('utils.dx_requests.dxpy.DXJob')
     def test_unarchive_only_correctly_tags_job_and_exits(
-        self, mock_job, mock_exit, mock_archive, mock_find
+        self, mock_job, mock_exit, mock_archive
     ):
         """
         Test that when we specify unarchive_only and there are no files
         to unarchive (which would exit from dx_requests.DXManage.check_
         file_archival_status) that we exit here with a zero exit code
         """
-        DXManage().check_all_files_archival_state(
-            patterns=None,
-            samples=['sample_1', 'sample_2'],
-            path='project-xxx:/',
+        DXManage().check_and_unarchive_files(
+            sample_files=['foo'],
+            run_files=[],
             unarchive=False,
-            unarchive_only=True,
-            modes={
-                'cnv_reports': True,
-                'snv_reports': True,
-                'mosaic_reports': True,
-                'artemis': True
-            }
+            unarchive_only=True
         )
 
         with self.subTest('stdout not correct'):
@@ -971,6 +1298,7 @@ class TestCheckAllFilesArchivalState(unittest.TestCase):
 
         with self.subTest('DXJob.add_tags not called'):
             assert mock_job.return_value.add_tags.call_count == 1
+
 
 class TestDXManageCheckArchivalState(unittest.TestCase):
     """
