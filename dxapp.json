@@ -112,6 +112,13 @@
             "group": "mode"
           },
           {
+            "name": "cnv_min_samples",
+            "label": "CNV calling minimum samples",
+            "class": "int",
+            "optional": true,
+            "help": "minimum number of samples (BAMs, after any -iexclude samples are removed) required to launch CNV calling, below which an error is raised. If not specified, no minimum is enforced"
+          },
+          {
             "name": "cnv_reports",
             "label": "cnv reports",
             "class": "boolean",

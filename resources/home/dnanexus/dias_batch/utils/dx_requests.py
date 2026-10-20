@@ -840,7 +840,8 @@ class DXExecute():
             exclude,
             start,
             wait,
-            unarchive
+            unarchive,
+            min_samples=None
         ) -> str:
         """
         Run CNV calling for given samples in manifest
@@ -860,6 +861,10 @@ class DXExecute():
             if to set hold_on_wait to wait on job to finish
         unarchive : bool
             controls if to automatically unarchive any archived files
+        min_samples : int (optional)
+            minimum number of samples (after excluding) required to
+            launch CNV calling, below which an error is raised. If not
+            given, no minimum is enforced
 
         Returns
         -------
@@ -870,6 +875,9 @@ class DXExecute():
 
         Raises
         ------
+        RuntimeError
+            Raised when fewer than min_samples samples remain to launch
+            CNV calling for
         dxpy.exceptions.DXJobFailureError
             Raised when CNV calling fails / terminates / timed out
         """
@@ -939,6 +947,24 @@ class DXExecute():
                 f"{len(excluded_files)} .bam/.bai files excluded:"
                 f"\n\t{printable_excluded}"
             )
+
+        # bambais pattern always matches exactly one .bam and one
+        # .bam.bai per sample, so an odd count means one sample is
+        # missing its pair
+        if len(files) % 2 != 0:
+            raise RuntimeError(
+                f"Odd number of bam/bai files found ({len(files)}), "
+                "expected an equal number of .bam and .bam.bai files"
+            )
+
+        if min_samples:
+            sample_count = len(files) // 2
+            if sample_count < min_samples:
+                raise RuntimeError(
+                    f"Only {sample_count} sample(s) remain to launch CNV "
+                    f"calling for, fewer than the minimum of {min_samples} "
+                    "required"
+                )
 
         files = [{"$dnanexus_link": file} for file in files]
         cnv_config['inputs']['bambais'] = files

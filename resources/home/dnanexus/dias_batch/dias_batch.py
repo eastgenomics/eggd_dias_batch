@@ -66,6 +66,7 @@ class CheckInputs():
         self.check_cnv_call_and_cnv_call_job_id_mutually_exclusive()
         self.check_cnv_calling_for_cnv_reports()
         self.check_cnv_call_job_id_requires_cnv_reports()
+        self.check_cnv_min_samples_requires_cnv_call()
         self.check_artemis_inputs()
         self.check_exclude_str_and_file()
         self.check_exclude_samples_file_id()
@@ -225,6 +226,22 @@ class CheckInputs():
                 '-icnv_reports=true or remove -icnv_call_job_id'
             )
 
+    def check_cnv_min_samples_requires_cnv_call(self):
+        """
+        Check that if cnv_min_samples is given, cnv_call is also
+        selected, since the minimum is only ever checked against
+        samples being launched for CNV calling
+        """
+        if (
+            self.inputs.get('cnv_min_samples')
+            and not self.inputs.get('cnv_call')
+        ):
+            self.errors.append(
+                'cnv_min_samples specified but cnv_call not selected, '
+                'the given minimum would never be used. Please rerun with '
+                '-icnv_call=true or remove -icnv_min_samples'
+            )
+
     def check_artemis_inputs(self):
         """Check if running artemis that the required inputs are set"""
         if self.inputs.get('artemis'):
@@ -336,6 +353,7 @@ def main(
     single_output_dir=None,
     cnv_call_job_id=None,
     cnv_call=False,
+    cnv_min_samples=None,
     cnv_reports=False,
     snv_reports=False,
     mosaic_reports=False,
@@ -476,10 +494,18 @@ def main(
         # until CNV calling completes
         wait = True if cnv_reports else False
 
+        if cnv_min_samples is None:
+            # not given as a runtime input, fall back to an assay
+            # config default if one is set
+            cnv_min_samples = assay_config['modes']['cnv_call'].get(
+                'min_samples'
+            )
+
         cnv_call_job_id, cnv_call_excluded_files = DXExecute().cnv_calling(
             config=assay_config,
             single_output_dir=single_output_dir,
             exclude=exclude_samples,
+            min_samples=cnv_min_samples,
             start=start_time,
             wait=wait,
             unarchive=unarchive
