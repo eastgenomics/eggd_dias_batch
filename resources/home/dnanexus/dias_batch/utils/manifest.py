@@ -320,6 +320,27 @@ def filter_manifest_samples_by_files(
     return manifest_with_files, manifest_no_match, manifest_no_files
 
 
+def parse_cnv_indications(cnv_indications_file) -> list:
+    """
+    Parse CNV indications file into a list of test codes
+
+    Parameters
+    ----------
+    contents : list | None
+        contents of CNV indications file read from DXManage.read_dxfile(),
+        will be None if no cnv_indications file is in the assay config
+
+    Returns
+    -------
+    list
+        list of CNV indication test codes, empty if no file given
+    """
+    if not cnv_indications_file:
+        return []
+
+    return [x.strip() for x in cnv_indications_file if x.strip()]
+
+
 def check_manifest_valid_test_codes(manifest, genepanels, cnv_indications) -> dict:
     """
     Parse through manifest dict of sampleID -> test codes to check

@@ -18,6 +18,7 @@ if os.path.exists('/home/dnanexus'):
     from dias_batch.utils.manifest import (
         add_panels_and_indications_to_manifest,
         check_manifest_valid_test_codes,
+        parse_cnv_indications,
         parse_manifest,
     )
     from dias_batch.utils.reports import write_summary_report
@@ -29,6 +30,7 @@ else:
     from .utils.manifest import (
         add_panels_and_indications_to_manifest,
         check_manifest_valid_test_codes,
+        parse_cnv_indications,
         parse_manifest,
     )
     from .utils.reports import write_summary_report
@@ -410,10 +412,10 @@ def main(
     )
     genepanels = parse_genepanels(genepanels_data)
 
-    cnv_indications = DXManage().read_dxfile(
+    cnv_indications_file = DXManage().read_dxfile(
         file=assay_config.get('reference_files', {}).get('cnv_indications'),
-    ) or []
-    cnv_indications = [x.strip() for x in cnv_indications if x.strip()]
+    )
+    cnv_indications = parse_cnv_indications(cnv_indications_file)
 
 
     if manifest_files:
