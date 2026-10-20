@@ -460,6 +460,65 @@ class TestFilterManifestSamplesByFiles():
         )
 
 
+class TestParseCnvIndications():
+    """
+    Tests for manifest.parse_cnv_indications()
+
+    Function formats the contents of the CNV indications file read from
+    DXManage.read_dxfile() into a list of test codes
+    """
+    def test_none_returns_empty_list(self):
+        """
+        DXManage.read_dxfile() returns None when no cnv_indications file
+        is in the assay config, this should give an empty list
+        """
+        assert manifest.parse_cnv_indications(None) == [], (
+            'Empty list not returned when no CNV indications file given'
+        )
+
+    def test_empty_file_returns_empty_list(self):
+        """
+        An empty CNV indications file should give an empty list
+        """
+        assert manifest.parse_cnv_indications([]) == [], (
+            'Empty list not returned for empty CNV indications file'
+        )
+
+    def test_whitespace_and_blank_lines_removed(self):
+        """
+        Leading / trailing whitespace should be stripped and blank lines
+        dropped
+        """
+        contents = ['R208.2', ' R412.2 \t', '', '   ', 'R414.2\r']
+
+        assert manifest.parse_cnv_indications(contents) == [
+            'R208.2', 'R412.2', 'R414.2'
+        ], 'CNV indications not correctly parsed'
+
+    def test_test_data_file_parsed(self):
+        """
+        Test CNV indications file should parse to a list of test codes
+        with no blank entries
+        """
+        with open(f"{TEST_DATA_DIR}/cnv_indications.txt") as file_handle:
+            contents = file_handle.read().splitlines()
+
+        parsed = manifest.parse_cnv_indications(contents)
+
+        errors = []
+
+        if not parsed:
+            errors.append('No CNV indications parsed from test data')
+
+        if 'R208.2' not in parsed:
+            errors.append('R208.2 not parsed from test data')
+
+        if any(not x or x != x.strip() for x in parsed):
+            errors.append('Blank or unstripped entries in parsed list')
+
+        assert not errors, errors
+
+
 class TestCheckManifestValidTestCodes():
     """
     Tests for manifest.check_manifest_valid_test_codes()
@@ -730,6 +789,30 @@ class TestCheckManifestValidTestCodes():
         )
 
         assert manifest_copy == original, 'Input manifest was modified'
+
+
+    def test_manifest_unchanged_with_no_cnv_indications(self, capsys):
+        """
+        If no CNV indications are provided (i.e. assay config has no
+        cnv_indications file) a valid manifest should be returned
+        unchanged and nothing reported as stripped
+        """
+        tested_manifest = manifest.check_manifest_valid_test_codes(
+            manifest=self.epic_manifest,
+            genepanels=self.genepanels_df,
+            cnv_indications=[]
+        )
+        stdout = capsys.readouterr().out
+
+        errors = []
+
+        if tested_manifest.items() != self.epic_manifest.items():
+            errors.append('Manifest changed with no CNV indications')
+
+        if 'No samples with CNV indications found in manifest' not in stdout:
+            errors.append('No CNV indications message not printed')
+
+        assert not errors, errors
 
 
 class TestSplitManifestTests():
