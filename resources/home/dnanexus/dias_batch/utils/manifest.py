@@ -1,21 +1,23 @@
 """
 Functions for parsing, filtering and validating manifest files
 """
+
+import re
 from collections import defaultdict
 from pprint import PrettyPrinter
-import re
 from typing import Tuple
 
 import pandas as pd
 
-
 # for prettier viewing in the logs
-pd.set_option('display.max_rows', 200)
-pd.set_option('max_colwidth', 1500)
+pd.set_option("display.max_rows", 200)
+pd.set_option("max_colwidth", 1500)
 PPRINT = PrettyPrinter(indent=2, width=1000).pprint
 
 
-def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def parse_manifest(
+    contents, split_tests=False, subset=None
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Parse manifest data from file read in DNAnexus
 
@@ -56,7 +58,7 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     """
     print(
         "\n \nParsing manifest file, file contents read from DNAnexus:\n\t",
-        "\n\t".join(contents)
+        "\n\t".join(contents),
     )
 
     # turn manifest into a dict mapping sample ID to list of test codes,
@@ -68,11 +70,11 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
     # away anyway so this is just for handling legacy samples)
     manifest_source = {}
 
-    if all('\t' in x for x in contents if x):
+    if all("\t" in x for x in contents if x):
         # this is an old Gemini manifest => should just have sampleID -> CI
-        contents = [x.split('\t') for x in contents if x]
+        contents = [x.split("\t") for x in contents if x]
 
-        source = 'Gemini'
+        source = "Gemini"
 
         # sense check data does only have 2 columns
         assert all([len(x) == 2 for x in contents]), (
@@ -81,12 +83,12 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
 
         # initialise a dict of sample names to add tests to
         sample_names = {x[0] for x in contents}
-        data = {name: {'tests': [[]]} for name in sample_names}
+        data = {name: {"tests": [[]]} for name in sample_names}
 
         for sample, tests in contents:
-            test_codes = tests.replace(' ', '').split(',')
+            test_codes = tests.replace(" ", "").split(",")
 
-            manifest_source[sample] = {'manifest_source': 'Gemini'}
+            manifest_source[sample] = {"manifest_source": "Gemini"}
 
             for test_code in test_codes:
                 # add test codes to samples list, keeping just the code part
@@ -101,22 +103,25 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
                     # in manifest.check_manifest_valid_test_codes()
                     code = test_code
 
-                data[sample]['tests'][0].append(code)
+                data[sample]["tests"][0].append(code)
 
-    elif all(';' in x for x in contents[1:] if x):
+    elif all(";" in x for x in contents[1:] if x):
         # csv file => Epic style manifest
         # (not actually a csv file even though they call it .csv since it
         # has ; as a delimiter and everything is a lie)
         # first row is just batch ID and 2nd is column names
-        contents = [x.split(';') for x in contents if x]
+        contents = [x.split(";") for x in contents if x]
         manifest = pd.DataFrame(contents[2:], columns=contents[1])
 
-        source = 'Epic'
+        source = "Epic"
 
         # sense check we have columns we need
         required = [
-            'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
-            'Re-analysis Specimen ID', 'Test Codes'
+            "Instrument ID",
+            "Specimen ID",
+            "Re-analysis Instrument ID",
+            "Re-analysis Specimen ID",
+            "Test Codes",
         ]
 
         assert not set(required) - set(manifest.columns.tolist()), (
@@ -126,28 +131,37 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
         # make sure we don't have any spaces from pesky humans
         # and their fat fingers
         columns = [
-            'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
-            'Re-analysis Specimen ID', 'Test Codes'
+            "Instrument ID",
+            "Specimen ID",
+            "Re-analysis Instrument ID",
+            "Re-analysis Specimen ID",
+            "Test Codes",
         ]
 
         # remove any spaces and SP- from specimen columns
         manifest[columns] = manifest[columns].applymap(
-            lambda x: x.replace(' ', '') if x else x)
-        manifest['Re-analysis Specimen ID'] = \
-            manifest['Re-analysis Specimen ID'].str.replace(
-                r'SP-|\.', '', regex=True)
-        manifest['Specimen ID'] = \
-            manifest['Specimen ID'].str.replace(r'SP-|\.', '', regex=True)
+            lambda x: x.replace(" ", "") if x else x
+        )
+        manifest["Re-analysis Specimen ID"] = manifest[
+            "Re-analysis Specimen ID"
+        ].str.replace(r"SP-|\.", "", regex=True)
+        manifest["Specimen ID"] = manifest["Specimen ID"].str.replace(
+            r"SP-|\.", "", regex=True
+        )
 
         # sample id may be split between 'Specimen ID' and 'Instrument ID' or
         # Re-analysis Specimen ID and Re-analysis Instrument ID columns, join
         # these as {InstrumentID-SpecimenID} to get a mapping of sample ID -> CI
-        manifest['SampleID'] = manifest['Instrument ID'] + \
-            '-' + manifest['Specimen ID']
-        manifest['ReanalysisID'] = manifest['Re-analysis Instrument ID'] + \
-            '-' + manifest['Re-analysis Specimen ID']
+        manifest["SampleID"] = (
+            manifest["Instrument ID"] + "-" + manifest["Specimen ID"]
+        )
+        manifest["ReanalysisID"] = (
+            manifest["Re-analysis Instrument ID"]
+            + "-"
+            + manifest["Re-analysis Specimen ID"]
+        )
 
-        manifest = manifest[['SampleID', 'ReanalysisID', 'Test Codes']]
+        manifest = manifest[["SampleID", "ReanalysisID", "Test Codes"]]
 
         data = defaultdict(lambda: defaultdict(list))
 
@@ -155,16 +169,16 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
             # split test codes to list and sense check they're valid format
             # will be formatted as 'R211.1, , , ,' or 'HGNC:1234, , , ,' etc.
             test_codes = [
-                x for x in row['Test Codes'].replace(' ', '').split(',') if x
+                x for x in row["Test Codes"].replace(" ", "").split(",") if x
             ]
 
             # preferentially use ReanalysisID if present
             if re.match(r"[\d\w]+-[\d\w]+", row.ReanalysisID):
-                data[row.ReanalysisID]['tests'].append(test_codes)
-                manifest_source[row.ReanalysisID] = {'manifest_source': 'Epic'}
+                data[row.ReanalysisID]["tests"].append(test_codes)
+                manifest_source[row.ReanalysisID] = {"manifest_source": "Epic"}
             elif re.match(r"[\d\w]+-[\d\w]+", row.SampleID):
-                data[row.SampleID]['tests'].append(test_codes)
-                manifest_source[row.SampleID] = {'manifest_source': 'Epic'}
+                data[row.SampleID]["tests"].append(test_codes)
+                manifest_source[row.SampleID] = {"manifest_source": "Epic"}
             elif subset:
                 # sampleID and reanalysisID don't seem valid, continue
                 # anyway if we're subsetting and assume that the user
@@ -189,7 +203,7 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
 
     if subset:
         # subset specified, keep just these samples from manifest
-        subset = subset.split(',')
+        subset = subset.split(",")
         print(
             "Subsetting manifest and retaining only the "
             f"following samples: {subset}"
@@ -200,28 +214,28 @@ def parse_manifest(contents, split_tests=False, subset=None) -> Tuple[pd.DataFra
 
         if invalid:
             raise RuntimeError(
-                f'Sample names provided to -isubset not in manifest: {invalid}'
+                f"Sample names provided to -isubset not in manifest: {invalid}"
             )
 
         data = {
-            sample: tests for sample, tests in data.items()
-            if sample in subset
+            sample: tests for sample, tests in data.items() if sample in subset
         }
 
     if split_tests:
         data = split_manifest_tests(data)
 
-    samples = ('\n\t').join([
-        f"{x[0]} -> {x[1]['tests']}" for x in data.items()
-    ])
+    samples = ("\n\t").join(
+        [f"{x[0]} -> {x[1]['tests']}" for x in data.items()]
+    )
     print(f"\n \n{source} manifest parsed:\n\t{samples}")
 
     return data, manifest_source
 
 
 def filter_manifest_samples_by_files(
-        manifest, files, name, pattern) -> Tuple[dict, list, list]:
-    """
+    manifest, files, name, pattern
+) -> Tuple[dict, list, list]:
+    r"""
     Filter samples in manifest against those where required per sample
     files have been found with DXManage.find_files().
 
@@ -269,7 +283,7 @@ def filter_manifest_samples_by_files(
     file_prefixes = defaultdict(list)
 
     for file in files:
-        match = re.match(pattern, file['describe']['name'])
+        match = re.match(pattern, file["describe"]["name"])
         if match:
             file_prefixes[match.group()].append(file)
     print(
@@ -341,7 +355,9 @@ def parse_cnv_indications(cnv_indications_file) -> list:
     return [x.strip() for x in cnv_indications_file if x.strip()]
 
 
-def check_manifest_valid_test_codes(manifest, genepanels, cnv_indications) -> dict:
+def check_manifest_valid_test_codes(
+    manifest, genepanels, cnv_indications
+) -> dict:
     """
     Parse through manifest dict of sampleID -> test codes to check
     all codes are valid and exclude those that are invalid against
@@ -371,30 +387,32 @@ def check_manifest_valid_test_codes(manifest, genepanels, cnv_indications) -> di
     valid = defaultdict(lambda: defaultdict(list))
     stripped_samples = defaultdict(list)
 
-    genepanels_test_codes = sorted(set(genepanels['test_code'].tolist()))
+    genepanels_test_codes = sorted(set(genepanels["test_code"].tolist()))
 
     print(f"Current valid test codes:\n\t{genepanels_test_codes}")
 
     for sample, test_codes in manifest.items():
         sample_invalid_test = []
 
-        if [x for x in test_codes['tests'] if x] == []:
+        if [x for x in test_codes["tests"] if x] == []:
             # sample has no booked tests => chuck it in the error bucket
-            invalid[sample].append('No tests booked for sample')
+            invalid[sample].append("No tests booked for sample")
             continue
 
         # test codes stored under 'tests' key and is a list of lists
         # dependent on what genes / panels have been requested
-        for test_list in test_codes['tests']:
+        for test_list in test_codes["tests"]:
             valid_tests = []
 
             for test in test_list:
                 if test in cnv_indications:
                     # CNV-only indication, not in genepanels => drop and record
                     stripped_samples[sample].append(test)
-                elif test in genepanels_test_codes or re.search(r'HGNC:[\d]+', test):
+                elif test in genepanels_test_codes or re.search(
+                    r"HGNC:[\d]+", test
+                ):
                     valid_tests.append(test)
-                elif test.lower().replace(' ', '') == 'researchuse':
+                elif test.lower().replace(" ", "") == "researchuse":
                     # more Epic weirdness, chuck these out but don't break
                     print(
                         f"WARNING: {sample} booked for '{test}' test, "
@@ -404,7 +422,7 @@ def check_manifest_valid_test_codes(manifest, genepanels, cnv_indications) -> di
                     sample_invalid_test.append(test)
             if valid_tests:
                 # one or more requested test is in genepanels
-                valid[sample]['tests'].append(sorted(set(valid_tests)))
+                valid[sample]["tests"].append(sorted(set(valid_tests)))
 
         if stripped_samples.get(sample) and sample not in valid:
             # sample had CNV indications stripped and no valid tests left
@@ -423,9 +441,13 @@ def check_manifest_valid_test_codes(manifest, genepanels, cnv_indications) -> di
     else:
         print("All sample test codes valid!")
 
-    formatted_stripped = "\n".join(f"\t{k}: {v}" for k, v in stripped_samples.items())
+    formatted_stripped = "\n".join(
+        f"\t{k}: {v}" for k, v in stripped_samples.items()
+    )
     if stripped_samples:
-        print(f"One or more samples had CNV indications stripped:\n{formatted_stripped}")
+        print(
+            f"One or more samples had CNV indications stripped:\n{formatted_stripped}"
+        )
     else:
         print("No samples with CNV indications found in manifest")
 
@@ -471,7 +493,7 @@ def split_manifest_tests(data) -> dict:
 
     for sample, test_codes in data.items():
         all_split_test_codes = []
-        for test_list in test_codes['tests']:
+        for test_list in test_codes["tests"]:
             test_genes = []
             for sub_test in test_list:
                 if re.match(r"[RC][\d]+\.[\d]+", sub_test):
@@ -484,7 +506,7 @@ def split_manifest_tests(data) -> dict:
                 # there were some single genes to test
                 all_split_test_codes.append(sorted(set(test_genes)))
 
-        split_data[sample]['tests'].extend(all_split_test_codes)
+        split_data[sample]["tests"].extend(all_split_test_codes)
 
     return split_data
 
@@ -545,15 +567,15 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
 
     for sample, values in manifest.items():
         sample_tests = {
-            'tests': values['tests'],
-            'panels' : [],
-            'indications': []
+            "tests": values["tests"],
+            "panels": [],
+            "indications": [],
         }
-        for test_list in values['tests']:
+        for test_list in values["tests"]:
             panels = []
             indications = []
             for test in test_list:
-                if re.fullmatch(r'[RC][\d]+\.[\d]+', test):
+                if re.fullmatch(r"[RC][\d]+\.[\d]+", test):
                     # get genepanels row for current test prefix, should just
                     # be one since we dropped HGNC ID column and duplicates
 
@@ -571,7 +593,9 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     # which would result in:
                     # R371.1 -> HGNC:10483_SG_panel_1.0.0;HGNC:1397_SG_panel_1.0.0;HGNC:28423_SG_panel_1.0.0
 
-                    genepanels_row = genepanels[genepanels['test_code'] == test]
+                    genepanels_row = genepanels[
+                        genepanels["test_code"] == test
+                    ]
 
                     assert not genepanels_row.empty, (
                         f"Filtering genepanels for {test} returned empty df"
@@ -580,16 +604,16 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     if len(genepanels_row.index) > 1:
                         # munge the panel strings together to handle the above
                         print(
-                            f'Test code {test} has >1 panel name assigned, '
-                            f'these will be combined:\n\t{genepanels_row}'
+                            f"Test code {test} has >1 panel name assigned, "
+                            f"these will be combined:\n\t{genepanels_row}"
                         )
-                        panel_str = ';'.join(
-                            genepanels_row['panel_name'].tolist()
+                        panel_str = ";".join(
+                            genepanels_row["panel_name"].tolist()
                         )
 
                         # try clean up the panel string and drop
                         # duplicated _SG_panel_1.0.0
-                        if '_SG_panel_1.0.0' in panel_str:
+                        if "_SG_panel_1.0.0" in panel_str:
                             panel_str = (
                                 f"{re.sub(r'_SG_panel_1.0.0', '', panel_str)}"
                                 "_SG_panel_1.0.0"
@@ -601,7 +625,7 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                     panels.append(panel_str)
                     indications.append(genepanels_row.iloc[0].indication)
 
-                elif re.fullmatch(r'_HGNC:[\d]+', test):
+                elif re.fullmatch(r"_HGNC:[\d]+", test):
                     # add gene IDs as is to all lists
                     panels.append(test)
                     indications.append(test)
@@ -612,8 +636,8 @@ def add_panels_and_indications_to_manifest(manifest, genepanels) -> dict:
                         "Error occurred selecting test from genepanels for "
                         f"test {test}"
                     )
-            sample_tests['panels'].append(panels)
-            sample_tests['indications'].append(indications)
+            sample_tests["panels"].append(panels)
+            sample_tests["indications"].append(indications)
 
         manifest_with_panels[sample] = sample_tests
 

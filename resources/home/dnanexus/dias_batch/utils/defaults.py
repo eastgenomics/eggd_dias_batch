@@ -1,38 +1,31 @@
 default_mode_file_patterns = {
-    'cnv_reports': {
-        'sample': [
-            '_segments.vcf$',
-            '_segments_annotated.seg$'
-        ],
-        'run': [
-            '_excluded_intervals.bed$'
-        ]
+    "cnv_reports": {
+        "sample": ["_segments.vcf$", "_segments_annotated.seg$"],
+        "run": ["_excluded_intervals.bed$"],
     },
-    'snv_reports': {
-        'sample': [
-            '_markdup_additional_regions.vcf.gz$',
-            'per-base.bed.gz$',
-            'reference_build.txt$'
+    "snv_reports": {
+        "sample": [
+            "_markdup_additional_regions.vcf.gz$",
+            "per-base.bed.gz$",
+            "reference_build.txt$",
         ],
-        'run': []
+        "run": [],
     },
-    'mosaic_reports': {
-        'sample': [
-            '_markdup_recalibrated_tnhaplotyper2.vcf.gz',
-            'per-base.bed.gz$',
-            'reference_build.txt$'
+    "mosaic_reports": {
+        "sample": [
+            "_markdup_recalibrated_tnhaplotyper2.vcf.gz",
+            "per-base.bed.gz$",
+            "reference_build.txt$",
         ],
-        'run': []
+        "run": [],
     },
-    'artemis': {
-        'sample':[
-            'bam$',
-            'bam.bai$',
-            '_copy_ratios.gcnv.bed.gz$',
-            '_copy_ratios.gcnv.bed.gz.tbi$'
+    "artemis": {
+        "sample": [
+            "bam$",
+            "bam.bai$",
+            "_copy_ratios.gcnv.bed.gz$",
+            "_copy_ratios.gcnv.bed.gz.tbi$",
         ],
-        'run': [
-            '-multiqc.html'
-        ]
-    }
+        "run": ["-multiqc.html"],
+    },
 }
