@@ -1,24 +1,22 @@
 """
 Tests for CheckInputs() that are run at the beginning of dias batch
 """
+
 import os
 import sys
-from unittest.mock import patch
 import unittest
+from unittest.mock import patch
 
-
-sys.path.append(os.path.abspath(
-    os.path.join(os.path.realpath(__file__), '../../')
-))
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.realpath(__file__), "../../"))
+)
 
 from ..dias_batch import CheckInputs
 
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "test_data")
 
-TEST_DATA_DIR = (
-    os.path.join(os.path.dirname(__file__), 'test_data')
-)
 
-class TestCheckInputs():
+class TestCheckInputs:
     """
     Tests for each individual run time check performed on app inputs.
 
@@ -26,6 +24,7 @@ class TestCheckInputs():
     minimum inputs required set for that check, but not initialise the class
     to stop it running all checks for every test
     """
+
     def test_invalid_assay_str_error_raised(self, mocker):
         """
         Test error is raised when an invalid assay string passed to -iassay
@@ -33,14 +32,12 @@ class TestCheckInputs():
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
         check = CheckInputs()
         check.errors = []
-        check.inputs = {
-            'assay': 'invalidAssay'
-        }
+        check.inputs = {"assay": "invalidAssay"}
 
         check.check_assay()
 
-        assert check.errors == ['Invalid assay passed: invalidAssay'], (
-            'Error not raised for invalid assay string'
+        assert check.errors == ["Invalid assay passed: invalidAssay"], (
+            "Error not raised for invalid assay string"
         )
 
     def test_missing_assay_str_and_assay_config_file(self, mocker):
@@ -51,18 +48,15 @@ class TestCheckInputs():
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
         check = CheckInputs()
         check.errors = []
-        check.inputs = {
-            'assay': None,
-            'assay_config_file': None
-        }
+        check.inputs = {"assay": None, "assay_config_file": None}
 
         check.check_assay_string_or_assay_config_specified()
 
         assert check.errors == [
-            'Neither assay or assay_config_file specified'
-        ], 'Error not raised when assay str and assay config file missing'
+            "Neither assay or assay_config_file specified"
+        ], "Error not raised when assay str and assay config file missing"
 
-    @patch('utils.dx_requests.dxpy.find_data_objects')
+    @patch("utils.dx_requests.dxpy.find_data_objects")
     def test_assay_config_dir(self, test_patch, mocker):
         """
         Test that error is raised when assay config dir specified is empty
@@ -73,22 +67,20 @@ class TestCheckInputs():
         mocker.return_value = None
         check = CheckInputs()
         check.errors = []
-        check.inputs = {
-            'assay_config_dir': 'project-xxx:/some_empty_path'
-        }
+        check.inputs = {"assay_config_dir": "project-xxx:/some_empty_path"}
 
         check.check_assay_config_dir()
 
         correct_error = [
-            'Given assay config dir appears to contain no config files: '
-            'project-xxx:/some_empty_path'
+            "Given assay config dir appears to contain no config files: "
+            "project-xxx:/some_empty_path"
         ]
 
         assert check.errors == correct_error, (
-            'Correct error not raised for empty assay config dir'
+            "Correct error not raised for empty assay config dir"
         )
 
-    @patch('utils.dx_requests.dxpy.find_data_objects')
+    @patch("utils.dx_requests.dxpy.find_data_objects")
     def test_check_single_output_dir(self, test_patch, mocker):
         """
         Test that error is raised when no files are found in single output dir
@@ -99,19 +91,17 @@ class TestCheckInputs():
         mocker.return_value = None
         check = CheckInputs()
         check.errors = []
-        check.inputs = {
-            'single_output_dir': 'project-xxx:/some_empty_path'
-        }
+        check.inputs = {"single_output_dir": "project-xxx:/some_empty_path"}
 
         check.check_single_output_dir()
 
         correct_error = [
-            'Given Dias single output dir appears to be empty: '
-            'project-xxx:/some_empty_path'
+            "Given Dias single output dir appears to be empty: "
+            "project-xxx:/some_empty_path"
         ]
 
         assert check.errors == correct_error, (
-            'Error not raised for empty single directory'
+            "Error not raised for empty single directory"
         )
 
     def test_check_single_output_dir_empty_string_raises_error(self, mocker):
@@ -122,15 +112,13 @@ class TestCheckInputs():
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
         check = CheckInputs()
         check.errors = []
-        check.inputs = {
-            'single_output_dir': ''
-        }
+        check.inputs = {"single_output_dir": ""}
 
         check.check_single_output_dir()
 
         assert check.errors == [
-            'single_output_dir input must be specified and non-empty'
-        ], 'Error not raised for empty string single_output_dir'
+            "single_output_dir input must be specified and non-empty"
+        ], "Error not raised for empty string single_output_dir"
 
     def test_check_no_mode_set(self, mocker):
         """
@@ -144,8 +132,8 @@ class TestCheckInputs():
 
         check.check_mode_set()
 
-        assert check.errors == ['No mode specified to run in'], (
-            'Error not raised for no running mode set'
+        assert check.errors == ["No mode specified to run in"], (
+            "Error not raised for no running mode set"
         )
 
     def test_check_unarchive_behaviour_as_expected(self, mocker):
@@ -156,30 +144,23 @@ class TestCheckInputs():
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
         mocker.return_value = None
 
-        with unittest.TestCase().subTest('unarchive_only set to True'):
+        with unittest.TestCase().subTest("unarchive_only set to True"):
             # Test when unarchive_only set to True we force unarchive
             # to True also
             check = CheckInputs()
-            check.inputs = {
-                'unarchive_only': True,
-                'unarchive': False
-            }
+            check.inputs = {"unarchive_only": True, "unarchive": False}
             check.check_unarchive_set()
 
-            assert check.inputs['unarchive'] == True
+            assert check.inputs["unarchive"]
 
-        with unittest.TestCase().subTest('unarchive_only set to False'):
+        with unittest.TestCase().subTest("unarchive_only set to False"):
             # Test when unarchive_only set to False we do not force
             # unarchive to True also
             check = CheckInputs()
-            check.inputs = {
-                'unarchive_only': False,
-                'unarchive': False
-            }
+            check.inputs = {"unarchive_only": False, "unarchive": False}
             check.check_unarchive_set()
 
-            assert check.inputs['unarchive'] == False
-
+            assert not check.inputs["unarchive"]
 
     def test_error_raised_for_no_manifest_with_reports_mode(self, mocker):
         """
@@ -191,18 +172,21 @@ class TestCheckInputs():
         check.errors = []
 
         for mode in [
-            'cnv_call', 'cnv_reports', 'snv_reports', 'mosaic_reports'
+            "cnv_call",
+            "cnv_reports",
+            "snv_reports",
+            "mosaic_reports",
         ]:
-            check.inputs = {
-                mode: True
-            }
+            check.inputs = {mode: True}
 
             check.check_mode_set()
 
-        correct_error = ['Reports argument specified with no manifest file'] * 3
+        correct_error = [
+            "Reports argument specified with no manifest file"
+        ] * 3
 
         assert check.errors == correct_error, (
-            'Error not raised for reports mode and missing manifest'
+            "Error not raised for reports mode and missing manifest"
         )
 
     def test_error_raised_invalid_cnv_mode(self, mocker):
@@ -215,18 +199,18 @@ class TestCheckInputs():
         check.errors = []
         check.inputs = {}
 
-        check.inputs['cnv_call'] = True
-        check.inputs['cnv_call_job_id'] = 'job-xxx'
+        check.inputs["cnv_call"] = True
+        check.inputs["cnv_call_job_id"] = "job-xxx"
 
         check.check_cnv_call_and_cnv_call_job_id_mutually_exclusive()
 
-        correct_error = ([
+        correct_error = [
             "Both mutually exclusive cnv_call and "
             "cnv_call_job_id inputs specified"
-        ])
+        ]
 
         assert check.errors == correct_error, (
-            'Incorrect error raised for checking cnv call mode'
+            "Incorrect error raised for checking cnv call mode"
         )
 
     def test_error_raised_cnv_call_job_id_without_cnv_reports(self, mocker):
@@ -237,49 +221,40 @@ class TestCheckInputs():
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
         mocker.return_value = None
 
-        correct_error = ([
-            'cnv_call_job_id specified but cnv_reports not selected, '
-            'the given job ID would never be used. Please rerun with '
-            '-icnv_reports=true or remove -icnv_call_job_id'
-        ])
+        correct_error = [
+            "cnv_call_job_id specified but cnv_reports not selected, "
+            "the given job ID would never be used. Please rerun with "
+            "-icnv_reports=true or remove -icnv_call_job_id"
+        ]
 
-        with unittest.TestCase().subTest('cnv_reports not selected'):
+        with unittest.TestCase().subTest("cnv_reports not selected"):
             check = CheckInputs()
             check.errors = []
-            check.inputs = {
-                'cnv_call_job_id': 'job-xxx',
-                'cnv_reports': False
-            }
+            check.inputs = {"cnv_call_job_id": "job-xxx", "cnv_reports": False}
             check.check_cnv_call_job_id_requires_cnv_reports()
 
             assert check.errors == correct_error, (
-                'Error not raised for cnv_call_job_id without cnv_reports'
+                "Error not raised for cnv_call_job_id without cnv_reports"
             )
 
-        with unittest.TestCase().subTest('cnv_reports selected'):
+        with unittest.TestCase().subTest("cnv_reports selected"):
             check = CheckInputs()
             check.errors = []
-            check.inputs = {
-                'cnv_call_job_id': 'job-xxx',
-                'cnv_reports': True
-            }
+            check.inputs = {"cnv_call_job_id": "job-xxx", "cnv_reports": True}
             check.check_cnv_call_job_id_requires_cnv_reports()
 
             assert check.errors == [], (
-                'Error incorrectly raised when cnv_reports also selected'
+                "Error incorrectly raised when cnv_reports also selected"
             )
 
-        with unittest.TestCase().subTest('cnv_call_job_id not given'):
+        with unittest.TestCase().subTest("cnv_call_job_id not given"):
             check = CheckInputs()
             check.errors = []
-            check.inputs = {
-                'cnv_call_job_id': None,
-                'cnv_reports': False
-            }
+            check.inputs = {"cnv_call_job_id": None, "cnv_reports": False}
             check.check_cnv_call_job_id_requires_cnv_reports()
 
             assert check.errors == [], (
-                'Error incorrectly raised when cnv_call_job_id not given'
+                "Error incorrectly raised when cnv_call_job_id not given"
             )
 
     def test_error_raised_cnv_min_samples_without_cnv_call(self, mocker):
@@ -290,49 +265,40 @@ class TestCheckInputs():
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
         mocker.return_value = None
 
-        correct_error = ([
-            'cnv_min_samples specified but cnv_call not selected, '
-            'the given minimum would never be used. Please rerun with '
-            '-icnv_call=true or remove -icnv_min_samples'
-        ])
+        correct_error = [
+            "cnv_min_samples specified but cnv_call not selected, "
+            "the given minimum would never be used. Please rerun with "
+            "-icnv_call=true or remove -icnv_min_samples"
+        ]
 
-        with unittest.TestCase().subTest('cnv_call not selected'):
+        with unittest.TestCase().subTest("cnv_call not selected"):
             check = CheckInputs()
             check.errors = []
-            check.inputs = {
-                'cnv_min_samples': 5,
-                'cnv_call': False
-            }
+            check.inputs = {"cnv_min_samples": 5, "cnv_call": False}
             check.check_cnv_min_samples_requires_cnv_call()
 
             assert check.errors == correct_error, (
-                'Error not raised for cnv_min_samples without cnv_call'
+                "Error not raised for cnv_min_samples without cnv_call"
             )
 
-        with unittest.TestCase().subTest('cnv_call selected'):
+        with unittest.TestCase().subTest("cnv_call selected"):
             check = CheckInputs()
             check.errors = []
-            check.inputs = {
-                'cnv_min_samples': 5,
-                'cnv_call': True
-            }
+            check.inputs = {"cnv_min_samples": 5, "cnv_call": True}
             check.check_cnv_min_samples_requires_cnv_call()
 
             assert check.errors == [], (
-                'Error incorrectly raised when cnv_call also selected'
+                "Error incorrectly raised when cnv_call also selected"
             )
 
-        with unittest.TestCase().subTest('cnv_min_samples not given'):
+        with unittest.TestCase().subTest("cnv_min_samples not given"):
             check = CheckInputs()
             check.errors = []
-            check.inputs = {
-                'cnv_min_samples': None,
-                'cnv_call': False
-            }
+            check.inputs = {"cnv_min_samples": None, "cnv_call": False}
             check.check_cnv_min_samples_requires_cnv_call()
 
             assert check.errors == [], (
-                'Error incorrectly raised when cnv_min_samples not given'
+                "Error incorrectly raised when cnv_min_samples not given"
             )
 
     def test_error_raised_for_cnv_reports_invalid(self, mocker):
@@ -344,7 +310,7 @@ class TestCheckInputs():
         mocker.return_value = None
         check = CheckInputs()
         check.errors = []
-        check.inputs = {'cnv_reports': True}
+        check.inputs = {"cnv_reports": True}
 
         check.check_cnv_calling_for_cnv_reports()
 
@@ -368,16 +334,14 @@ class TestCheckInputs():
         check = CheckInputs()
         check.errors = []
 
-        check.inputs = {
-            "exclude_samples": "file-abc123"
-        }
+        check.inputs = {"exclude_samples": "file-abc123"}
 
         check.check_exclude_samples_file_id()
 
-        correct_error = ([
+        correct_error = [
             "DNAnexus file ID provided to -iexclude_samples, "
             "rerun and provide this as -iexclude_samples_file=file-abc123"
-        ])
+        ]
 
         assert check.errors == correct_error, (
             "Error not raised when file ID provided to exclude_samples"
@@ -392,111 +356,111 @@ class TestCheckInputs():
         mocker.patch.object(CheckInputs, "__init__", return_value=None)
         mocker.return_value = None
 
-        correct_error = ([
-            'Samples specified to exclude but neither cnv_call nor '
-            'cnv_reports selected, exclude would never be used. '
-            'Please rerun with -icnv_call=true and/or '
-            '-icnv_reports=true, or remove the exclude input'
-        ])
+        correct_error = [
+            "Samples specified to exclude but neither cnv_call nor "
+            "cnv_reports selected, exclude would never be used. "
+            "Please rerun with -icnv_call=true and/or "
+            "-icnv_reports=true, or remove the exclude input"
+        ]
 
-        with unittest.TestCase().subTest('exclude_samples given'):
+        with unittest.TestCase().subTest("exclude_samples given"):
             check = CheckInputs()
             check.errors = []
             check.inputs = {
-                'exclude_samples': 'sample1,sample2',
-                'exclude_samples_file': None,
-                'exclude_controls': False,
-                'cnv_call': False,
-                'cnv_reports': False
+                "exclude_samples": "sample1,sample2",
+                "exclude_samples_file": None,
+                "exclude_controls": False,
+                "cnv_call": False,
+                "cnv_reports": False,
             }
             check.check_exclude_requires_cnv_call_or_reports()
 
             assert check.errors == correct_error, (
-                'Error not raised for exclude_samples without cnv_call/reports'
+                "Error not raised for exclude_samples without cnv_call/reports"
             )
 
-        with unittest.TestCase().subTest('exclude_samples_file given'):
+        with unittest.TestCase().subTest("exclude_samples_file given"):
             check = CheckInputs()
             check.errors = []
             check.inputs = {
-                'exclude_samples': None,
-                'exclude_samples_file': {'$dnanexus_link': 'file-xxx'},
-                'exclude_controls': False,
-                'cnv_call': False,
-                'cnv_reports': False
+                "exclude_samples": None,
+                "exclude_samples_file": {"$dnanexus_link": "file-xxx"},
+                "exclude_controls": False,
+                "cnv_call": False,
+                "cnv_reports": False,
             }
             check.check_exclude_requires_cnv_call_or_reports()
 
             assert check.errors == correct_error, (
-                'Error not raised for exclude_samples_file without '
-                'cnv_call/reports'
+                "Error not raised for exclude_samples_file without "
+                "cnv_call/reports"
             )
 
-        with unittest.TestCase().subTest('exclude_controls given'):
+        with unittest.TestCase().subTest("exclude_controls given"):
             check = CheckInputs()
             check.errors = []
             check.inputs = {
-                'exclude_samples': None,
-                'exclude_samples_file': None,
-                'exclude_controls': True,
-                'cnv_call': False,
-                'cnv_reports': False
+                "exclude_samples": None,
+                "exclude_samples_file": None,
+                "exclude_controls": True,
+                "cnv_call": False,
+                "cnv_reports": False,
             }
             check.check_exclude_requires_cnv_call_or_reports()
 
             assert check.errors == correct_error, (
-                'Error not raised for exclude_controls without cnv_call/reports'
+                "Error not raised for exclude_controls without cnv_call/reports"
             )
 
-        with unittest.TestCase().subTest('cnv_call selected, no error'):
+        with unittest.TestCase().subTest("cnv_call selected, no error"):
             check = CheckInputs()
             check.errors = []
             check.inputs = {
-                'exclude_samples': 'sample1',
-                'exclude_samples_file': None,
-                'exclude_controls': False,
-                'cnv_call': True,
-                'cnv_reports': False
+                "exclude_samples": "sample1",
+                "exclude_samples_file": None,
+                "exclude_controls": False,
+                "cnv_call": True,
+                "cnv_reports": False,
             }
             check.check_exclude_requires_cnv_call_or_reports()
 
             assert check.errors == [], (
-                'Error incorrectly raised when cnv_call selected'
+                "Error incorrectly raised when cnv_call selected"
             )
 
-        with unittest.TestCase().subTest('cnv_reports selected, no error'):
+        with unittest.TestCase().subTest("cnv_reports selected, no error"):
             check = CheckInputs()
             check.errors = []
             check.inputs = {
-                'exclude_samples': 'sample1',
-                'exclude_samples_file': None,
-                'exclude_controls': False,
-                'cnv_call': False,
-                'cnv_reports': True
+                "exclude_samples": "sample1",
+                "exclude_samples_file": None,
+                "exclude_controls": False,
+                "cnv_call": False,
+                "cnv_reports": True,
             }
             check.check_exclude_requires_cnv_call_or_reports()
 
             assert check.errors == [], (
-                'Error incorrectly raised when cnv_reports selected'
+                "Error incorrectly raised when cnv_reports selected"
             )
 
-        with unittest.TestCase().subTest('no exclude given, no error'):
+        with unittest.TestCase().subTest("no exclude given, no error"):
             check = CheckInputs()
             check.errors = []
             check.inputs = {
-                'exclude_samples': None,
-                'exclude_samples_file': None,
-                'exclude_controls': False,
-                'cnv_call': False,
-                'cnv_reports': False
+                "exclude_samples": None,
+                "exclude_samples_file": None,
+                "exclude_controls": False,
+                "cnv_call": False,
+                "cnv_reports": False,
             }
             check.check_exclude_requires_cnv_call_or_reports()
 
             assert check.errors == [], (
-                'Error incorrectly raised when no exclude input given'
+                "Error incorrectly raised when no exclude input given"
             )
 
-    @patch('utils.dx_requests.dxpy.DXFile')
+    @patch("utils.dx_requests.dxpy.DXFile")
     def test_qc_status_file_is_valid(self, mock_file, mocker):
         """
         Test check_qc_file() to check that an error will be raised if a
@@ -507,23 +471,19 @@ class TestCheckInputs():
         check = CheckInputs()
         check.errors = []
         check.inputs = {
-            'artemis': True,
-            'qc_file': {
-                 '$dnanexus_link': "file-xxx"
-            }
+            "artemis": True,
+            "qc_file": {"$dnanexus_link": "file-xxx"},
         }
 
-        mock_file.return_value.describe.return_value = {
-            'name': "file.fastq"
-        }
+        mock_file.return_value.describe.return_value = {"name": "file.fastq"}
 
         check.check_qc_file()
 
-        correct_error = ([
+        correct_error = [
             "Artemis specified to run with QC status file. File given "
             "as QC status report is not an .xlsx file. Please rerun "
             "with correct QC status file"
-        ])
+        ]
 
         assert check.errors == correct_error, (
             "Error not raised when non .xlsx file provided to check_qc_file()"
@@ -537,36 +497,37 @@ class TestCheckInputs():
         check = CheckInputs()
 
         check.inputs = {
-            'assay': 'CEN ',
-            'assay_config_dir': ' some_dir',
-            'exclude_samples': ' sample1 ',
-            'manifest_subset': ' ',
-            'single_output_dir': '/output/foo/bar',
-            'cnv_call_job_id': 'job-xxx '
+            "assay": "CEN ",
+            "assay_config_dir": " some_dir",
+            "exclude_samples": " sample1 ",
+            "manifest_subset": " ",
+            "single_output_dir": "/output/foo/bar",
+            "cnv_call_job_id": "job-xxx ",
         }
 
         check.strip_string_inputs()
 
         expected_inputs = {
-            'assay': 'CEN',
-            'assay_config_dir': 'some_dir',
-            'exclude_samples': 'sample1',
-            'manifest_subset': '',
-            'single_output_dir': '/output/foo/bar',
-            'cnv_call_job_id': 'job-xxx'
+            "assay": "CEN",
+            "assay_config_dir": "some_dir",
+            "exclude_samples": "sample1",
+            "manifest_subset": "",
+            "single_output_dir": "/output/foo/bar",
+            "cnv_call_job_id": "job-xxx",
         }
 
         assert check.inputs == expected_inputs, (
-            'String inputs not correctly stripped'
+            "String inputs not correctly stripped"
         )
 
 
-class TestMain():
+class TestMain:
     """
     Tests for dias_batch.main
 
     This is the main entry point into the app, tests are just to show that
     functions are called when expected as there is little other logic in here
     """
+
     # TODO I should probably finish this test off at some point
     pass

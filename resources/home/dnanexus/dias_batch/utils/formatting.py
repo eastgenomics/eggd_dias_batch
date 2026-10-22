@@ -1,9 +1,10 @@
 """
 Generic formatting/string helpers used across other utils modules
 """
-from datetime import datetime
+
 import json
 import re
+from datetime import datetime
 
 
 def time_stamp() -> str:
@@ -35,7 +36,7 @@ def prettier_print(thing) -> None:
     thing : anything json dumpable
         thing to print
     """
-    print(json.dumps(thing, indent='⠀⠀'))
+    print(json.dumps(thing, indent="⠀⠀"))
 
 
 def make_path(*path) -> str:
@@ -53,9 +54,12 @@ def make_path(*path) -> str:
     str
         nicely formatted path with leading and trailing forward slash
     """
-    path = '/'.join([
-        re.sub(r"project-[\d\w]+:", "", x).lstrip('/').rstrip('/')
-        for x in path if x
-    ])
+    path = "/".join(
+        [
+            re.sub(r"project-[\d\w]+:", "", x).lstrip("/").rstrip("/")
+            for x in path
+            if x
+        ]
+    )
 
     return f"/{path}/"

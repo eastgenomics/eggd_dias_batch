@@ -1,6 +1,7 @@
 """
 Functions for checking samples specified to exclude from running
 """
+
 import re
 
 import dxpy
@@ -42,13 +43,14 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> None:
 
     # check that provided exclude names/patterns match to at least one
     exclude_not_present = [
-        name for name in exclude
+        name
+        for name in exclude
         if not any([re.match(name, sample) for sample in samples])
-        and not name == r'^\w+-\w+Q\w+-'
+        and not name == r"^\w+-\w+Q\w+-"
     ]
 
     if exclude_not_present:
-        if mode == 'reports' and single_dir:
+        if mode == "reports" and single_dir:
             # one or more exclude samples not in manifest samples passed,
             # check the single output directory for BAM files, if found
             # count these as valid and drop from the exclude_not_present
@@ -62,22 +64,24 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> None:
 
             # ensure if single dir being specified with a project we use it
             project = None
-            if single_dir.startswith('project-'):
-                project, single_dir = single_dir.split(':', 1)
+            if single_dir.startswith("project-"):
+                project, single_dir = single_dir.split(":", 1)
 
             for sample in exclude_not_present:
                 print(
                     f"\nChecking {sample} for BAM file in project {project} "
                     f"and folder {single_dir}"
                 )
-                bam = list(dxpy.find_data_objects(
-                    name=f"^{sample}.*.bam$",
-                    name_mode='regexp',
-                    project=project,
-                    folder=single_dir,
-                    limit=1,
-                    describe=True
-                ))
+                bam = list(
+                    dxpy.find_data_objects(
+                        name=f"^{sample}.*.bam$",
+                        name_mode="regexp",
+                        project=project,
+                        folder=single_dir,
+                        limit=1,
+                        describe=True,
+                    )
+                )
 
                 if bam:
                     print(f"Found bam file: {bam[0]['describe']['name']}")
@@ -86,7 +90,8 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> None:
                     print(f"No bam file found for {sample}")
 
             exclude_not_present = list(
-                set(exclude_not_present) - set(sample_with_bam))
+                set(exclude_not_present) - set(sample_with_bam)
+            )
 
             if not exclude_not_present:
                 print(
@@ -96,9 +101,7 @@ def check_exclude_samples(samples, exclude, mode, single_dir=None) -> None:
                 return
 
         # provide some more info in logs for debugging
-        print(
-            f"Samples provided to exclude: {exclude}"
-        )
+        print(f"Samples provided to exclude: {exclude}")
         if mode == "calling":
             print(f"BAM files found to use for CNV calling: {samples}")
         else:

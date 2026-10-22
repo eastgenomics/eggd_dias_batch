@@ -1,18 +1,19 @@
 """Main entry point script for the app"""
-from glob import glob
-from itertools import chain
+
 import os
 import re
 import subprocess
+from glob import glob
+from itertools import chain
 
-if os.path.exists('/home/dnanexus'):
+if os.path.exists("/home/dnanexus"):
     # running in DNAnexus
-    subprocess.check_call([
-        'pip', 'install', "--no-index", "--no-deps"
-    ] + glob("packages/*"))
+    subprocess.check_call(
+        ["pip", "install", "--no-index", "--no-deps"] + glob("packages/*")
+    )
 
-    from dias_batch.utils.dx_requests import DXExecute, DXManage
     from dias_batch.utils.config import fill_config_reference_inputs
+    from dias_batch.utils.dx_requests import DXExecute, DXManage
     from dias_batch.utils.formatting import make_path, time_stamp
     from dias_batch.utils.genepanels import parse_genepanels
     from dias_batch.utils.manifest import (
@@ -23,8 +24,8 @@ if os.path.exists('/home/dnanexus'):
     )
     from dias_batch.utils.reports import write_summary_report
 else:
-    from .utils.dx_requests import DXExecute, DXManage
     from .utils.config import fill_config_reference_inputs
+    from .utils.dx_requests import DXExecute, DXManage
     from .utils.formatting import make_path, time_stamp
     from .utils.genepanels import parse_genepanels
     from .utils.manifest import (
@@ -38,13 +39,12 @@ else:
 import dxpy
 import pandas as pd
 
-
 # for prettier viewing in the logs
-pd.set_option('display.max_rows', 200)
-pd.set_option('max_colwidth', 1500)
+pd.set_option("display.max_rows", 200)
+pd.set_option("max_colwidth", 1500)
 
 
-class CheckInputs():
+class CheckInputs:
     """
     Basic methods for validating app inputs
 
@@ -53,8 +53,9 @@ class CheckInputs():
     RuntimeError
         Raised if one or more inputs is invalid
     """
+
     def __init__(self, **inputs) -> None:
-        input_str = '\n\t'.join(f"{k} : {v}" for k, v in inputs.items())
+        input_str = "\n\t".join(f"{k} : {v}" for k, v in inputs.items())
         print(f"\n \nValidating inputs, inputs provided:\n\t{input_str}")
 
         self.inputs = inputs
@@ -76,41 +77,38 @@ class CheckInputs():
         self.check_qc_file()
 
         if self.errors:
-            errors = '; '.join(x for x in self.errors)
-            raise RuntimeError(
-                f"Errors in job inputs:\n\t{errors}"
-            )
+            errors = "; ".join(x for x in self.errors)
+            raise RuntimeError(f"Errors in job inputs:\n\t{errors}")
 
         print("Inputs valid, continuing...")
 
     def check_assay(self):
         """Check assay string passed is valid"""
-        if self.inputs['assay'] and self.inputs['assay'] not in ['CEN', 'TWE']:
-            self.errors.append(
-                f"Invalid assay passed: {self.inputs['assay']}"
-            )
+        if self.inputs["assay"] and self.inputs["assay"] not in ["CEN", "TWE"]:
+            self.errors.append(f"Invalid assay passed: {self.inputs['assay']}")
 
     def check_assay_string_or_assay_config_specified(self):
         """Check for either the assay string and / or assay config file"""
-        if not self.inputs['assay'] and not self.inputs['assay_config_file']:
-            self.errors.append(
-                'Neither assay or assay_config_file specified'
-            )
+        if not self.inputs["assay"] and not self.inputs["assay_config_file"]:
+            self.errors.append("Neither assay or assay_config_file specified")
 
     def check_assay_config_dir(self):
         """Check that assay config dir is not empty"""
-        if not self.inputs.get('assay_config_dir') or \
-            self.inputs.get('assay_config_file'):
-                return
+        if not self.inputs.get("assay_config_dir") or self.inputs.get(
+            "assay_config_file"
+        ):
+            return
 
-        project, path = self.inputs['assay_config_dir'].split(':')
-        files = list(dxpy.find_data_objects(
-            name="*.json",
-            name_mode='glob',
-            project=project,
-            folder=path,
-            describe=True
-        ))
+        project, path = self.inputs["assay_config_dir"].split(":")
+        files = list(
+            dxpy.find_data_objects(
+                name="*.json",
+                name_mode="glob",
+                project=project,
+                folder=path,
+                describe=True,
+            )
+        )
 
         if not files:
             self.errors.append(
@@ -120,39 +118,37 @@ class CheckInputs():
 
     def check_single_output_dir(self):
         """Check single output dir is not empty"""
-        if not self.inputs.get('single_output_dir'):
+        if not self.inputs.get("single_output_dir"):
             self.errors.append(
-                'single_output_dir input must be specified and non-empty'
+                "single_output_dir input must be specified and non-empty"
             )
             return
 
-        if self.inputs['single_output_dir'].startswith('project-'):
-            project, path = self.inputs['single_output_dir'].strip().split(':')
+        if self.inputs["single_output_dir"].startswith("project-"):
+            project, path = self.inputs["single_output_dir"].strip().split(":")
         else:
             project = os.environ.get("DX_PROJECT_CONTEXT_ID")
-            path = self.inputs['single_output_dir'].strip()
+            path = self.inputs["single_output_dir"].strip()
 
-        files = list(dxpy.find_data_objects(
-            project=project,
-            folder=path,
-            limit=1
-        ))
+        files = list(
+            dxpy.find_data_objects(project=project, folder=path, limit=1)
+        )
 
         if not files:
             # dir appears empty, try again if not prefixed with /output/
-            if not re.match(r'/output', path):
-                prefix_path = make_path('/output', path)
-                files = list(dxpy.find_data_objects(
-                    project=project,
-                    folder=prefix_path,
-                    limit=1
-                ))
+            if not re.match(r"/output", path):
+                prefix_path = make_path("/output", path)
+                files = list(
+                    dxpy.find_data_objects(
+                        project=project, folder=prefix_path, limit=1
+                    )
+                )
                 if files:
                     print(
                         f"{path} returned no files but files found in "
                         f"{prefix_path}, will use this for analysis"
                     )
-                    self.inputs['single_output_dir'] = prefix_path
+                    self.inputs["single_output_dir"] = prefix_path
                     return
 
             self.errors.append(
@@ -162,16 +158,16 @@ class CheckInputs():
 
     def check_mode_set(self):
         """Check at least one running mode set and manifest passed if running reports"""
-        modes = ['cnv_call', 'cnv_reports', 'snv_reports', 'mosaic_reports']
+        modes = ["cnv_call", "cnv_reports", "snv_reports", "mosaic_reports"]
         if not any(self.inputs.get(x) for x in modes):
-            self.errors.append('No mode specified to run in')
+            self.errors.append("No mode specified to run in")
 
         modes.pop(0)
-        if any([
-            self.inputs.get(x) for x in modes
-        ]) and not self.inputs.get('manifest_files'):
+        if any([self.inputs.get(x) for x in modes]) and not self.inputs.get(
+            "manifest_files"
+        ):
             self.errors.append(
-                'Reports argument specified with no manifest file'
+                "Reports argument specified with no manifest file"
             )
 
     def check_unarchive_set(self):
@@ -179,22 +175,24 @@ class CheckInputs():
         Checks that if unarchive_only specified that unarchive will
         default to also being specified
         """
-        if self.inputs.get('unarchive_only') and not self.inputs.get('unarchive'):
+        if self.inputs.get("unarchive_only") and not self.inputs.get(
+            "unarchive"
+        ):
             print(
                 "-iunarchive_only specified but -iunarchive not specified, "
                 "setting unarchive to True"
             )
-            self.inputs['unarchive'] = True
+            self.inputs["unarchive"] = True
 
     def check_cnv_call_and_cnv_call_job_id_mutually_exclusive(self):
         """
         Check that both cnv_call and cnv_call_job_id have not been
         specified together
         """
-        if self.inputs.get('cnv_call') and self.inputs.get('cnv_call_job_id'):
+        if self.inputs.get("cnv_call") and self.inputs.get("cnv_call_job_id"):
             self.errors.append(
-                'Both mutually exclusive cnv_call and '
-                'cnv_call_job_id inputs specified'
+                "Both mutually exclusive cnv_call and "
+                "cnv_call_job_id inputs specified"
             )
 
     def check_cnv_calling_for_cnv_reports(self):
@@ -202,10 +200,9 @@ class CheckInputs():
         Check if running CNV reports that either a job ID is given
         or running CNV calling at the same time
         """
-        if self.inputs.get('cnv_reports'):
-            if (
-                not self.inputs.get('cnv_call') and
-                not self.inputs.get('cnv_call_job_id')
+        if self.inputs.get("cnv_reports"):
+            if not self.inputs.get("cnv_call") and not self.inputs.get(
+                "cnv_call_job_id"
             ):
                 self.errors.append(
                     "Running CNV reports without first running CNV calling and "
@@ -218,14 +215,13 @@ class CheckInputs():
         Check that if cnv_call_job_id is given, cnv_reports is also
         selected, since the job ID would otherwise never be used
         """
-        if (
-            self.inputs.get('cnv_call_job_id')
-            and not self.inputs.get('cnv_reports')
+        if self.inputs.get("cnv_call_job_id") and not self.inputs.get(
+            "cnv_reports"
         ):
             self.errors.append(
-                'cnv_call_job_id specified but cnv_reports not selected, '
-                'the given job ID would never be used. Please rerun with '
-                '-icnv_reports=true or remove -icnv_call_job_id'
+                "cnv_call_job_id specified but cnv_reports not selected, "
+                "the given job ID would never be used. Please rerun with "
+                "-icnv_reports=true or remove -icnv_call_job_id"
             )
 
     def check_cnv_min_samples_requires_cnv_call(self):
@@ -234,22 +230,20 @@ class CheckInputs():
         selected, since the minimum is only ever checked against
         samples being launched for CNV calling
         """
-        if (
-            self.inputs.get('cnv_min_samples')
-            and not self.inputs.get('cnv_call')
+        if self.inputs.get("cnv_min_samples") and not self.inputs.get(
+            "cnv_call"
         ):
             self.errors.append(
-                'cnv_min_samples specified but cnv_call not selected, '
-                'the given minimum would never be used. Please rerun with '
-                '-icnv_call=true or remove -icnv_min_samples'
+                "cnv_min_samples specified but cnv_call not selected, "
+                "the given minimum would never be used. Please rerun with "
+                "-icnv_call=true or remove -icnv_min_samples"
             )
 
     def check_artemis_inputs(self):
         """Check if running artemis that the required inputs are set"""
-        if self.inputs.get('artemis'):
-            if (
-                not self.inputs.get('cnv_reports') and
-                not self.inputs.get('snv_reports')
+        if self.inputs.get("artemis"):
+            if not self.inputs.get("cnv_reports") and not self.inputs.get(
+                "snv_reports"
             ):
                 self.errors.append(
                     "Artemis specified to run but no snv or cnv reports "
@@ -259,12 +253,12 @@ class CheckInputs():
 
     def check_qc_file(self):
         """Check QC status file for artemis is an .xlsx as expected"""
-        if self.inputs.get('artemis') and self.inputs.get('qc_file'):
-            file = self.inputs.get('qc_file').get('$dnanexus_link')
+        if self.inputs.get("artemis") and self.inputs.get("qc_file"):
+            file = self.inputs.get("qc_file").get("$dnanexus_link")
             file_details = dxpy.DXFile(
-                re.match(r'file-[\d\w]+', file).group()
+                re.match(r"file-[\d\w]+", file).group()
             ).describe()
-            qc_file_name = file_details['name']
+            qc_file_name = file_details["name"]
 
             if not qc_file_name.endswith(".xlsx"):
                 self.errors.append(
@@ -278,10 +272,12 @@ class CheckInputs():
         Check when -iexclude_samples or -iexclude_samples_file is passed
         that only one is specified
         """
-        if all([
-            self.inputs.get('exclude_samples'),
-            self.inputs.get('exclude_samples_file')
-        ]):
+        if all(
+            [
+                self.inputs.get("exclude_samples"),
+                self.inputs.get("exclude_samples_file"),
+            ]
+        ):
             self.errors.append(
                 "Both -iexclude_samples and -iexclude_samples_file specified, "
                 "only one may be specified"
@@ -292,8 +288,8 @@ class CheckInputs():
         Check if input to -iexclude_samples is a file-xxx string and should
         have been provided to -iexclude_samples_file
         """
-        if self.inputs.get('exclude_samples'):
-            if re.match(r"file-", self.inputs.get('exclude_samples')):
+        if self.inputs.get("exclude_samples"):
+            if re.match(r"file-", self.inputs.get("exclude_samples")):
                 self.errors.append(
                     "DNAnexus file ID provided to -iexclude_samples, "
                     "rerun and provide this as -iexclude_samples_file="
@@ -307,19 +303,21 @@ class CheckInputs():
         CNV calling / CNV reports and would otherwise never be used
         """
         if (
-            any([
-                self.inputs.get('exclude_samples'),
-                self.inputs.get('exclude_samples_file'),
-                self.inputs.get('exclude_controls')
-            ])
-            and not self.inputs.get('cnv_call')
-            and not self.inputs.get('cnv_reports')
+            any(
+                [
+                    self.inputs.get("exclude_samples"),
+                    self.inputs.get("exclude_samples_file"),
+                    self.inputs.get("exclude_controls"),
+                ]
+            )
+            and not self.inputs.get("cnv_call")
+            and not self.inputs.get("cnv_reports")
         ):
             self.errors.append(
-                'Samples specified to exclude but neither cnv_call nor '
-                'cnv_reports selected, exclude would never be used. '
-                'Please rerun with -icnv_call=true and/or '
-                '-icnv_reports=true, or remove the exclude input'
+                "Samples specified to exclude but neither cnv_call nor "
+                "cnv_reports selected, exclude would never be used. "
+                "Please rerun with -icnv_call=true and/or "
+                "-icnv_reports=true, or remove the exclude input"
             )
 
     def strip_string_inputs(self):
@@ -328,20 +326,22 @@ class CheckInputs():
         whitespace are retained
         """
         string_inputs = [
-            'assay',
-            'assay_config_dir',
-            'exclude_samples',
-            'manifest_subset',
-            'single_output_dir',
-            'cnv_call_job_id'
+            "assay",
+            "assay_config_dir",
+            "exclude_samples",
+            "manifest_subset",
+            "single_output_dir",
+            "cnv_call_job_id",
         ]
 
         for string in string_inputs:
-            if self.inputs.get(string) and isinstance(self.inputs.get(string), str):
+            if self.inputs.get(string) and isinstance(
+                self.inputs.get(string), str
+            ):
                 self.inputs[string] = self.inputs[string].strip()
 
 
-@dxpy.entry_point('main')
+@dxpy.entry_point("main")
 def main(
     assay=None,
     assay_config_file=None,
@@ -365,29 +365,28 @@ def main(
     testing=False,
     sample_limit=None,
     unarchive=None,
-    unarchive_only=None
+    unarchive_only=None,
 ):
-    dxpy.set_workspace_id(os.environ.get('DX_PROJECT_CONTEXT_ID'))
+    dxpy.set_workspace_id(os.environ.get("DX_PROJECT_CONTEXT_ID"))
 
     check = CheckInputs(**locals())
 
     # assign single out dir in case of missing / output prefix to path
-    single_output_dir = check.inputs['single_output_dir']
+    single_output_dir = check.inputs["single_output_dir"]
 
     # ensure unarchive is set from CheckInputs.check_unarchive_set
-    unarchive = check.inputs['unarchive']
+    unarchive = check.inputs["unarchive"]
 
     # time of running for naming output folders
     start_time = time_stamp()
 
     if assay_config_file:
         assay_config = DXManage().read_assay_config_file(
-            file=assay_config_file.get('$dnanexus_link')
+            file=assay_config_file.get("$dnanexus_link")
         )
     elif assay and assay_config_dir:
         assay_config = DXManage().get_assay_config(
-            assay=assay,
-            path=assay_config_dir
+            assay=assay, path=assay_config_dir
         )
     else:
         raise RuntimeError(
@@ -397,26 +396,25 @@ def main(
     assay_config = fill_config_reference_inputs(assay_config)
 
     if exclude_samples:
-        exclude_samples = exclude_samples.split(',')
+        exclude_samples = exclude_samples.split(",")
 
     if exclude_samples_file:
         exclude_samples = DXManage().read_dxfile(exclude_samples_file)
 
     if exclude_controls:
         # pattern to default to excluding Epic control samples
-        exclude_samples.append(r'^\w+-\w+Q\w+-')
+        exclude_samples.append(r"^\w+-\w+Q\w+-")
 
     # parse and format genepanels file
     genepanels_data = DXManage().read_dxfile(
-        file=assay_config.get('reference_files', {}).get('genepanels'),
+        file=assay_config.get("reference_files", {}).get("genepanels"),
     )
     genepanels = parse_genepanels(genepanels_data)
 
     cnv_indications_file = DXManage().read_dxfile(
-        file=assay_config.get('reference_files', {}).get('cnv_indications'),
+        file=assay_config.get("reference_files", {}).get("cnv_indications"),
     )
     cnv_indications = parse_cnv_indications(cnv_indications_file)
-
 
     if manifest_files:
         # one or more manifest files specified => parse manifest(s)
@@ -431,7 +429,7 @@ def main(
             manifest_data, source = parse_manifest(
                 contents=manifest_data,
                 split_tests=split_tests,
-                subset=manifest_subset
+                subset=manifest_subset,
             )
 
             # combine manifest data to previous
@@ -439,7 +437,7 @@ def main(
             manifest_source = {**manifest_source, **source}
 
         print("Parsed manifest(s):")
-        print('⠀⠀', '\n⠀⠀⠀'.join({f"{k}: {v}" for k, v in manifest.items()}))
+        print("⠀⠀", "\n⠀⠀⠀".join({f"{k}: {v}" for k, v in manifest.items()}))
 
         # record what we had provided before excluding anything
         provided_manifest_samples = manifest.keys()
@@ -449,13 +447,12 @@ def main(
         manifest = check_manifest_valid_test_codes(
             manifest=manifest,
             genepanels=genepanels,
-            cnv_indications=cnv_indications
+            cnv_indications=cnv_indications,
         )
 
         # add in panel and clinical indication strings to manifest dict
         manifest = add_panels_and_indications_to_manifest(
-            manifest=manifest,
-            genepanels=genepanels
+            manifest=manifest, genepanels=genepanels
         )
 
         # combine manifest source for each sample into its manifest values
@@ -465,30 +462,30 @@ def main(
         }
 
     sample_files, run_files = DXManage().check_files_are_present(
-        patterns=assay_config.get('mode_file_patterns'),
+        patterns=assay_config.get("mode_file_patterns"),
         samples=manifest.keys(),
         path=single_output_dir,
         modes={
-            'cnv_reports': cnv_reports,
-            'snv_reports': snv_reports,
-            'mosaic_reports': mosaic_reports,
-            'artemis': artemis
+            "cnv_reports": cnv_reports,
+            "snv_reports": snv_reports,
+            "mosaic_reports": mosaic_reports,
+            "artemis": artemis,
         },
         cnv_call_job_id=cnv_call_job_id,
-        exclude=exclude_samples
+        exclude=exclude_samples,
     )
 
     DXManage().check_and_unarchive_files(
         sample_files=sample_files,
         run_files=run_files,
         unarchive=unarchive,
-        unarchive_only=unarchive_only
+        unarchive_only=unarchive_only,
     )
 
     launched_jobs = {}
-    cnv_report_errors = snv_report_errors = mosaic_report_errors = \
-        cnv_call_excluded_files = cnv_report_summary = snv_report_summary = \
-        mosaic_report_summary = None
+    cnv_report_errors = snv_report_errors = mosaic_report_errors = (
+        cnv_call_excluded_files
+    ) = cnv_report_summary = snv_report_summary = mosaic_report_summary = None
 
     # set downstream jobs to be dependent on parent batch job, wonderfully
     # hacky way to not actually start any downstream jobs in testing mode and
@@ -506,8 +503,8 @@ def main(
         if cnv_min_samples is None:
             # not given as a runtime input, fall back to an assay
             # config default if one is set
-            cnv_min_samples = assay_config['modes']['cnv_call'].get(
-                'min_samples'
+            cnv_min_samples = assay_config["modes"]["cnv_call"].get(
+                "min_samples"
             )
 
         cnv_call_job_id, cnv_call_excluded_files = DXExecute().cnv_calling(
@@ -517,86 +514,93 @@ def main(
             min_samples=cnv_min_samples,
             start=start_time,
             wait=wait,
-            unarchive=unarchive
+            unarchive=unarchive,
         )
 
-        launched_jobs['CNV calling'] = [cnv_call_job_id]
+        launched_jobs["CNV calling"] = [cnv_call_job_id]
 
     if cnv_reports:
-        cnv_report_jobs, cnv_report_errors, cnv_report_summary = \
+        cnv_report_jobs, cnv_report_errors, cnv_report_summary = (
             DXExecute().reports_workflow(
-                mode='CNV',
-                workflow_id=assay_config.get('cnv_report_workflow_id'),
+                mode="CNV",
+                workflow_id=assay_config.get("cnv_report_workflow_id"),
                 single_output_dir=single_output_dir,
                 manifest=manifest,
-                config=assay_config['modes']['cnv_reports'],
+                config=assay_config["modes"]["cnv_reports"],
                 start=start_time,
-                name_patterns=assay_config.get('name_patterns', {}),
+                name_patterns=assay_config.get("name_patterns", {}),
                 sample_limit=sample_limit,
                 call_job_id=cnv_call_job_id,
                 parent=parent,
                 unarchive=unarchive,
-                exclude=exclude_samples
+                exclude=exclude_samples,
             )
+        )
 
-        launched_jobs['cnv_reports'] = cnv_report_jobs
+        launched_jobs["cnv_reports"] = cnv_report_jobs
 
     if snv_reports:
-        snv_reports, snv_report_errors, snv_report_summary = \
+        snv_reports, snv_report_errors, snv_report_summary = (
             DXExecute().reports_workflow(
-                mode='SNV',
-                workflow_id=assay_config.get('snv_report_workflow_id'),
+                mode="SNV",
+                workflow_id=assay_config.get("snv_report_workflow_id"),
                 single_output_dir=single_output_dir,
                 manifest=manifest,
-                config=assay_config['modes']['snv_reports'],
+                config=assay_config["modes"]["snv_reports"],
                 start=start_time,
-                name_patterns=assay_config.get('name_patterns', {}),
+                name_patterns=assay_config.get("name_patterns", {}),
                 sample_limit=sample_limit,
                 parent=parent,
-                unarchive=unarchive
+                unarchive=unarchive,
             )
-        launched_jobs['snv_reports'] = snv_reports
+        )
+        launched_jobs["snv_reports"] = snv_reports
 
     if mosaic_reports:
-        mosaic_reports, mosaic_report_errors, mosaic_report_summary = \
+        mosaic_reports, mosaic_report_errors, mosaic_report_summary = (
             DXExecute().reports_workflow(
-                mode='mosaic',
-                workflow_id=assay_config.get('snv_report_workflow_id'),
+                mode="mosaic",
+                workflow_id=assay_config.get("snv_report_workflow_id"),
                 single_output_dir=single_output_dir,
                 manifest=manifest,
-                config=assay_config['modes']['mosaic_reports'],
+                config=assay_config["modes"]["mosaic_reports"],
                 start=start_time,
-                name_patterns=assay_config.get('name_patterns', {}),
+                name_patterns=assay_config.get("name_patterns", {}),
                 sample_limit=sample_limit,
                 parent=parent,
-                unarchive=unarchive
+                unarchive=unarchive,
             )
-        launched_jobs['mosaic_reports'] = mosaic_reports
+        )
+        launched_jobs["mosaic_reports"] = mosaic_reports
 
     if artemis:
         # get parent output path of all reports workflows
         snv_path = cnv_path = None
 
-        if launched_jobs.get('snv_reports'):
-            snv_path = dxpy.describe(
-                launched_jobs.get('snv_reports')[0])['folder']
+        if launched_jobs.get("snv_reports"):
+            snv_path = dxpy.describe(launched_jobs.get("snv_reports")[0])[
+                "folder"
+            ]
 
-        if launched_jobs.get('cnv_reports'):
-            cnv_path = dxpy.describe(
-                launched_jobs.get('cnv_reports')[0])['folder']
+        if launched_jobs.get("cnv_reports"):
+            cnv_path = dxpy.describe(launched_jobs.get("cnv_reports")[0])[
+                "folder"
+            ]
 
         dependent_jobs = [
             job for job_list in launched_jobs.values() for job in job_list
         ]
 
         if snv_path or cnv_path:
-            additional_inputs = assay_config.get(
-                'modes', {}
-            ).get('artemis', {}).get('inputs', {})
+            additional_inputs = (
+                assay_config.get("modes", {})
+                .get("artemis", {})
+                .get("inputs", {})
+            )
 
             artemis_job = DXExecute().artemis(
                 single_output_dir=single_output_dir,
-                app_id=assay_config.get('artemis_app_id'),
+                app_id=assay_config.get("artemis_app_id"),
                 dependent_jobs=dependent_jobs,
                 start=start_time,
                 qc_xlsx=qc_file,
@@ -606,13 +610,13 @@ def main(
                 **additional_inputs,
             )
 
-            launched_jobs['artemis'] = [artemis_job]
+            launched_jobs["artemis"] = [artemis_job]
         else:
             print("No SNV or CNV reports launched to run Artemis for!")
 
     print(
-        'All jobs launched:\n\t',
-        "\n\t".join([f"{x[0]}: {len(x[1])}" for x in launched_jobs.items()])
+        "All jobs launched:\n\t",
+        "\n\t".join([f"{x[0]}: {len(x[1])}" for x in launched_jobs.items()]),
     )
 
     if testing and launched_jobs:
@@ -620,26 +624,28 @@ def main(
         print("Terminating launched jobs...")
         DXExecute().terminate(list(chain(*launched_jobs.values())))
 
-    project_name = dxpy.describe(os.environ.get('DX_PROJECT_CONTEXT_ID'))['name']
+    project_name = dxpy.describe(os.environ.get("DX_PROJECT_CONTEXT_ID"))[
+        "name"
+    ]
     summary_file = f"{project_name}_{start_time}_job_summary.txt"
 
-    job_details = dxpy.DXJob(dxid=os.environ.get('DX_JOB_ID')).describe()
-    app_details = dxpy.describe(job_details['executable'])
+    job_details = dxpy.DXJob(dxid=os.environ.get("DX_JOB_ID")).describe()
+    app_details = dxpy.describe(job_details["executable"])
 
     # overwrite manifest job ID in job details with name to write to summary
     if manifest_files:
         manifest_names = []
-        for file in job_details['runInput']['manifest_files']:
+        for file in job_details["runInput"]["manifest_files"]:
             # if input specified with project-xxx: this will be stored as
             # a dict with project and ID keys, else will just be a regular
             # $dnanexus_link dict
-            file = file['$dnanexus_link']
+            file = file["$dnanexus_link"]
             if isinstance(file, dict):
-                file = file['id']
+                file = file["id"]
 
-            manifest_names.append(dxpy.describe(file)['name'])
+            manifest_names.append(dxpy.describe(file)["name"])
 
-        job_details['runInput']['manifest_files'] = ', '.join(manifest_names)
+        job_details["runInput"]["manifest_files"] = ", ".join(manifest_names)
 
     write_summary_report(
         summary_file,
@@ -656,24 +662,26 @@ def main(
         mosaic_report_errors=mosaic_report_errors,
         cnv_report_summary=cnv_report_summary,
         snv_report_summary=snv_report_summary,
-        mosaic_report_summary=mosaic_report_summary
+        mosaic_report_summary=mosaic_report_summary,
     )
 
     url_file = dxpy.upload_local_file(
         summary_file,
         folder=dxpy.bindings.dxjob.DXJob(
-            os.environ.get('DX_JOB_ID')).describe()['folder']
+            os.environ.get("DX_JOB_ID")
+        ).describe()["folder"],
     )
 
-    launched_jobs = ','.join([
-        job for job_list in launched_jobs.values() for job in job_list
-    ])
+    launched_jobs = ",".join(
+        [job for job_list in launched_jobs.values() for job in job_list]
+    )
 
     return {
         "summary_report": dxpy.dxlink(url_file),
-        "launched_jobs": launched_jobs
+        "launched_jobs": launched_jobs,
     }
 
-if os.path.exists('/home/dnanexus'):
+
+if os.path.exists("/home/dnanexus"):
     # check for env to allow importing CheckInputs for unit tests
     dxpy.run()

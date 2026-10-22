@@ -1,20 +1,20 @@
 """
 Tests for functions in utils/formatting.py
 """
-from datetime import datetime
+
 import os
 import sys
+from datetime import datetime
 from unittest.mock import patch
 
-
-sys.path.append(os.path.abspath(
-    os.path.join(os.path.realpath(__file__), '../../')
-))
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.realpath(__file__), "../../"))
+)
 
 from utils import formatting
 
 
-class TestTimeStamp():
+class TestTimeStamp:
     """
     Test for formatting.time_stamp()
     """
@@ -27,12 +27,12 @@ class TestTimeStamp():
         # set datetime.now() to a fixed value
         datetime_mock.now.return_value = datetime(2013, 2, 1, 10, 9, 8)
 
-        assert formatting.time_stamp() == '130201_1009', (
+        assert formatting.time_stamp() == "130201_1009", (
             "Wrong datetime format returned"
         )
 
 
-class TestMakePath():
+class TestMakePath:
     """
     Tests for formatting.make_path()
 
@@ -40,19 +40,19 @@ class TestMakePath():
     format nicely as a path for DNAnexus queries, dropping project-
     prefix if present
     """
+
     def test_path_mix(self):
         """
         Test mix of strings builds path correctly
         """
         path_parts = [
-            "project-abc123:/dir1"
-            "/double_slash/",
+            "project-abc123:/dir1/double_slash/",
             "/prefix_slash",
             "suffix_slash/",
             "no_slash",
             "and_another/",
             "/much_path",
-            "many_lines/"
+            "many_lines/",
         ]
 
         path = formatting.make_path(*path_parts)

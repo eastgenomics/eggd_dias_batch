@@ -1,25 +1,22 @@
 """
 Tests for functions in utils/manifest.py
 """
-from copy import deepcopy
+
 import os
 import re
 import sys
+from copy import deepcopy
 
 import pytest
 
-
-sys.path.append(os.path.abspath(
-    os.path.join(os.path.realpath(__file__), '../../')
-))
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.realpath(__file__), "../../"))
+)
 
 from utils import genepanels as genepanels_module
 from utils import manifest
 
-
-TEST_DATA_DIR = (
-    os.path.join(os.path.dirname(__file__), 'test_data')
-)
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "test_data")
 
 
 class TestParseManifest:
@@ -30,12 +27,15 @@ class TestParseManifest:
     by DXManage().read_dxfile(), and parses this into a dict mapping
     SampleID -> list of list of TestCodes to generate reports for
     """
+
     # read in Gemini manifest
-    with open(os.path.join(TEST_DATA_DIR, 'gemini_manifest.tsv')) as file_handle:
+    with open(
+        os.path.join(TEST_DATA_DIR, "gemini_manifest.tsv")
+    ) as file_handle:
         gemini_data = file_handle.read().splitlines()
 
     # read in Epic manifest
-    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+    with open(os.path.join(TEST_DATA_DIR, "epic_manifest.txt")) as file_handle:
         epic_data = file_handle.read().splitlines()
 
     def test_gemini_not_two_columns(self):
@@ -44,11 +44,10 @@ class TestParseManifest:
         is expected to be a manifest from Gemini.
         """
         data = deepcopy(self.gemini_data)
-        data.append('a\tb\tc')
+        data.append("a\tb\tc")
 
         with pytest.raises(AssertionError):
             manifest.parse_manifest(data)
-
 
     def test_gemini_multiple_lines_combined(self):
         """
@@ -64,12 +63,11 @@ class TestParseManifest:
         """
         parsed_manifest, _ = manifest.parse_manifest(self.gemini_data)
 
-        correct_tests = [['_HGNC:795', '_HGNC:16627', 'R228.1']]
+        correct_tests = [["_HGNC:795", "_HGNC:16627", "R228.1"]]
 
-        assert parsed_manifest['X223441']['tests'] == correct_tests, (
+        assert parsed_manifest["X223441"]["tests"] == correct_tests, (
             "Multiple tests in Gemini manifest not correctly merged"
         )
-
 
     def test_gemini_invalid_codes_added_as_is(self):
         """
@@ -78,26 +76,24 @@ class TestParseManifest:
         invalid code is provided that it is written out as found
         """
         data = deepcopy(self.gemini_data)
-        data.append('anotherSample\tnotValidTest')
+        data.append("anotherSample\tnotValidTest")
 
         parsed_manifest, _ = manifest.parse_manifest(data)
 
-        assert parsed_manifest['anotherSample']['tests'] == [['notValidTest']], (
-            'Invalid test code not kept correctly in manifest'
-        )
-
+        assert parsed_manifest["anotherSample"]["tests"] == [
+            ["notValidTest"]
+        ], "Invalid test code not kept correctly in manifest"
 
     def test_epic_correct_number_lines_parsed(self):
         """
         Test when reading Epic manifest we get the correct number of
         lines since we drop first row (batch ID) and second (column names)
         """
-        parsed_manifest, _  = manifest.parse_manifest(self.epic_data)
+        parsed_manifest, _ = manifest.parse_manifest(self.epic_data)
 
         assert len(parsed_manifest.keys()) == 5, (
-            'Incorrect number of lines parsed from Epic manifest'
+            "Incorrect number of lines parsed from Epic manifest"
         )
-
 
     def test_epic_required_columns_checked(self):
         """
@@ -106,19 +102,21 @@ class TestParseManifest:
         are correctly picked up
         """
         columns = [
-            'Instrument ID', 'Specimen ID', 'Re-analysis Instrument ID',
-            'Re-analysis Specimen ID', 'Test Codes'
+            "Instrument ID",
+            "Specimen ID",
+            "Re-analysis Instrument ID",
+            "Re-analysis Specimen ID",
+            "Test Codes",
         ]
 
         for column in columns:
             # copy Epic data and drop out required column to ensure
             # error is raised
             data = deepcopy(self.epic_data)
-            data[1] = re.sub(rf"{column}", 'NA', data[1])
+            data[1] = re.sub(rf"{column}", "NA", data[1])
 
             with pytest.raises(AssertionError):
                 manifest.parse_manifest(data)
-
 
     def test_epic_spaces_and_sp_prefix_removed(self):
         """
@@ -128,29 +126,30 @@ class TestParseManifest:
         """
         # add in some spaces to the last row of the data
         data = deepcopy(self.epic_data)
-        data[-1] = ';'.join(
-            [f"{x[:5]} {x[5:]}" if x else x for x in data[-1].split(';')]
+        data[-1] = ";".join(
+            [f"{x[:5]} {x[5:]}" if x else x for x in data[-1].split(";")]
         )
 
         # add SP- prefix to specimen columns
-        data[-1] = ';'.join([
-            f"SP-{x}" if idx in (0, 2) else x for idx, x
-            in enumerate(data[-1].split(';'))
-        ])
+        data[-1] = ";".join(
+            [
+                f"SP-{x}" if idx in (0, 2) else x
+                for idx, x in enumerate(data[-1].split(";"))
+            ]
+        )
 
         # parse manifest => should remove our mess from above
         parsed_manifest, _ = manifest.parse_manifest(data)
 
         errors = []
 
-        if any([' ' in x for x in parsed_manifest.keys()]):
-            errors.append('Spaces in sample ID')
+        if any([" " in x for x in parsed_manifest.keys()]):
+            errors.append("Spaces in sample ID")
 
-        if any(['SP' in x for x in parsed_manifest.keys()]):
-            errors.append('SP in Sample ID')
+        if any(["SP" in x for x in parsed_manifest.keys()]):
+            errors.append("SP in Sample ID")
 
         assert not errors, errors
-
 
     def test_epic_reanalysis_ids_used(self):
         """
@@ -163,13 +162,12 @@ class TestParseManifest:
         manifest dict
         """
         parsed_manifest, _ = manifest.parse_manifest(self.epic_data)
-        assert 'X225111-GM2308111' in parsed_manifest.keys(), (
-            'Reanalysis IDs not correctly parsed into manifest'
+        assert "X225111-GM2308111" in parsed_manifest.keys(), (
+            "Reanalysis IDs not correctly parsed into manifest"
         )
 
-
     def test_epic_missing_sample_id_caught(self):
-        """
+        r"""
         Reanalysis ID and SampleID columns are concatenations of
         {Re-analysis Specimen ID}-{Re-analysis Instrument ID} and
         {Specimen ID}-{Instrument ID} columns, respectively.
@@ -181,18 +179,20 @@ class TestParseManifest:
 
         # drop specimen ID and reanalysis specimen ID
         # row 2 => first row of sample data w/ normal specimen - instrument ID
-        data[2] = ';'.join([
-            '' if idx == 2 else x for idx, x in enumerate(data[2].split(';'))
-        ])
+        data[2] = ";".join(
+            ["" if idx == 2 else x for idx, x in enumerate(data[2].split(";"))]
+        )
 
         # last row data => sample w/ reanalysis fields
-        data[-1] = ';'.join([
-            '' if idx == 0 else x for idx, x in enumerate(data[-1].split(';'))
-        ])
+        data[-1] = ";".join(
+            [
+                "" if idx == 0 else x
+                for idx, x in enumerate(data[-1].split(";"))
+            ]
+        )
 
         with pytest.raises(RuntimeError):
             manifest.parse_manifest(data)
-
 
     def test_epic_invalid_sample_id_skipped_when_subset_specified(self):
         """
@@ -206,14 +206,13 @@ class TestParseManifest:
 
         # remove the specimen ID for the first sample to make it invalid
         # row 2 => first row of sample data w/ normal specimen - instrument ID
-        data[2] = ';'.join([
-            '' if idx == 2 else x for idx, x in enumerate(data[2].split(';'))
-        ])
-
-        manifest.parse_manifest(
-            data, subset='224289111-33202R00111,324338111-43206R00111'
+        data[2] = ";".join(
+            ["" if idx == 2 else x for idx, x in enumerate(data[2].split(";"))]
         )
 
+        manifest.parse_manifest(
+            data, subset="224289111-33202R00111,324338111-43206R00111"
+        )
 
     def test_epic_invalid_sample_id_skipped_and_subset_checked(self):
         """
@@ -226,9 +225,9 @@ class TestParseManifest:
 
         # remove the specimen ID for the first sample to make it invalid
         # row 2 => first row of sample data w/ normal specimen - instrument ID
-        data[2] = ';'.join([
-            '' if idx == 2 else x for idx, x in enumerate(data[2].split(';'))
-        ])
+        data[2] = ";".join(
+            ["" if idx == 2 else x for idx, x in enumerate(data[2].split(";"))]
+        )
 
         expected_error = re.escape(
             "Sample names provided to -isubset not in manifest: "
@@ -239,9 +238,8 @@ class TestParseManifest:
             # 123245111-23146R00111 provided to subset is missing the
             # specimenID as removed above - make sure we catch this
             manifest.parse_manifest(
-                data, subset='224289111-33202R00111,123245111-23146R00111'
+                data, subset="224289111-33202R00111,123245111-23146R00111"
             )
-
 
     def test_invalid_manifest(self):
         """
@@ -250,29 +248,23 @@ class TestParseManifest:
         raise an error on something else being passed
         """
         # simulate simple csv file contents
-        data = [
-            'header1,header2', 'data1,data2', 'data3,data4'
-        ]
+        data = ["header1,header2", "data1,data2", "data3,data4"]
 
         with pytest.raises(RuntimeError):
             manifest.parse_manifest(data)
-
 
     def test_split_tests_called(self):
         """
         Test when split_tests specified it gets called
         """
         parsed_manifest, _ = manifest.parse_manifest(
-            contents=self.epic_data,
-            split_tests=True
+            contents=self.epic_data, split_tests=True
         )
 
-        assert parsed_manifest['424487111-53214R00111']['tests'] == [
-            ['R208.1'], ['R216.1']
-        ], (
-            'Splitting tests when parsing manifest not as expected'
-        )
-
+        assert parsed_manifest["424487111-53214R00111"]["tests"] == [
+            ["R208.1"],
+            ["R216.1"],
+        ], "Splitting tests when parsing manifest not as expected"
 
     def test_subset_works(self):
         """
@@ -281,13 +273,13 @@ class TestParseManifest:
         parsed_manifest, _ = manifest.parse_manifest(
             contents=self.epic_data,
             split_tests=True,
-            subset='123245111-23146R00111,424487111-53214R00111'
+            subset="123245111-23146R00111,424487111-53214R00111",
         )
 
         assert sorted(parsed_manifest.keys()) == [
-            '123245111-23146R00111', '424487111-53214R00111'
-        ], ('Manifest not subsetted correctly')
-
+            "123245111-23146R00111",
+            "424487111-53214R00111",
+        ], "Manifest not subsetted correctly"
 
     def test_error_raised_on_invalid_sample_provided_to_subset(self):
         """
@@ -296,41 +288,56 @@ class TestParseManifest:
         """
         with pytest.raises(
             RuntimeError,
-            match=r"Sample names provided to -isubset not in manifest: \['sample1'\]"
+            match=r"Sample names provided to -isubset not in manifest: \['sample1'\]",
         ):
             manifest.parse_manifest(
-            contents=self.epic_data,
-            split_tests=True,
-            subset='123245111-23146R00111,sample1'
-        )
+                contents=self.epic_data,
+                split_tests=True,
+                subset="123245111-23146R00111,sample1",
+            )
 
 
-class TestFilterManifestSamplesByFiles():
-    """
+class TestFilterManifestSamplesByFiles:
+    r"""
     Tests for manifest.filter_manifest_samples_by_files()
 
     Function filters out sample names that either don't meet a specified
     regex pattern (i.e. [\w\d]+-[\w\d]+- for Epic sample naming) or have
     no files available against a list of samples found to use as inputs
     """
-    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+
+    with open(os.path.join(TEST_DATA_DIR, "epic_manifest.txt")) as file_handle:
         epic_data = file_handle.read().splitlines()
         epic_manifest, _ = manifest.parse_manifest(epic_data)
 
     # minimal dxpy.find_data_objects() return object with list of files
     files = [
-        {'describe': {
-            'name': '123245111-23146R00111-other-name-parts_markdup.vcf.gz'}},
-        {'describe': {
-            'name': '224289111-33202R00111-other-name-parts_markdup.vcf.gz'}},
-        {'describe': {
-            'name': '324338111-43206R00111-other-name-parts_markdup.vcf.gz'}},
-        {'describe': {
-            'name': '424487111-53214R00111-other-name-parts_markdup.vcf.gz'}},
-        {'describe': {
-            'name': 'X225111-GM2308111-other-name-parts_markdup.vcf.gz'}}
+        {
+            "describe": {
+                "name": "123245111-23146R00111-other-name-parts_markdup.vcf.gz"
+            }
+        },
+        {
+            "describe": {
+                "name": "224289111-33202R00111-other-name-parts_markdup.vcf.gz"
+            }
+        },
+        {
+            "describe": {
+                "name": "324338111-43206R00111-other-name-parts_markdup.vcf.gz"
+            }
+        },
+        {
+            "describe": {
+                "name": "424487111-53214R00111-other-name-parts_markdup.vcf.gz"
+            }
+        },
+        {
+            "describe": {
+                "name": "X225111-GM2308111-other-name-parts_markdup.vcf.gz"
+            }
+        },
     ]
-
 
     def test_files_not_matching_pattern_filtered_out(self, capsys):
         """
@@ -339,26 +346,23 @@ class TestFilterManifestSamplesByFiles():
         """
         # add in a non-matching file
         file_list = deepcopy(self.files)
-        file_list.append(
-            {'describe': {'name': 'file1.txt'}}
-        )
+        file_list.append({"describe": {"name": "file1.txt"}})
 
         manifest.filter_manifest_samples_by_files(
             manifest=self.epic_manifest,
             files=file_list,
-            name='vcf',
-            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+            name="vcf",
+            pattern=r"^[\w\d]+-[\w\d]+",  # matches 424487111-53214R00111-xxx
         )
 
         # since we don't explicitly return the filtered out files we
         # have to pick it out of the stdout as it just gets printed
         stdout = capsys.readouterr().out
-        expected_files = 'Total files after filtering against pattern: 5'
+        expected_files = "Total files after filtering against pattern: 5"
 
         assert expected_files in stdout, (
-            'Files not matching given pattern not correctly filtered out'
+            "Files not matching given pattern not correctly filtered out"
         )
-
 
     def test_samples_not_matching_pattern_filtered_out(self):
         """
@@ -367,113 +371,133 @@ class TestFilterManifestSamplesByFiles():
         """
         # bodge one of the sample names in the manifest
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['invalid_sample_name'] = manifest_copy.pop(
-            '424487111-53214R00111'
+        manifest_copy["invalid_sample_name"] = manifest_copy.pop(
+            "424487111-53214R00111"
         )
 
         _, pattern_no_match, _ = manifest.filter_manifest_samples_by_files(
             manifest=manifest_copy,
             files=self.files,
-            name='vcf',
-            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+            name="vcf",
+            pattern=r"^[\w\d]+-[\w\d]+",  # matches 424487111-53214R00111-xxx
         )
 
-        assert pattern_no_match == ['invalid_sample_name'], (
-            'Invalid sample name not correctly filtered out of manifest'
+        assert pattern_no_match == ["invalid_sample_name"], (
+            "Invalid sample name not correctly filtered out of manifest"
         )
-
 
     def test_sample_in_manifest_has_no_files(self):
         """
         Test where sample has no files that it gets removed from the manifest
         """
-        result_manifest, _, sample_no_files  = manifest.filter_manifest_samples_by_files(
-            manifest=self.epic_manifest,
-            files=self.files[1:],  # exclude file for 123245111-23146R00111
-            name='vcf',
-            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+        result_manifest, _, sample_no_files = (
+            manifest.filter_manifest_samples_by_files(
+                manifest=self.epic_manifest,
+                files=self.files[1:],  # exclude file for 123245111-23146R00111
+                name="vcf",
+                pattern=r"^[\w\d]+-[\w\d]+",  # matches 424487111-53214R00111-xxx
+            )
         )
 
         errors = []
 
-        if not sample_no_files == ['123245111-23146R00111']:
+        if not sample_no_files == ["123245111-23146R00111"]:
             errors.append(
-                'Sample with no file not correctly added to '
-                'returned manifest_no_files list'
+                "Sample with no file not correctly added to "
+                "returned manifest_no_files list"
             )
 
-        if '123245111-23146R00111' in result_manifest.keys():
+        if "123245111-23146R00111" in result_manifest.keys():
             errors.append(
-                'Sample with no file not correctly excluded from manifest'
+                "Sample with no file not correctly excluded from manifest"
             )
 
         assert not errors, errors
-
 
     def test_files_correctly_added_to_manifest(self):
         """
         Test that files correctly get added into manifest under specified key
         """
         manifest_w_files = {
-            '123245111-23146R00111':  {
-                'tests': [['R207.1']],
-                'vcf': [{'describe': {
-                    'name': '123245111-23146R00111-other-name-parts_markdup.vcf.gz'
-                }}]
+            "123245111-23146R00111": {
+                "tests": [["R207.1"]],
+                "vcf": [
+                    {
+                        "describe": {
+                            "name": "123245111-23146R00111-other-name-parts_markdup.vcf.gz"
+                        }
+                    }
+                ],
             },
-            '224289111-33202R00111':  {
-                'tests': [['R208.1']],
-                'vcf': [{'describe': {
-                    'name': '224289111-33202R00111-other-name-parts_markdup.vcf.gz'
-                }}]
+            "224289111-33202R00111": {
+                "tests": [["R208.1"]],
+                "vcf": [
+                    {
+                        "describe": {
+                            "name": "224289111-33202R00111-other-name-parts_markdup.vcf.gz"
+                        }
+                    }
+                ],
             },
-            '324338111-43206R00111':  {
-                'tests': [['R134.1']],
-                'vcf': [{'describe': {
-                    'name': '324338111-43206R00111-other-name-parts_markdup.vcf.gz'
-                }}]
+            "324338111-43206R00111": {
+                "tests": [["R134.1"]],
+                "vcf": [
+                    {
+                        "describe": {
+                            "name": "324338111-43206R00111-other-name-parts_markdup.vcf.gz"
+                        }
+                    }
+                ],
             },
-            '424487111-53214R00111':  {
-                'tests': [['R208.1', 'R216.1']],
-                'vcf': [{'describe': {
-                    'name': '424487111-53214R00111-other-name-parts_markdup.vcf.gz'
-                }}]
+            "424487111-53214R00111": {
+                "tests": [["R208.1", "R216.1"]],
+                "vcf": [
+                    {
+                        "describe": {
+                            "name": "424487111-53214R00111-other-name-parts_markdup.vcf.gz"
+                        }
+                    }
+                ],
             },
-            'X225111-GM2308111':  {
-                'tests': [['R149.1']],
-                'vcf': [{'describe': {
-                    'name': 'X225111-GM2308111-other-name-parts_markdup.vcf.gz'
-                }}]
-            }
+            "X225111-GM2308111": {
+                "tests": [["R149.1"]],
+                "vcf": [
+                    {
+                        "describe": {
+                            "name": "X225111-GM2308111-other-name-parts_markdup.vcf.gz"
+                        }
+                    }
+                ],
+            },
         }
-
 
         result_manifest, _, _ = manifest.filter_manifest_samples_by_files(
             manifest=self.epic_manifest,
             files=self.files,
-            name='vcf',
-            pattern=r'^[\w\d]+-[\w\d]+'  # matches 424487111-53214R00111-xxx
+            name="vcf",
+            pattern=r"^[\w\d]+-[\w\d]+",  # matches 424487111-53214R00111-xxx
         )
 
         assert result_manifest == manifest_w_files, (
-            'files incorrectly added to manifest'
+            "files incorrectly added to manifest"
         )
 
 
-class TestParseCnvIndications():
+class TestParseCnvIndications:
     """
     Tests for manifest.parse_cnv_indications()
 
     Function formats the contents of the CNV indications file read from
     DXManage.read_dxfile() into a list of test codes
     """
+
     def test_none_returns_empty_list(self):
         """
         DXManage.read_dxfile() returns None when no cnv_indications file
         is in the assay config, this should give an empty list
         """
         assert manifest.parse_cnv_indications(None) == [], (
-            'Empty list not returned when no CNV indications file given'
+            "Empty list not returned when no CNV indications file given"
         )
 
     def test_empty_file_returns_empty_list(self):
@@ -481,7 +505,7 @@ class TestParseCnvIndications():
         An empty CNV indications file should give an empty list
         """
         assert manifest.parse_cnv_indications([]) == [], (
-            'Empty list not returned for empty CNV indications file'
+            "Empty list not returned for empty CNV indications file"
         )
 
     def test_whitespace_and_blank_lines_removed(self):
@@ -489,11 +513,13 @@ class TestParseCnvIndications():
         Leading / trailing whitespace should be stripped and blank lines
         dropped
         """
-        contents = ['R208.2', ' R412.2 \t', '', '   ', 'R414.2\r']
+        contents = ["R208.2", " R412.2 \t", "", "   ", "R414.2\r"]
 
         assert manifest.parse_cnv_indications(contents) == [
-            'R208.2', 'R412.2', 'R414.2'
-        ], 'CNV indications not correctly parsed'
+            "R208.2",
+            "R412.2",
+            "R414.2",
+        ], "CNV indications not correctly parsed"
 
     def test_test_data_file_parsed(self):
         """
@@ -508,18 +534,18 @@ class TestParseCnvIndications():
         errors = []
 
         if not parsed:
-            errors.append('No CNV indications parsed from test data')
+            errors.append("No CNV indications parsed from test data")
 
-        if 'R208.2' not in parsed:
-            errors.append('R208.2 not parsed from test data')
+        if "R208.2" not in parsed:
+            errors.append("R208.2 not parsed from test data")
 
         if any(not x or x != x.strip() for x in parsed):
-            errors.append('Blank or unstripped entries in parsed list')
+            errors.append("Blank or unstripped entries in parsed list")
 
         assert not errors, errors
 
 
-class TestCheckManifestValidTestCodes():
+class TestCheckManifestValidTestCodes:
     """
     Tests for manifest.check_manifest_valid_test_codes()
 
@@ -527,7 +553,8 @@ class TestCheckManifestValidTestCodes():
     they are valid against what we have in genepanels. If any are invalid
     for any sample, an error is raised.
     """
-    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+
+    with open(os.path.join(TEST_DATA_DIR, "epic_manifest.txt")) as file_handle:
         epic_data = file_handle.read().splitlines()
         epic_manifest, _ = manifest.parse_manifest(epic_data)
 
@@ -542,7 +569,6 @@ class TestCheckManifestValidTestCodes():
         cnv_data = file_handle.read().splitlines()
         cnv_list = cnv_data
 
-
     def test_error_not_raised_on_valid_codes(self):
         """
         If all test codes are valid, the function should return the same
@@ -550,7 +576,9 @@ class TestCheckManifestValidTestCodes():
         test that this is true
         """
         tested_manifest = manifest.check_manifest_valid_test_codes(
-            manifest=self.epic_manifest, genepanels=self.genepanels_df, cnv_indications=self.cnv_list
+            manifest=self.epic_manifest,
+            genepanels=self.genepanels_df,
+            cnv_indications=self.cnv_list,
         )
 
         assert tested_manifest.items() == self.epic_manifest.items(), (
@@ -563,8 +591,8 @@ class TestCheckManifestValidTestCodes():
         """
         # drop test codes for a manifest sample
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['324338111-43206R00111']['tests'] = []
-        manifest_copy['424487111-53214R00111']['tests'] = [[]]
+        manifest_copy["324338111-43206R00111"]["tests"] = []
+        manifest_copy["424487111-53214R00111"]["tests"] = [[]]
 
         expected_error = re.escape(
             "One or more samples had an invalid test code requested:"
@@ -574,9 +602,10 @@ class TestCheckManifestValidTestCodes():
 
         with pytest.raises(RuntimeError, match=expected_error):
             manifest.check_manifest_valid_test_codes(
-                manifest=manifest_copy, genepanels=self.genepanels_df, cnv_indications=self.cnv_list
+                manifest=manifest_copy,
+                genepanels=self.genepanels_df,
+                cnv_indications=self.cnv_list,
             )
-
 
     def test_error_raised_when_manifest_contains_invalid_test_code(self):
         """
@@ -585,12 +614,15 @@ class TestCheckManifestValidTestCodes():
         """
         # add in an invalid test code to a manifest sample
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'].append([
-            'invalidTestCode'])
+        manifest_copy["424487111-53214R00111"]["tests"].append(
+            ["invalidTestCode"]
+        )
 
         with pytest.raises(RuntimeError, match=r"invalidTestCode"):
             manifest.check_manifest_valid_test_codes(
-                manifest=manifest_copy, genepanels=self.genepanels_df, cnv_indications=self.cnv_list
+                manifest=manifest_copy,
+                genepanels=self.genepanels_df,
+                cnv_indications=self.cnv_list,
             )
 
     def test_error_not_raised_when_research_use_test_code_present(self):
@@ -602,16 +634,18 @@ class TestCheckManifestValidTestCodes():
         # add in different forms of 'Research Use' as a test code to a
         # manifest sample
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'].append([
-            'Research Use', 'ResearchUse', 'researchUse', 'research use'
-        ])
+        manifest_copy["424487111-53214R00111"]["tests"].append(
+            ["Research Use", "ResearchUse", "researchUse", "research use"]
+        )
 
-        correct_test_codes = [['R208.1', 'R216.1']]
+        correct_test_codes = [["R208.1", "R216.1"]]
 
         tested_manifest = manifest.check_manifest_valid_test_codes(
-            manifest=manifest_copy, genepanels=self.genepanels_df, cnv_indications=self.cnv_list
+            manifest=manifest_copy,
+            genepanels=self.genepanels_df,
+            cnv_indications=self.cnv_list,
         )
-        sample_test_codes = tested_manifest['424487111-53214R00111']['tests']
+        sample_test_codes = tested_manifest["424487111-53214R00111"]["tests"]
 
         assert sample_test_codes == correct_test_codes, (
             'Test codes not correctly parsed when "Research Use" present'
@@ -623,20 +657,19 @@ class TestCheckManifestValidTestCodes():
         should be removed, leaving just the valid codes
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [
-            ['R208.1', 'R208.2', 'R216.1']
+        manifest_copy["424487111-53214R00111"]["tests"] = [
+            ["R208.1", "R208.2", "R216.1"]
         ]
 
         tested_manifest = manifest.check_manifest_valid_test_codes(
             manifest=manifest_copy,
             genepanels=self.genepanels_df,
-            cnv_indications=self.cnv_list
+            cnv_indications=self.cnv_list,
         )
 
-        assert tested_manifest['424487111-53214R00111']['tests'] == [
-            ['R208.1', 'R216.1']
-        ], 'CNV indication not correctly stripped from test list'
-
+        assert tested_manifest["424487111-53214R00111"]["tests"] == [
+            ["R208.1", "R216.1"]
+        ], "CNV indication not correctly stripped from test list"
 
     def test_test_list_of_only_cnv_indications_dropped(self):
         """
@@ -645,20 +678,22 @@ class TestCheckManifestValidTestCodes():
         that list should be dropped and the other(s) kept
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [
-            ['R208.1'], ['R208.2'], ['R216.1']
+        manifest_copy["424487111-53214R00111"]["tests"] = [
+            ["R208.1"],
+            ["R208.2"],
+            ["R216.1"],
         ]
 
         tested_manifest = manifest.check_manifest_valid_test_codes(
             manifest=manifest_copy,
             genepanels=self.genepanels_df,
-            cnv_indications=self.cnv_list
+            cnv_indications=self.cnv_list,
         )
 
-        assert tested_manifest['424487111-53214R00111']['tests'] == [
-            ['R208.1'], ['R216.1']
-        ], 'Test list of only CNV indications not correctly dropped'
-
+        assert tested_manifest["424487111-53214R00111"]["tests"] == [
+            ["R208.1"],
+            ["R216.1"],
+        ], "Test list of only CNV indications not correctly dropped"
 
     def test_error_raised_when_sample_only_has_cnv_indications(self):
         """
@@ -667,15 +702,15 @@ class TestCheckManifestValidTestCodes():
         error raised, and only for that sample
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [
-            ['R208.2', 'R216.2']
+        manifest_copy["424487111-53214R00111"]["tests"] = [
+            ["R208.2", "R216.2"]
         ]
 
         with pytest.raises(RuntimeError) as error:
             manifest.check_manifest_valid_test_codes(
                 manifest=manifest_copy,
                 genepanels=self.genepanels_df,
-                cnv_indications=self.cnv_list
+                cnv_indications=self.cnv_list,
             )
 
         errors = []
@@ -683,17 +718,16 @@ class TestCheckManifestValidTestCodes():
         if not re.search(
             r"424487111-53214R00111.*R208\.2.*R216\.2", str(error.value)
         ):
-            errors.append('Sample with only CNV indications not in error')
+            errors.append("Sample with only CNV indications not in error")
 
         # only the sample with just CNV indications should be invalid
         other_samples = [
-            x for x in self.epic_manifest if x != '424487111-53214R00111'
+            x for x in self.epic_manifest if x != "424487111-53214R00111"
         ]
         if any(x in str(error.value) for x in other_samples):
-            errors.append('Samples with valid tests wrongly in error')
+            errors.append("Samples with valid tests wrongly in error")
 
         assert not errors, errors
-
 
     def test_invalid_code_still_raised_with_cnv_indication(self):
         """
@@ -701,21 +735,20 @@ class TestCheckManifestValidTestCodes():
         booked for the same sample
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [
-            ['R208.1', 'R208.2', 'invalidTestCode']
+        manifest_copy["424487111-53214R00111"]["tests"] = [
+            ["R208.1", "R208.2", "invalidTestCode"]
         ]
 
         with pytest.raises(RuntimeError, match=r"invalidTestCode") as error:
             manifest.check_manifest_valid_test_codes(
                 manifest=manifest_copy,
                 genepanels=self.genepanels_df,
-                cnv_indications=self.cnv_list
+                cnv_indications=self.cnv_list,
             )
 
-        assert 'R208.2' not in str(error.value), (
-            'Stripped CNV indication wrongly reported as invalid'
+        assert "R208.2" not in str(error.value), (
+            "Stripped CNV indication wrongly reported as invalid"
         )
-
 
     def test_cnv_indication_invalid_when_not_in_cnv_list(self):
         """
@@ -724,17 +757,16 @@ class TestCheckManifestValidTestCodes():
         should be raised as invalid as they were before
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [
-            ['R208.1', 'R208.2']
+        manifest_copy["424487111-53214R00111"]["tests"] = [
+            ["R208.1", "R208.2"]
         ]
 
         with pytest.raises(RuntimeError, match=r"R208\.2"):
             manifest.check_manifest_valid_test_codes(
                 manifest=manifest_copy,
                 genepanels=self.genepanels_df,
-                cnv_indications=[]
+                cnv_indications=[],
             )
-
 
     def test_stripped_cnv_indications_printed(self, capsys):
         """
@@ -742,34 +774,36 @@ class TestCheckManifestValidTestCodes():
         logs, and a message printed when there are none
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [
-            ['R208.1', 'R208.2']
+        manifest_copy["424487111-53214R00111"]["tests"] = [
+            ["R208.1", "R208.2"]
         ]
 
         manifest.check_manifest_valid_test_codes(
             manifest=manifest_copy,
             genepanels=self.genepanels_df,
-            cnv_indications=self.cnv_list
+            cnv_indications=self.cnv_list,
         )
         stripped_stdout = capsys.readouterr().out
 
         manifest.check_manifest_valid_test_codes(
             manifest=self.epic_manifest,
             genepanels=self.genepanels_df,
-            cnv_indications=self.cnv_list
+            cnv_indications=self.cnv_list,
         )
         none_stdout = capsys.readouterr().out
 
         errors = []
 
         if "424487111-53214R00111: ['R208.2']" not in stripped_stdout:
-            errors.append('Stripped CNV indication not printed')
+            errors.append("Stripped CNV indication not printed")
 
-        if 'No samples with CNV indications found in manifest' not in none_stdout:
-            errors.append('No CNV indications message not printed')
+        if (
+            "No samples with CNV indications found in manifest"
+            not in none_stdout
+        ):
+            errors.append("No CNV indications message not printed")
 
         assert not errors, errors
-
 
     def test_input_manifest_not_modified(self):
         """
@@ -777,19 +811,18 @@ class TestCheckManifestValidTestCodes():
         manifest passed in
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [
-            ['R208.1', 'R208.2']
+        manifest_copy["424487111-53214R00111"]["tests"] = [
+            ["R208.1", "R208.2"]
         ]
         original = deepcopy(manifest_copy)
 
         manifest.check_manifest_valid_test_codes(
             manifest=manifest_copy,
             genepanels=self.genepanels_df,
-            cnv_indications=self.cnv_list
+            cnv_indications=self.cnv_list,
         )
 
-        assert manifest_copy == original, 'Input manifest was modified'
-
+        assert manifest_copy == original, "Input manifest was modified"
 
     def test_manifest_unchanged_with_no_cnv_indications(self, capsys):
         """
@@ -800,22 +833,22 @@ class TestCheckManifestValidTestCodes():
         tested_manifest = manifest.check_manifest_valid_test_codes(
             manifest=self.epic_manifest,
             genepanels=self.genepanels_df,
-            cnv_indications=[]
+            cnv_indications=[],
         )
         stdout = capsys.readouterr().out
 
         errors = []
 
         if tested_manifest.items() != self.epic_manifest.items():
-            errors.append('Manifest changed with no CNV indications')
+            errors.append("Manifest changed with no CNV indications")
 
-        if 'No samples with CNV indications found in manifest' not in stdout:
-            errors.append('No CNV indications message not printed')
+        if "No samples with CNV indications found in manifest" not in stdout:
+            errors.append("No CNV indications message not printed")
 
         assert not errors, errors
 
 
-class TestSplitManifestTests():
+class TestSplitManifestTests:
     """
     Tests for manifest.split_manifest_tests()
 
@@ -829,17 +862,17 @@ class TestSplitManifestTests():
         Test that any panels are correctly split to their own test list
         """
         data = {
-            "sample1": {'tests': [['R1.1', 'R134.1']]},
-            "sample2": {'tests': [['R228.1']]},
-            "sample3": {'tests': [['R218.2'], ['R2.1']]},
+            "sample1": {"tests": [["R1.1", "R134.1"]]},
+            "sample2": {"tests": [["R228.1"]]},
+            "sample3": {"tests": [["R218.2"], ["R2.1"]]},
         }
 
         split_manifest = manifest.split_manifest_tests(data)
 
         correct_split = {
-            "sample1": {'tests': [['R1.1'], ['R134.1']]},
-            "sample2": {'tests': [['R228.1']]},
-            "sample3": {'tests': [['R218.2'], ['R2.1']]},
+            "sample1": {"tests": [["R1.1"], ["R134.1"]]},
+            "sample2": {"tests": [["R228.1"]]},
+            "sample3": {"tests": [["R218.2"], ["R2.1"]]},
         }
 
         assert split_manifest == correct_split, (
@@ -853,21 +886,21 @@ class TestSplitManifestTests():
         different sub lists of tests) do _not_ get combined, test this works
         """
         data = {
-            "sample1": {'tests': [['_HGNC:235']]},
-            "sample2": {'tests': [['_HGNC:1623', '_HGNC:4401']]},
-            "sample3": {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+            "sample1": {"tests": [["_HGNC:235"]]},
+            "sample2": {"tests": [["_HGNC:1623", "_HGNC:4401"]]},
+            "sample3": {"tests": [["_HGNC:152"], ["_HGNC:18"]]},
         }
 
         split_manifest = manifest.split_manifest_tests(data)
 
         correct_split = {
-            "sample1": {'tests': [['_HGNC:235']]},
-            "sample2": {'tests': [['_HGNC:1623', '_HGNC:4401']]},
-            "sample3": {'tests': [['_HGNC:152'], ['_HGNC:18']]}
+            "sample1": {"tests": [["_HGNC:235"]]},
+            "sample2": {"tests": [["_HGNC:1623", "_HGNC:4401"]]},
+            "sample3": {"tests": [["_HGNC:152"], ["_HGNC:18"]]},
         }
 
         assert split_manifest == correct_split, (
-            'Gene symbols incorrectly split'
+            "Gene symbols incorrectly split"
         )
 
     def test_panels_and_gene_symbols_handled_together_correctly(self):
@@ -876,27 +909,35 @@ class TestSplitManifestTests():
         are correctly split
         """
         data = {
-            "sample1": {'tests': [['R1.1', 'R134.1', '_HGNC:235']]},
-            "sample2": {'tests': [['R228.1']]},
-            "sample3": {'tests': [['R218.2'], ['R2.1', '_HGNC:1623', '_HGNC:4401']]},
-            "sample4": {'tests': [['R1.1', '_HGNC:152'], ['R1.2', '_HGNC:18']]}
+            "sample1": {"tests": [["R1.1", "R134.1", "_HGNC:235"]]},
+            "sample2": {"tests": [["R228.1"]]},
+            "sample3": {
+                "tests": [["R218.2"], ["R2.1", "_HGNC:1623", "_HGNC:4401"]]
+            },
+            "sample4": {
+                "tests": [["R1.1", "_HGNC:152"], ["R1.2", "_HGNC:18"]]
+            },
         }
 
         split_tests = manifest.split_manifest_tests(data)
 
         correct_split = {
-            "sample1": {'tests': [['R1.1'], ['R134.1'], ['_HGNC:235']]},
-            "sample2": {'tests': [['R228.1']]},
-            "sample3": {'tests': [['R218.2'], ['R2.1'], ['_HGNC:1623', '_HGNC:4401']]},
-            "sample4": {'tests': [['R1.1'], ['_HGNC:152'], ['R1.2'], ['_HGNC:18']]}
+            "sample1": {"tests": [["R1.1"], ["R134.1"], ["_HGNC:235"]]},
+            "sample2": {"tests": [["R228.1"]]},
+            "sample3": {
+                "tests": [["R218.2"], ["R2.1"], ["_HGNC:1623", "_HGNC:4401"]]
+            },
+            "sample4": {
+                "tests": [["R1.1"], ["_HGNC:152"], ["R1.2"], ["_HGNC:18"]]
+            },
         }
 
         assert split_tests == correct_split, (
-            'Mix of panels and gene symbols incorrectly split'
+            "Mix of panels and gene symbols incorrectly split"
         )
 
 
-class TestAddPanelsAndIndicationsToManifest():
+class TestAddPanelsAndIndicationsToManifest:
     """
     Tests for manifest.add_panel_and_indications_to_manifest()
 
@@ -904,14 +945,14 @@ class TestAddPanelsAndIndicationsToManifest():
     adds equal length lists of clinical indications and panel strings
     as separate keys to be used later for inputs such as names in reports etc.
     """
-    with open(os.path.join(TEST_DATA_DIR, 'epic_manifest.txt')) as file_handle:
+
+    with open(os.path.join(TEST_DATA_DIR, "epic_manifest.txt")) as file_handle:
         epic_data = file_handle.read().splitlines()
         epic_manifest, _ = manifest.parse_manifest(epic_data)
 
     with open(f"{TEST_DATA_DIR}/genepanels.tsv") as file_handle:
         genepanels_data = file_handle.read().splitlines()
         genepanels_df = genepanels_module.parse_genepanels(genepanels_data)
-
 
     def test_invalid_test_code_caught(self):
         """
@@ -922,20 +963,18 @@ class TestAddPanelsAndIndicationsToManifest():
         in because why not, never trust the things coming from humans
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [['R10000000001.1']]
+        manifest_copy["424487111-53214R00111"]["tests"] = [["R10000000001.1"]]
 
         with pytest.raises(
             AssertionError,
-            match='Filtering genepanels for R10000000001.1 returned empty df'
+            match="Filtering genepanels for R10000000001.1 returned empty df",
         ):
             manifest.add_panels_and_indications_to_manifest(
-                manifest=manifest_copy,
-                genepanels=self.genepanels_df
+                manifest=manifest_copy, genepanels=self.genepanels_df
             )
 
-
     def test_correct_indications_panels(self):
-        """
+        r"""
         Test that the correct panel and indication strings are added in for
         our test manifest.
 
@@ -947,8 +986,7 @@ class TestAddPanelsAndIndicationsToManifest():
         the report and nobody has complained so far so ¯\_(ツ)_/¯)
         """
         result_manifest = manifest.add_panels_and_indications_to_manifest(
-            manifest=self.epic_manifest,
-            genepanels=self.genepanels_df
+            manifest=self.epic_manifest, genepanels=self.genepanels_df
         )
 
         correct_manifest = {
@@ -957,9 +995,11 @@ class TestAddPanelsAndIndicationsToManifest():
                 "panels": [
                     ["Inherited ovarian cancer (without breast cancer)_4.0"]
                 ],
-                "indications": [[
-                    "R207.1_Inherited ovarian cancer (without breast cancer)_P"
-                ]]
+                "indications": [
+                    [
+                        "R207.1_Inherited ovarian cancer (without breast cancer)_P"
+                    ]
+                ],
             },
             "224289111-33202R00111": {
                 "tests": [["R208.1"]],
@@ -971,16 +1011,12 @@ class TestAddPanelsAndIndicationsToManifest():
                 ],
                 "indications": [
                     ["R208.1_Inherited breast cancer and ovarian cancer_P"]
-                ]
+                ],
             },
             "324338111-43206R00111": {
                 "tests": [["R134.1"]],
-                "panels": [
-                    ["Familial hypercholesterolaemia (GMS)_2.0"]
-                ],
-                "indications": [
-                    ["R134.1_Familial hypercholesterolaemia_P"]
-                ]
+                "panels": [["Familial hypercholesterolaemia (GMS)_2.0"]],
+                "indications": [["R134.1_Familial hypercholesterolaemia_P"]],
             },
             "424487111-53214R00111": {
                 "tests": [["R208.1", "R216.1"]],
@@ -988,31 +1024,26 @@ class TestAddPanelsAndIndicationsToManifest():
                     [
                         "HGNC:1100;HGNC:1101;HGNC:16627;HGNC:26144;HGNC:795;"
                         "HGNC:9820;HGNC:9823_SG_panel_1.0.0",
-                        "HGNC:11998;HGNC:17284_SG_panel_1.0.0"
+                        "HGNC:11998;HGNC:17284_SG_panel_1.0.0",
                     ]
                 ],
                 "indications": [
                     [
                         "R208.1_Inherited breast cancer and ovarian cancer_P",
-                        "R216.1_Li Fraumeni Syndrome_P"
+                        "R216.1_Li Fraumeni Syndrome_P",
                     ]
-                ]
+                ],
             },
             "X225111-GM2308111": {
-                "tests": [ ["R149.1"] ],
-                "panels": [[
-                    "Severe early-onset obesity_4.0"
-                ]],
-                "indications": [[
-                    "R149.1_Severe early-onset obesity_P"
-                ]]
-            }
+                "tests": [["R149.1"]],
+                "panels": [["Severe early-onset obesity_4.0"]],
+                "indications": [["R149.1_Severe early-onset obesity_P"]],
+            },
         }
 
         assert result_manifest == correct_manifest, (
-            'Clinical indications and panels incorrectly added to manifest'
+            "Clinical indications and panels incorrectly added to manifest"
         )
-
 
     def test_hgnc_ids_added(self):
         """
@@ -1020,39 +1051,36 @@ class TestAddPanelsAndIndicationsToManifest():
         as is, test this happens
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [['_HGNC:12345']]
+        manifest_copy["424487111-53214R00111"]["tests"] = [["_HGNC:12345"]]
 
         result_manifest = manifest.add_panels_and_indications_to_manifest(
-            manifest=manifest_copy,
-            genepanels=self.genepanels_df
+            manifest=manifest_copy, genepanels=self.genepanels_df
         )
 
         correct_added = {
-            'tests': [['_HGNC:12345']],
-            'indications': [['_HGNC:12345']],
-            'panels': [['_HGNC:12345']]
+            "tests": [["_HGNC:12345"]],
+            "indications": [["_HGNC:12345"]],
+            "panels": [["_HGNC:12345"]],
         }
 
-        assert result_manifest['424487111-53214R00111'] == correct_added, (
-            'Clinical indication and / or panel wrongly added for HGNC ID'
+        assert result_manifest["424487111-53214R00111"] == correct_added, (
+            "Clinical indication and / or panel wrongly added for HGNC ID"
         )
-
 
     def test_error_raised_invalid_test(self):
         """
         Test RuntimeError raised if invalid test code makes it through
         """
         manifest_copy = deepcopy(self.epic_manifest)
-        manifest_copy['424487111-53214R00111']['tests'] = [['invalidTestCode']]
+        manifest_copy["424487111-53214R00111"]["tests"] = [["invalidTestCode"]]
 
         with pytest.raises(
             RuntimeError,
             match=(
-                'Error occurred selecting test from genepanels '
-                'for test invalidTestCode'
-            )
+                "Error occurred selecting test from genepanels "
+                "for test invalidTestCode"
+            ),
         ):
             manifest.add_panels_and_indications_to_manifest(
-                manifest=manifest_copy,
-                genepanels=self.genepanels_df
+                manifest=manifest_copy, genepanels=self.genepanels_df
             )
