@@ -151,7 +151,7 @@ class TestCheckInputs:
             check.inputs = {"unarchive_only": True, "unarchive": False}
             check.check_unarchive_set()
 
-            assert check.inputs["unarchive"] == True
+            assert check.inputs["unarchive"]
 
         with unittest.TestCase().subTest("unarchive_only set to False"):
             # Test when unarchive_only set to False we do not force
@@ -160,7 +160,7 @@ class TestCheckInputs:
             check.inputs = {"unarchive_only": False, "unarchive": False}
             check.check_unarchive_set()
 
-            assert check.inputs["unarchive"] == False
+            assert not check.inputs["unarchive"]
 
     def test_error_raised_for_no_manifest_with_reports_mode(self, mocker):
         """

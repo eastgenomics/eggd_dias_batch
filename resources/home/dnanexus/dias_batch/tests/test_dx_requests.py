@@ -1130,7 +1130,7 @@ class TestCheckAndUnarchiveFiles(unittest.TestCase):
             )
 
             # should be passed through as False
-            assert mock_archive.call_args[1]["unarchive"] == False
+            assert not mock_archive.call_args[1]["unarchive"]
 
         with self.subTest("check unarchive True"):
             DXManage().check_and_unarchive_files(
@@ -1138,7 +1138,7 @@ class TestCheckAndUnarchiveFiles(unittest.TestCase):
             )
 
             # should be passed through as True
-            assert mock_archive.call_args[1]["unarchive"] == True
+            assert mock_archive.call_args[1]["unarchive"]
 
     @patch("utils.dx_requests.exit")
     @patch("utils.dx_requests.dxpy.DXJob")
