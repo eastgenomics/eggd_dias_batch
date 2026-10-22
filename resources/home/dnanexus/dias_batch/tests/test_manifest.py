@@ -460,6 +460,65 @@ class TestFilterManifestSamplesByFiles():
         )
 
 
+class TestParseCnvIndications():
+    """
+    Tests for manifest.parse_cnv_indications()
+
+    Function formats the contents of the CNV indications file read from
+    DXManage.read_dxfile() into a list of test codes
+    """
+    def test_none_returns_empty_list(self):
+        """
+        DXManage.read_dxfile() returns None when no cnv_indications file
+        is in the assay config, this should give an empty list
+        """
+        assert manifest.parse_cnv_indications(None) == [], (
+            'Empty list not returned when no CNV indications file given'
+        )
+
+    def test_empty_file_returns_empty_list(self):
+        """
+        An empty CNV indications file should give an empty list
+        """
+        assert manifest.parse_cnv_indications([]) == [], (
+            'Empty list not returned for empty CNV indications file'
+        )
+
+    def test_whitespace_and_blank_lines_removed(self):
+        """
+        Leading / trailing whitespace should be stripped and blank lines
+        dropped
+        """
+        contents = ['R208.2', ' R412.2 \t', '', '   ', 'R414.2\r']
+
+        assert manifest.parse_cnv_indications(contents) == [
+            'R208.2', 'R412.2', 'R414.2'
+        ], 'CNV indications not correctly parsed'
+
+    def test_test_data_file_parsed(self):
+        """
+        Test CNV indications file should parse to a list of test codes
+        with no blank entries
+        """
+        with open(f"{TEST_DATA_DIR}/cnv_indications.txt") as file_handle:
+            contents = file_handle.read().splitlines()
+
+        parsed = manifest.parse_cnv_indications(contents)
+
+        errors = []
+
+        if not parsed:
+            errors.append('No CNV indications parsed from test data')
+
+        if 'R208.2' not in parsed:
+            errors.append('R208.2 not parsed from test data')
+
+        if any(not x or x != x.strip() for x in parsed):
+            errors.append('Blank or unstripped entries in parsed list')
+
+        assert not errors, errors
+
+
 class TestCheckManifestValidTestCodes():
     """
     Tests for manifest.check_manifest_valid_test_codes()
@@ -478,6 +537,11 @@ class TestCheckManifestValidTestCodes():
         genepanels_data = file_handle.read().splitlines()
         genepanels_df = genepanels_module.parse_genepanels(genepanels_data)
 
+    # read in CNV indications file
+    with open(f"{TEST_DATA_DIR}/cnv_indications.txt") as file_handle:
+        cnv_data = file_handle.read().splitlines()
+        cnv_list = cnv_data
+
 
     def test_error_not_raised_on_valid_codes(self):
         """
@@ -486,7 +550,7 @@ class TestCheckManifestValidTestCodes():
         test that this is true
         """
         tested_manifest = manifest.check_manifest_valid_test_codes(
-            manifest=self.epic_manifest, genepanels=self.genepanels_df
+            manifest=self.epic_manifest, genepanels=self.genepanels_df, cnv_indications=self.cnv_list
         )
 
         assert tested_manifest.items() == self.epic_manifest.items(), (
@@ -510,7 +574,7 @@ class TestCheckManifestValidTestCodes():
 
         with pytest.raises(RuntimeError, match=expected_error):
             manifest.check_manifest_valid_test_codes(
-                manifest=manifest_copy, genepanels=self.genepanels_df
+                manifest=manifest_copy, genepanels=self.genepanels_df, cnv_indications=self.cnv_list
             )
 
 
@@ -526,7 +590,7 @@ class TestCheckManifestValidTestCodes():
 
         with pytest.raises(RuntimeError, match=r"invalidTestCode"):
             manifest.check_manifest_valid_test_codes(
-                manifest=manifest_copy, genepanels=self.genepanels_df
+                manifest=manifest_copy, genepanels=self.genepanels_df, cnv_indications=self.cnv_list
             )
 
     def test_error_not_raised_when_research_use_test_code_present(self):
@@ -545,13 +609,210 @@ class TestCheckManifestValidTestCodes():
         correct_test_codes = [['R208.1', 'R216.1']]
 
         tested_manifest = manifest.check_manifest_valid_test_codes(
-            manifest=manifest_copy, genepanels=self.genepanels_df
+            manifest=manifest_copy, genepanels=self.genepanels_df, cnv_indications=self.cnv_list
         )
         sample_test_codes = tested_manifest['424487111-53214R00111']['tests']
 
         assert sample_test_codes == correct_test_codes, (
             'Test codes not correctly parsed when "Research Use" present'
         )
+
+    def test_cnv_indication_stripped_from_test_list(self):
+        """
+        CNV indications booked in the same test list as valid test codes
+        should be removed, leaving just the valid codes
+        """
+        manifest_copy = deepcopy(self.epic_manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [
+            ['R208.1', 'R208.2', 'R216.1']
+        ]
+
+        tested_manifest = manifest.check_manifest_valid_test_codes(
+            manifest=manifest_copy,
+            genepanels=self.genepanels_df,
+            cnv_indications=self.cnv_list
+        )
+
+        assert tested_manifest['424487111-53214R00111']['tests'] == [
+            ['R208.1', 'R216.1']
+        ], 'CNV indication not correctly stripped from test list'
+
+
+    def test_test_list_of_only_cnv_indications_dropped(self):
+        """
+        Where a sample has multiple test lists (i.e. from split_tests
+        multiple manifest rows) and one only contains CNV indications,
+        that list should be dropped and the other(s) kept
+        """
+        manifest_copy = deepcopy(self.epic_manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [
+            ['R208.1'], ['R208.2'], ['R216.1']
+        ]
+
+        tested_manifest = manifest.check_manifest_valid_test_codes(
+            manifest=manifest_copy,
+            genepanels=self.genepanels_df,
+            cnv_indications=self.cnv_list
+        )
+
+        assert tested_manifest['424487111-53214R00111']['tests'] == [
+            ['R208.1'], ['R216.1']
+        ], 'Test list of only CNV indications not correctly dropped'
+
+
+    def test_error_raised_when_sample_only_has_cnv_indications(self):
+        """
+        If every test code booked for a sample is a CNV indication the
+        is nothing left to run => sample should be marked invalid and an
+        error raised, and only for that sample
+        """
+        manifest_copy = deepcopy(self.epic_manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [
+            ['R208.2', 'R216.2']
+        ]
+
+        with pytest.raises(RuntimeError) as error:
+            manifest.check_manifest_valid_test_codes(
+                manifest=manifest_copy,
+                genepanels=self.genepanels_df,
+                cnv_indications=self.cnv_list
+            )
+
+        errors = []
+
+        if not re.search(
+            r"424487111-53214R00111.*R208\.2.*R216\.2", str(error.value)
+        ):
+            errors.append('Sample with only CNV indications not in error')
+
+        # only the sample with just CNV indications should be invalid
+        other_samples = [
+            x for x in self.epic_manifest if x != '424487111-53214R00111'
+        ]
+        if any(x in str(error.value) for x in other_samples):
+            errors.append('Samples with valid tests wrongly in error')
+
+        assert not errors, errors
+
+
+    def test_invalid_code_still_raised_with_cnv_indication(self):
+        """
+        Stripping CNV indications should not hide other invalid test codes
+        booked for the same sample
+        """
+        manifest_copy = deepcopy(self.epic_manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [
+            ['R208.1', 'R208.2', 'invalidTestCode']
+        ]
+
+        with pytest.raises(RuntimeError, match=r"invalidTestCode") as error:
+            manifest.check_manifest_valid_test_codes(
+                manifest=manifest_copy,
+                genepanels=self.genepanels_df,
+                cnv_indications=self.cnv_list
+            )
+
+        assert 'R208.2' not in str(error.value), (
+            'Stripped CNV indication wrongly reported as invalid'
+        )
+
+
+    def test_cnv_indication_invalid_when_not_in_cnv_list(self):
+        """
+        If no CNV indications are provided (i.e. assay config has no
+        cnv_indications file) these codes are not in genepanels and
+        should be raised as invalid as they were before
+        """
+        manifest_copy = deepcopy(self.epic_manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [
+            ['R208.1', 'R208.2']
+        ]
+
+        with pytest.raises(RuntimeError, match=r"R208\.2"):
+            manifest.check_manifest_valid_test_codes(
+                manifest=manifest_copy,
+                genepanels=self.genepanels_df,
+                cnv_indications=[]
+            )
+
+
+    def test_stripped_cnv_indications_printed(self, capsys):
+        """
+        Samples with CNV indications stripped should be printed to the
+        logs, and a message printed when there are none
+        """
+        manifest_copy = deepcopy(self.epic_manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [
+            ['R208.1', 'R208.2']
+        ]
+
+        manifest.check_manifest_valid_test_codes(
+            manifest=manifest_copy,
+            genepanels=self.genepanels_df,
+            cnv_indications=self.cnv_list
+        )
+        stripped_stdout = capsys.readouterr().out
+
+        manifest.check_manifest_valid_test_codes(
+            manifest=self.epic_manifest,
+            genepanels=self.genepanels_df,
+            cnv_indications=self.cnv_list
+        )
+        none_stdout = capsys.readouterr().out
+
+        errors = []
+
+        if "424487111-53214R00111: ['R208.2']" not in stripped_stdout:
+            errors.append('Stripped CNV indication not printed')
+
+        if 'No samples with CNV indications found in manifest' not in none_stdout:
+            errors.append('No CNV indications message not printed')
+
+        assert not errors, errors
+
+
+    def test_input_manifest_not_modified(self):
+        """
+        Stripping should return a new manifest and not modify the
+        manifest passed in
+        """
+        manifest_copy = deepcopy(self.epic_manifest)
+        manifest_copy['424487111-53214R00111']['tests'] = [
+            ['R208.1', 'R208.2']
+        ]
+        original = deepcopy(manifest_copy)
+
+        manifest.check_manifest_valid_test_codes(
+            manifest=manifest_copy,
+            genepanels=self.genepanels_df,
+            cnv_indications=self.cnv_list
+        )
+
+        assert manifest_copy == original, 'Input manifest was modified'
+
+
+    def test_manifest_unchanged_with_no_cnv_indications(self, capsys):
+        """
+        If no CNV indications are provided (i.e. assay config has no
+        cnv_indications file) a valid manifest should be returned
+        unchanged and nothing reported as stripped
+        """
+        tested_manifest = manifest.check_manifest_valid_test_codes(
+            manifest=self.epic_manifest,
+            genepanels=self.genepanels_df,
+            cnv_indications=[]
+        )
+        stdout = capsys.readouterr().out
+
+        errors = []
+
+        if tested_manifest.items() != self.epic_manifest.items():
+            errors.append('Manifest changed with no CNV indications')
+
+        if 'No samples with CNV indications found in manifest' not in stdout:
+            errors.append('No CNV indications message not printed')
+
+        assert not errors, errors
 
 
 class TestSplitManifestTests():
