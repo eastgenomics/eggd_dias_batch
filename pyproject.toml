@@ -7,7 +7,7 @@ requires-python = "==3.12.*"
 dependencies = [
     "dxpy==0.318.1",
     "numpy==1.26.4",
-    "packaging==23.1",
+    "packaging==24.0",
     "pandas==2.1.4",
     "pydantic>=2.10.6",
     "pytz==2023.3.post1",
@@ -17,7 +17,7 @@ dependencies = [
 
 [tool.uv.sources]
 numpy = { path = "resources/home/dnanexus/packages/numpy-1.26.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" }
-packaging = { path = "resources/home/dnanexus/packages/packaging-23.1-py3-none-any.whl" }
+packaging = { path = "resources/home/dnanexus/packages/packaging-24.0-py3-none-any.whl" }
 pandas = { path = "resources/home/dnanexus/packages/pandas-2.1.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" }
 pytz = { path = "resources/home/dnanexus/packages/pytz-2023.3.post1-py2.py3-none-any.whl" }
 tabulate = { path = "resources/home/dnanexus/packages/tabulate-0.9.0-py3-none-any.whl" }
