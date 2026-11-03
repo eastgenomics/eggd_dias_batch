@@ -307,7 +307,6 @@ class CheckInputs:
                 [
                     self.inputs.get("exclude_samples"),
                     self.inputs.get("exclude_samples_file"),
-                    self.inputs.get("exclude_controls"),
                 ]
             )
             and not self.inputs.get("cnv_call")
