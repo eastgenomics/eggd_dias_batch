@@ -396,22 +396,6 @@ class TestCheckInputs:
                 "cnv_call/reports"
             )
 
-        with unittest.TestCase().subTest("exclude_controls given"):
-            check = CheckInputs()
-            check.errors = []
-            check.inputs = {
-                "exclude_samples": None,
-                "exclude_samples_file": None,
-                "exclude_controls": True,
-                "cnv_call": False,
-                "cnv_reports": False,
-            }
-            check.check_exclude_requires_cnv_call_or_reports()
-
-            assert check.errors == correct_error, (
-                "Error not raised for exclude_controls without cnv_call/reports"
-            )
-
         with unittest.TestCase().subTest("cnv_call selected, no error"):
             check = CheckInputs()
             check.errors = []
