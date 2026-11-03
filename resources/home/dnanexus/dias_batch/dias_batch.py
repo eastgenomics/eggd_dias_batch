@@ -62,6 +62,7 @@ class CheckInputs:
         self.errors = []
         self.strip_string_inputs()
         self.check_assay()
+        self.check_assay_string_or_assay_config_specified()
         self.check_assay_config_dir()
         self.check_mode_set()
         self.check_unarchive_set()
@@ -307,7 +308,6 @@ class CheckInputs:
                 [
                     self.inputs.get("exclude_samples"),
                     self.inputs.get("exclude_samples_file"),
-                    self.inputs.get("exclude_controls"),
                 ]
             )
             and not self.inputs.get("cnv_call")

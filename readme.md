@@ -20,18 +20,18 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 
 **Strings**
 - `-iassay_config_dir` (`str`): DNAnexus project:path to directory containing config files, the highest version for the given `-iassay` string will be used
-- `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run (_n.b. this is mutually exclusive with `-icnv_call`_)
-- `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
+- `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run (_n.b. this is mutually exclusive with `-icnv_call`, and requires `-icnv_reports=true` also be specified, otherwise the job ID would never be used_)
+- `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`)) (_n.b. mutually exclusive with `-iexclude_samples_file`, and requires `-icnv_call=true` and/or `-icnv_reports=true`, otherwise exclude would never be used_)
 - `-imanifest_subset` (`str`): comma separated string of Epic samples in manifest on which to ONLY run jobs (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`)). This option is to be used if an Epic batch had mistakes in the manifest, which have now been corrected. This will filter the updated batch so that reports jobs are only run for the corrected samples and not the whole batch.
 
 **Integers**
-- `-icnv_min_samples` (`int`): minimum number of samples (BAMs, counted after any `-iexclude` samples are removed) required to launch CNV calling, below which an error is raised. If not specified, no minimum is enforced. Can also be set as a per-assay default via `min_samples` in the config's `cnv_call` mode; the runtime input takes precedence if both are given
+- `-icnv_min_samples` (`int`): minimum number of samples (BAMs, counted after any `-iexclude` samples are removed) required to launch CNV calling, below which an error is raised. If not specified, no minimum is enforced. Can also be set as a per-assay default via `min_samples` in the config's `cnv_call` mode; the runtime input takes precedence if both are given (_n.b. requires `-icnv_call=true`, otherwise the given minimum would never be used_)
 
 **Files**
 - `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and should only be specified with `-iartemis=true`_)
 - `-imultiqc_report` (`file`): HTML MultiQC report (_this is an optional input file for eggd\_artemis and should only be specified with `-iartemis=true`, it will pass the file as input to suppress searching for a MultiQC job in the project_)
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search default `assay_config_dir` for highest version config file for the given `-assay` string
-- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line. Epic samples should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`) Example formatting of exclude_samples_file`:
+- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line. Epic samples should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`) (_n.b. mutually exclusive with `-iexclude_samples`, and requires `-icnv_call=true` and/or `-icnv_reports=true`, otherwise exclude would never be used_) Example formatting of exclude_samples_file`:
     ```
     X225201
     125558769-23272R0123
