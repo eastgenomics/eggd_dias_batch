@@ -19,16 +19,19 @@ DNAnexus app for launching CNV calling, one or more of SNV, CNV and mosaic repor
 #### Useful ones
 
 **Strings**
-- `-iassay_config_dir` (`str`): DNANexus project:path to directory containing config files, the highest version for the given `-iassay` string will be used
-- `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run (_n.b. this is mutually exclusive with `-icnv_call`_)
-- `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`))
+- `-iassay_config_dir` (`str`): DNAnexus project:path to directory containing config files, the highest version for the given `-iassay` string will be used
+- `-icnv_call_job_id` (`str`): job ID of cnv calling job to use for generating CNV reports if CNV calling is not first being run (_n.b. this is mutually exclusive with `-icnv_call`, and requires `-icnv_reports=true` also be specified, otherwise the job ID would never be used_)
+- `-iexclude_samples` (`str`): comma separated string of samples to exclude from CNV calling / CNV reports (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`)) (_n.b. mutually exclusive with `-iexclude_samples_file`, and requires `-icnv_call=true` and/or `-icnv_reports=true`, otherwise exclude would never be used_)
 - `-imanifest_subset` (`str`): comma separated string of Epic samples in manifest on which to ONLY run jobs (these should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`)). This option is to be used if an Epic batch had mistakes in the manifest, which have now been corrected. This will filter the updated batch so that reports jobs are only run for the corrected samples and not the whole batch.
+
+**Integers**
+- `-icnv_min_samples` (`int`): minimum number of samples (BAMs, counted after any `-iexclude` samples are removed) required to launch CNV calling, below which an error is raised. If not specified, no minimum is enforced. Can also be set as a per-assay default via `min_samples` in the config's `cnv_call` mode; the runtime input takes precedence if both are given (_n.b. requires `-icnv_call=true`, otherwise the given minimum would never be used_)
 
 **Files**
 - `-iqc_file` (`file`): xlsx file mapping QC state of each sample (_this is an optional input file for eggd\_artemis, and should only be specified with `-iartemis=true`_)
 - `-imultiqc_report` (`file`): HTML MultiQC report (_this is an optional input file for eggd\_artemis and should only be specified with `-iartemis=true`, it will pass the file as input to suppress searching for a MultiQC job in the project_)
 - `-iassay_config_file` (`file`): Config file for assay, if not provided will search default `assay_config_dir` for highest version config file for the given `-assay` string
-- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line. Epic samples should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`) Example formatting of exclude_samples_file`:
+- `-iexclude_samples_file` (`file`): file of samples to exclude from CNV calling / CNV reports, one sample name per line. Epic samples should be formatted as `InstrumentID-SpecimenID` (i.e. `123245111-33202R00111`) (_n.b. mutually exclusive with `-iexclude_samples`, and requires `-icnv_call=true` and/or `-icnv_reports=true`, otherwise exclude would never be used_) Example formatting of exclude_samples_file`:
     ```
     X225201
     125558769-23272R0123
@@ -241,10 +244,8 @@ The definitions of inputs for CNV calling and each reports workflow should be de
             },
             "GATK_docker": {
                 "$dnanexus_link": {
-                    "$dnanexus_link": {
-                        "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
-                        "id": "file-GBBP9JQ433GxV97xBpQkzYZx"
-                    }
+                    "project": "project-Fkb6Gkj433GVVvj73J7x8KbV",
+                    "id": "file-GBBP9JQ433GxV97xBpQkzYZx"
                 }
             },
             "annotation_tsv": {
@@ -323,5 +324,41 @@ The definitions of inputs for CNV calling and each reports workflow should be de
 ## What does this app output
 
 - `summary_report` (`file`) - text summary file with details on jobs run and any samples / tests excluded from analysis
+- `launched_jobs` (`string`) - comma separated string of all jobs/workflows launched by batch
+
+---
+
+## Local development setup
+
+This repo uses [`uv`](https://docs.astral.sh/uv/) to manage the local development/test environment, configured via [`pyproject.toml`](pyproject.toml) and [`uv.lock`](uv.lock) (Python version pinned in [`.python-version`](.python-version)). This is separate from how the app actually installs its dependencies when running on DNAnexus - with dependencies installed at runtime via pip (see [`dias_batch.py`](resources/home/dnanexus/dias_batch/dias_batch.py)'s `pip install --no-index --no-deps`) using the wheels in [`resources/home/dnanexus/packages/`](resources/home/dnanexus/packages/). `uv`/`pyproject.toml` are only used when setting up local dev and CI environment.
+
+To set up a local dev environment:
+
+1. Install `uv` (see [uv's installation docs](https://docs.astral.sh/uv/getting-started/installation/))
+2. From the repo root, create the local environment:
+   ```
+   uv sync
+   ```
+- This provisions the pinned Python version if not already available, and installs both runtime and development dependencies as declared in `pyproject.toml`.
+
+[`pyproject.toml`](pyproject.toml) splits dependencies into two groups, depending on what they're for:
+- `[project.dependencies]` - packages the app itself imports/needs at runtime. Anything added here should also be reflected in the vendored wheels at [`resources/home/dnanexus/packages/`](resources/home/dnanexus/packages/) and `[tool.uv.sources]`
+- `[dependency-groups].dev` - tooling only used for local development/CI (e.g. `pytest` and its plugins, `ruff`).
+
+When adding a new dependency, add it to whichever group matches its purpose.
+
+## Running tests and linting
+
+Run the test suite:
+```
+uv run pytest -vv --cov resources/home/dnanexus/dias_batch/
+```
+
+Run linting/formatting checks:
+```
+uv run ruff check .
+uv run ruff format --check .
+```
+(drop `--check` from the second command to have `ruff` apply formatting fixes)
 
 ---
