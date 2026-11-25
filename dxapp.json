@@ -213,9 +213,6 @@
         "headJobOnDemand": true
     },
     "access": {
-        "network": [
-            "*"
-        ],
         "allProjects":"CONTRIBUTE",
         "project": "CONTRIBUTE"
     },
